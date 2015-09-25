@@ -1,0 +1,199 @@
+[
+  {
+    "url": "http://www.freebase.com/view/en/mr_blackwell", 
+    "targetValue": "(list (description Critic) (description Journalist) (description Actor) (description \"Fashion Designer\"))", 
+    "utterance": "who is blackwell?", 
+    "id": 1, 
+    "result": [
+      "Critic", 
+      "Journalist", 
+      "Actor", 
+      "Fashion Designer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dan_cody", 
+    "targetValue": "(list (description \"American football player\"))", 
+    "utterance": "who was dan cody?", 
+    "id": 2, 
+    "result": [
+      "American football player"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dr_seuss", 
+    "targetValue": "(list (description \"Theodor Robert Geisel\"))", 
+    "utterance": "who was dr seuss?", 
+    "id": 3, 
+    "result": [
+      "Theodor Robert Geisel"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/skywest", 
+    "targetValue": "(list (description \"AirTran Airways\") (description \"SkyWest, Inc.\"))", 
+    "utterance": "who owns skywest?", 
+    "id": 4, 
+    "result": [
+      "AirTran Airways", 
+      "SkyWest, Inc."
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/pixar", 
+    "targetValue": "(list (description \"Edwin Catmull\") (description \"Steve Jobs\"))", 
+    "utterance": "who started pixar?", 
+    "id": 5, 
+    "result": [
+      "Edwin Catmull", 
+      "Steve Jobs"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kobe_bryant", 
+    "targetValue": "(list (description \"Basketball player\"))", 
+    "utterance": "who's kobe bryant?", 
+    "id": 6, 
+    "result": [
+      "Basketball player"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_dean", 
+    "targetValue": "(list (description Actor))", 
+    "utterance": "who is james dean?", 
+    "id": 7, 
+    "result": [
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/betty_white", 
+    "targetValue": "(list (description Singer) (description \"Television Producer\") (description Author) (description Actor) (description \"TV Personality\") (description Comedian))", 
+    "utterance": "who's betty white?", 
+    "id": 8, 
+    "result": [
+      "Singer", 
+      "Television Producer", 
+      "Author", 
+      "Actor", 
+      "TV Personality", 
+      "Comedian"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/google", 
+    "targetValue": "(list (description \"Larry Page\") (description \"Sergey Brin\"))", 
+    "utterance": "who started google?", 
+    "id": 9, 
+    "result": [
+      "Larry Page", 
+      "Sergey Brin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tex_beneke", 
+    "targetValue": "(list (description Singer) (description Musician))", 
+    "utterance": "who was tex beneke?", 
+    "id": 10, 
+    "result": [
+      "Singer", 
+      "Musician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/louis_riel", 
+    "targetValue": "(list (description Politician))", 
+    "utterance": "who was louis riel?", 
+    "id": 11, 
+    "result": [
+      "Politician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/aidan_davis", 
+    "targetValue": "(list (description \"Street dance\") (description Presenter))", 
+    "utterance": "who is aidan davis?", 
+    "id": 12, 
+    "result": [
+      "Street dance", 
+      "Presenter"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_garcia", 
+    "targetValue": "(list (description Singer) (description Musician))", 
+    "utterance": "who is john garcia?", 
+    "id": 13, 
+    "result": [
+      "Singer", 
+      "Musician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/esther_hicks", 
+    "targetValue": "(list (description Writer) (description Author))", 
+    "utterance": "who is esther hicks?", 
+    "id": 14, 
+    "result": [
+      "Writer", 
+      "Author"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tupac_shakur", 
+    "targetValue": "(list (description \"East Harlem\"))", 
+    "utterance": "where tupac grew up?", 
+    "id": 15, 
+    "result": [
+      "East Harlem"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/adam_sandler", 
+    "targetValue": "(list (description Actor))", 
+    "utterance": "who is adam sandler?", 
+    "id": 16, 
+    "result": [
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/wayne_state_university", 
+    "targetValue": "(list (description Michigan) (description \"United States of America\") (description Detroit))", 
+    "utterance": "where's wayne state?", 
+    "id": 17, 
+    "result": [
+      "Michigan", 
+      "United States of America", 
+      "Detroit"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/chelsea_staub", 
+    "targetValue": "(list (description Singer))", 
+    "utterance": "who is chelsea kane?", 
+    "id": 18, 
+    "result": [
+      "Singer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/panama", 
+    "targetValue": "(list (description \"Ricardo Martinelli\"))", 
+    "utterance": "who controls panama?", 
+    "id": 19, 
+    "result": [
+      "Ricardo Martinelli"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lyndon_b_johnson", 
+    "targetValue": "(list (description \"Myocardial infarction\"))", 
+    "utterance": "what did lbj die of?", 
+    "id": 20, 
+    "result": [
+      "Myocardial infarction"
+    ]
+  }
+ ]

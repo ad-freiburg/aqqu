@@ -1,0 +1,5668 @@
+[
+  {
+    "url": "http://www.freebase.com/view/en/james_t_kirk", 
+    "targetValue": "(list (description \"Jimmy Bennett\") (description \"Chris Pine\") (description \"William Shatner\"))", 
+    "utterance": "who played kirk?", 
+    "id": 1, 
+    "result": [
+      "Jimmy Bennett", 
+      "Chris Pine", 
+      "William Shatner"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sergio_romo", 
+    "targetValue": "(list (description \"Baseball player\"))", 
+    "utterance": "what did romo do?", 
+    "id": 2, 
+    "result": [
+      "Baseball player"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/habiba_sarabi", 
+    "targetValue": "(list (description Physician))", 
+    "utterance": "what does sarabi?", 
+    "id": 3, 
+    "result": [
+      "Physician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/richard_lynn_scott", 
+    "targetValue": "(list (description Investor) (description Businessperson) (description Politician) (description Lawyer))", 
+    "utterance": "who is rick scott?", 
+    "id": 4, 
+    "result": [
+      "Investor", 
+      "Businessperson", 
+      "Politician", 
+      "Lawyer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lyndon_b_johnson", 
+    "targetValue": "(list (description \"Lady Bird Johnson\"))", 
+    "utterance": "who did lbj marry?", 
+    "id": 5, 
+    "result": [
+      "Lady Bird Johnson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dan_white", 
+    "targetValue": "(list (description Firefighter) (description Politician) (description \"Police officer\"))", 
+    "utterance": "who was dan white?", 
+    "id": 6, 
+    "result": [
+      "Firefighter", 
+      "Politician", 
+      "Police officer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lord_voldemort", 
+    "targetValue": "(list (description \"Richard Bremmer\") (description \"Frank Dillane\") (description \"Ralph Fiennes\") (description \"Hero Fiennes-Tiffin\") (description \"Christian Coulson\"))", 
+    "utterance": "who plays voldemort?", 
+    "id": 7, 
+    "result": [
+      "Richard Bremmer", 
+      "Frank Dillane", 
+      "Ralph Fiennes", 
+      "Hero Fiennes-Tiffin", 
+      "Christian Coulson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ku_klux_klan", 
+    "targetValue": "(list (description \"Albert Pike\") (description \"David Duke\") (description \"William Joseph Simmons\"))", 
+    "utterance": "who founded the kkk?", 
+    "id": 8, 
+    "result": [
+      "Albert Pike", 
+      "David Duke", 
+      "William Joseph Simmons"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/american_football_league", 
+    "targetValue": "(list (description \"Bud Adams\"))", 
+    "utterance": "who founded the afl?", 
+    "id": 9, 
+    "result": [
+      "Bud Adams"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jimmy_savile", 
+    "targetValue": "(list (description Presenter))", 
+    "utterance": "who is jimmy savile?", 
+    "id": 10, 
+    "result": [
+      "Presenter"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kate_chopin", 
+    "targetValue": "(list (description Writer))", 
+    "utterance": "who was kate chopin?", 
+    "id": 11, 
+    "result": [
+      "Writer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/google", 
+    "targetValue": "(list (description \"Larry Page\") (description \"Sergey Brin\"))", 
+    "utterance": "who owns google 2012?", 
+    "id": 12, 
+    "result": [
+      "Larry Page", 
+      "Sergey Brin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/shakira", 
+    "targetValue": "(list (description Colombia))", 
+    "utterance": "where is shakira from?", 
+    "id": 13, 
+    "result": [
+      "Colombia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_connor", 
+    "targetValue": "(list (description \"Edward Furlong\") (description \"Christian Bale\") (description \"Nick Stahl\"))", 
+    "utterance": "who plays john connor?", 
+    "id": 14, 
+    "result": [
+      "Edward Furlong", 
+      "Christian Bale", 
+      "Nick Stahl"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/moira_mactaggert", 
+    "targetValue": "(list (description \"Olivia Williams\") (description \"Rose Byrne\"))", 
+    "utterance": "who is moira in x men?", 
+    "id": 15, 
+    "result": [
+      "Olivia Williams", 
+      "Rose Byrne"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/simon_birch", 
+    "targetValue": "(list (description \"Ian Michael Smith\"))", 
+    "utterance": "who plays simon birch?", 
+    "id": 16, 
+    "result": [
+      "Ian Michael Smith"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lucille_ball", 
+    "targetValue": "(list (description Singer) (description Model) (description Comedian) (description \"Television Producer\") (description Actor))", 
+    "utterance": "what was lucille ball?", 
+    "id": 17, 
+    "result": [
+      "Singer", 
+      "Model", 
+      "Comedian", 
+      "Television Producer", 
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_burns", 
+    "targetValue": "(list (description Poet) (description Writer) (description Bard) (description Author))", 
+    "utterance": "what was robert burns?", 
+    "id": 18, 
+    "result": [
+      "Poet", 
+      "Writer", 
+      "Bard", 
+      "Author"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/pope_john_paul_ii", 
+    "targetValue": "(list (description 10/16/1978))", 
+    "utterance": "when was john paul ii?", 
+    "id": 19, 
+    "result": [
+      "10/16/1978"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mary_shelley", 
+    "targetValue": "(list (description Author))", 
+    "utterance": "who were mary shelley?", 
+    "id": 20, 
+    "result": [
+      "Author"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/thor_heyerdahl", 
+    "targetValue": "(list (description \"Film Director\") (description Scientist) (description Cinematographer) (description Actor) (description \"Film Producer\"))", 
+    "utterance": "who is thor heyerdahl?", 
+    "id": 21, 
+    "result": [
+      "Film Director", 
+      "Scientist", 
+      "Cinematographer", 
+      "Actor", 
+      "Film Producer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/wesley_snipes", 
+    "targetValue": "(list (description \"Film Producer\") (description \"Martial artist\") (description Actor))", 
+    "utterance": "who was wesley snipes?", 
+    "id": 22, 
+    "result": [
+      "Film Producer", 
+      "Martial artist", 
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dawood_ibrahim", 
+    "targetValue": "(list (description Maharashtra))", 
+    "utterance": "where is daud ibrahim?", 
+    "id": 23, 
+    "result": [
+      "Maharashtra"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/juni_cortez", 
+    "targetValue": "(list (description \"Daryl Sabara\"))", 
+    "utterance": "who plays juni cortez?", 
+    "id": 24, 
+    "result": [
+      "Daryl Sabara"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/angelina_jolie", 
+    "targetValue": "(list (description Actor))", 
+    "utterance": "who is angelina jolie?", 
+    "id": 25, 
+    "result": [
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dr_seuss", 
+    "targetValue": "(list (description Writer))", 
+    "utterance": "what did dr. seuss do?", 
+    "id": 26, 
+    "result": [
+      "Writer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jacob_latimore", 
+    "targetValue": "(list (description Singer) (description Actor))", 
+    "utterance": "who is jacob latimore?", 
+    "id": 27, 
+    "result": [
+      "Singer", 
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/gautama_buddha", 
+    "targetValue": "(list (description Lumbini))", 
+    "utterance": "where buddha come from?", 
+    "id": 28, 
+    "result": [
+      "Lumbini"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/monsanto", 
+    "targetValue": "(list (description \"Agricultural Chemicals\") (description Seed) (description Agriculture) (description \"Chemical industry\"))", 
+    "utterance": "what does monsanto own?", 
+    "id": 29, 
+    "result": [
+      "Agricultural Chemicals", 
+      "Seed", 
+      "Agriculture", 
+      "Chemical industry"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/billy_elliot", 
+    "targetValue": "(list (description \"Jamie Bell\"))", 
+    "utterance": "who plays billy elliot?", 
+    "id": 30, 
+    "result": [
+      "Jamie Bell"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/fred_durst", 
+    "targetValue": "(list (description Musician))", 
+    "utterance": "what did fred durst do?", 
+    "id": 31, 
+    "result": [
+      "Musician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/darth_vader", 
+    "targetValue": "(list (description \"James Earl Jones\"))", 
+    "utterance": "who voiced darth vader?", 
+    "id": 32, 
+    "result": [
+      "James Earl Jones"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/cletus_hogg", 
+    "targetValue": "(list (description \"Jack Polick\"))", 
+    "utterance": "who played cletus hogg?", 
+    "id": 33, 
+    "result": [
+      "Jack Polick"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jay_leno", 
+    "targetValue": "(list (description \"New Rochelle\"))", 
+    "utterance": "where is jay leno from?", 
+    "id": 34, 
+    "result": [
+      "New Rochelle"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_dyson", 
+    "targetValue": "(list (description Designer) (description \"Industrial designer\") (description Engineer) (description Inventor))", 
+    "utterance": "who is sir james dyson?", 
+    "id": 35, 
+    "result": [
+      "Designer", 
+      "Industrial designer", 
+      "Engineer", 
+      "Inventor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/spike_spiegel", 
+    "targetValue": "(list (description \"Steven Blum\") (description \"Koichi Yamadera\"))", 
+    "utterance": "who plays spike spiegel?", 
+    "id": 36, 
+    "result": [
+      "Steven Blum", 
+      "Koichi Yamadera"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ray_allen", 
+    "targetValue": "(list (description \"Shannon Walker Williams\"))", 
+    "utterance": "who has ray allen dated?", 
+    "id": 37, 
+    "result": [
+      "Shannon Walker Williams"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/samsung_group", 
+    "targetValue": "(list (description Seoul))", 
+    "utterance": "where are samsung based?", 
+    "id": 38, 
+    "result": [
+      "Seoul"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/saint_lucy", 
+    "targetValue": "(list (description Syracuse))", 
+    "utterance": "where was st. lucy born?", 
+    "id": 39, 
+    "result": [
+      "Syracuse"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/keyshia_cole", 
+    "targetValue": "(list (description \"Leon Cole\"))", 
+    "utterance": "who is keyshia cole dad?", 
+    "id": 40, 
+    "result": [
+      "Leon Cole"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_jay", 
+    "targetValue": "(list (description \"New York City\"))", 
+    "utterance": "where was john jay born?", 
+    "id": 41, 
+    "result": [
+      "New York City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_bonham", 
+    "targetValue": "(list (description \"Inhalation of vomit\"))", 
+    "utterance": "what killed john bonham?", 
+    "id": 42, 
+    "result": [
+      "Inhalation of vomit"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kim_richards", 
+    "targetValue": "(list (description \"The Car\") (description \"Escape to Witch Mountain\") (description \"Tuff Turf\") (description \"Black Snake Moan\") (description \"Race to Witch Mountain\") (description \"Devil Dog: The Hound of Hell\") (description \"No Deposit, No Return\") (description \"Return from Witch Mountain\") (description \"Meatballs Part II\"))", 
+    "utterance": "what was kim richards in?", 
+    "id": 43, 
+    "result": [
+      "The Car", 
+      "Escape to Witch Mountain", 
+      "Tuff Turf", 
+      "Black Snake Moan", 
+      "Race to Witch Mountain", 
+      "Devil Dog: The Hound of Hell", 
+      "No Deposit, No Return", 
+      "Return from Witch Mountain", 
+      "Meatballs Part II"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/l_frank_baum", 
+    "targetValue": "(list (description Hollywood))", 
+    "utterance": "where did frank baum die?", 
+    "id": 44, 
+    "result": [
+      "Hollywood"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/riannah", 
+    "targetValue": "(list (description \"Saint Michael Parish\") (description Barbados))", 
+    "utterance": "where was rihanna raised?", 
+    "id": 45, 
+    "result": [
+      "Saint Michael Parish", 
+      "Barbados"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/emily_stone", 
+    "targetValue": "(list (description \"Jeff Stone\"))", 
+    "utterance": "who is emma stone father?", 
+    "id": 46, 
+    "result": [
+      "Jeff Stone"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tim_cook", 
+    "targetValue": "(list (description \"Apple Inc.\"))", 
+    "utterance": "where does tim cook work?", 
+    "id": 47, 
+    "result": [
+      "Apple Inc."
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robin_cook", 
+    "targetValue": "(list (description Inverness))", 
+    "utterance": "where did robin cook die?", 
+    "id": 48, 
+    "result": [
+      "Inverness"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/wright_brothers", 
+    "targetValue": "(list (description \"Orville Wright\") (description \"Wilbur Wright\"))", 
+    "utterance": "who were wright brothers?", 
+    "id": 49, 
+    "result": [
+      "Orville Wright", 
+      "Wilbur Wright"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jason_mraz", 
+    "targetValue": "(list (description Mechanicsville))", 
+    "utterance": "where is jason mraz from?", 
+    "id": 50, 
+    "result": [
+      "Mechanicsville"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/esther", 
+    "targetValue": "(list (description Susa))", 
+    "utterance": "who was esther's husband?", 
+    "id": 51, 
+    "result": [
+      "Susa"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/chris_rock", 
+    "targetValue": "(list (description Andrews))", 
+    "utterance": "where is chris rock from?", 
+    "id": 52, 
+    "result": [
+      "Andrews"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/st_augustin", 
+    "targetValue": "(list (description Physician) (description Writer) (description Philosopher))", 
+    "utterance": "what did st augustine do?", 
+    "id": 53, 
+    "result": [
+      "Physician", 
+      "Writer", 
+      "Philosopher"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/chris_paul", 
+    "targetValue": "(list (description \"United States of America\"))", 
+    "utterance": "where is chris paul from?", 
+    "id": 54, 
+    "result": [
+      "United States of America"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/francis_bacon", 
+    "targetValue": "(list (description Philosopher))", 
+    "utterance": "who is sir francis bacon?", 
+    "id": 55, 
+    "result": [
+      "Philosopher"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mary_bell", 
+    "targetValue": "(list (description \"Newcastle upon Tyne\"))", 
+    "utterance": "where did mary bell live?", 
+    "id": 56, 
+    "result": [
+      "Newcastle upon Tyne"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/carolus_linnaeus", 
+    "targetValue": "(list (description Botanist))", 
+    "utterance": "who was carolus linnaeus?", 
+    "id": 57, 
+    "result": [
+      "Botanist"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ben_stiller", 
+    "targetValue": "(list (description \"Christine Taylor\"))", 
+    "utterance": "who did ben stiller date?", 
+    "id": 58, 
+    "result": [
+      "Christine Taylor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_lennon", 
+    "targetValue": "(list (description \"New York City\"))", 
+    "utterance": "where do john lennon die?", 
+    "id": 59, 
+    "result": [
+      "New York City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/claire_danes", 
+    "targetValue": "(list (description \"Hugh Dancy\"))", 
+    "utterance": "who's dating claire danes?", 
+    "id": 60, 
+    "result": [
+      "Hugh Dancy"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_j_fox", 
+    "targetValue": "(list (description \"Tracy Pollan\"))", 
+    "utterance": "who is michael j fox wife?", 
+    "id": 61, 
+    "result": [
+      "Tracy Pollan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/paul_revere", 
+    "targetValue": "(list (description \"Sarah Revere\"))", 
+    "utterance": "who did paul revere marry?", 
+    "id": 62, 
+    "result": [
+      "Sarah Revere"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kim_jong-il", 
+    "targetValue": "(list (description Pyongyang))", 
+    "utterance": "where did kim jong il die?", 
+    "id": 63, 
+    "result": [
+      "Pyongyang"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/shakira", 
+    "targetValue": "(list (description \"Gerard Piqu\u00e9\"))", 
+    "utterance": "who is shakira married to?", 
+    "id": 64, 
+    "result": [
+      "Gerard Piqu\u00e9"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dirk_nowitzki", 
+    "targetValue": "(list (description \"Jessica Olsson\"))", 
+    "utterance": "who is dirk nowitzki wife?", 
+    "id": 65, 
+    "result": [
+      "Jessica Olsson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/zhao_xin", 
+    "targetValue": "(list (description Male))", 
+    "utterance": "what would ap xin zhao do?", 
+    "id": 66, 
+    "result": [
+      "Male"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/madonna", 
+    "targetValue": "(list (description \"Bay City\"))", 
+    "utterance": "where did madonna grew up?", 
+    "id": 67, 
+    "result": [
+      "Bay City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dead_poets_society", 
+    "targetValue": "(list (description \"Josh Charles\"))", 
+    "utterance": "who plays knox overstreet?", 
+    "id": 68, 
+    "result": [
+      "Josh Charles"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/electrolux", 
+    "targetValue": "(list (description Stockholm))", 
+    "utterance": "where is electrolux based?", 
+    "id": 69, 
+    "result": [
+      "Stockholm"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lex_luthor", 
+    "targetValue": "(list (description \"Anthony LaPaglia\") (description \"Kevin Spacey\") (description \"Clancy Brown\") (description \"James Marsters\") (description \"Gene Hackman\"))", 
+    "utterance": "who has played lex luthor?", 
+    "id": 70, 
+    "result": [
+      "Anthony LaPaglia", 
+      "Kevin Spacey", 
+      "Clancy Brown", 
+      "James Marsters", 
+      "Gene Hackman"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/saint_peter", 
+    "targetValue": "(list (description Rome))", 
+    "utterance": "where was st peter killed?", 
+    "id": 71, 
+    "result": [
+      "Rome"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jay_moriarty", 
+    "targetValue": "(list (description Maldives))", 
+    "utterance": "where did jay moriarty die?", 
+    "id": 72, 
+    "result": [
+      "Maldives"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/julian_lennon", 
+    "targetValue": "(list (description Singer) (description Writer) (description Guitarist) (description Musician) (description Actor) (description Singer-songwriter) (description \"Record producer\"))", 
+    "utterance": "what does julian lennon do?", 
+    "id": 73, 
+    "result": [
+      "Singer", 
+      "Writer", 
+      "Guitarist", 
+      "Musician", 
+      "Actor", 
+      "Singer-songwriter", 
+      "Record producer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/thomas_malthus", 
+    "targetValue": "(list (description Mathematician) (description Demographer) (description Scientist) (description Economist))", 
+    "utterance": "what did thomas malthus do?", 
+    "id": 74, 
+    "result": [
+      "Mathematician", 
+      "Demographer", 
+      "Scientist", 
+      "Economist"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/terry_waite", 
+    "targetValue": "(list (description Bollington))", 
+    "utterance": "where was terry waite born?", 
+    "id": 75, 
+    "result": [
+      "Bollington"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/riannah", 
+    "targetValue": "(list (description \"Monica Braithwaite\"))", 
+    "utterance": "what is rihanna mum called?", 
+    "id": 76, 
+    "result": [
+      "Monica Braithwaite"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/thomas_paine", 
+    "targetValue": "(list (description \"New York City\"))", 
+    "utterance": "where did thomas paine die?", 
+    "id": 77, 
+    "result": [
+      "New York City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/byron_nelson", 
+    "targetValue": "(list (description Roanoke))", 
+    "utterance": "where is byron nelson 2012?", 
+    "id": 78, 
+    "result": [
+      "Roanoke"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bob_marley", 
+    "targetValue": "(list (description \"Bob Marley Mausoleum\"))", 
+    "utterance": "where is bob marley buried?", 
+    "id": 79, 
+    "result": [
+      "Bob Marley Mausoleum"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/taylor_swift", 
+    "targetValue": "(list (description Reading))", 
+    "utterance": "where is taylor swift from?", 
+    "id": 80, 
+    "result": [
+      "Reading"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/barack_obama", 
+    "targetValue": "(list (description \"Occidental College\") (description \"Harvard Law School\") (description \"Noelani Elementary School\") (description \"Punahou School\") (description \"State Elementary School Menteng 01\") (description \"St. Francis of Assisi Catholic School\") (description \"Columbia University\"))", 
+    "utterance": "where obama went to school?", 
+    "id": 81, 
+    "result": [
+      "Occidental College", 
+      "Harvard Law School", 
+      "Noelani Elementary School", 
+      "Punahou School", 
+      "State Elementary School Menteng 01", 
+      "St. Francis of Assisi Catholic School", 
+      "Columbia University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sami_yusuf", 
+    "targetValue": "(list (description \"United Kingdom\"))", 
+    "utterance": "where does sami yusuf live?", 
+    "id": 82, 
+    "result": [
+      "United Kingdom"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/alex_chilton", 
+    "targetValue": "(list (description \"New Orleans\"))", 
+    "utterance": "where did alex chilton die?", 
+    "id": 83, 
+    "result": [
+      "New Orleans"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nike_inc", 
+    "targetValue": "(list (description Converse) (description \"Hurley International\"))", 
+    "utterance": "what company does nike own?", 
+    "id": 84, 
+    "result": [
+      "Converse", 
+      "Hurley International"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/judy_garland", 
+    "targetValue": "(list (description \"Francis Avent Gumm\"))", 
+    "utterance": "who is judy garland father?", 
+    "id": 85, 
+    "result": [
+      "Francis Avent Gumm"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/benjamin_franklin", 
+    "targetValue": "(list (description \"Deborah Read\"))", 
+    "utterance": "who did ben franklin marry?", 
+    "id": 86, 
+    "result": [
+      "Deborah Read"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jackson", 
+    "targetValue": "(list (description Gary))", 
+    "utterance": "where michael jackson from?", 
+    "id": 87, 
+    "result": [
+      "Gary"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lucy_lawless", 
+    "targetValue": "(list (description \"New Zealand\"))", 
+    "utterance": "when was lucy lawless born?", 
+    "id": 88, 
+    "result": [
+      "New Zealand"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/darth_vader", 
+    "targetValue": "(list (description \"James Earl Jones\"))", 
+    "utterance": "who did darth vaders voice?", 
+    "id": 89, 
+    "result": [
+      "James Earl Jones"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/osama_bin_laden", 
+    "targetValue": "(list (description Abbottabad))", 
+    "utterance": "where bin laden got killed?", 
+    "id": 90, 
+    "result": [
+      "Abbottabad"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/pablo_picasso", 
+    "targetValue": "(list (description M\u00e1laga) (description France))", 
+    "utterance": "where all did picasso live?", 
+    "id": 91, 
+    "result": [
+      "M\u00e1laga", 
+      "France"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_dalton", 
+    "targetValue": "(list (description Chemist))", 
+    "utterance": "what did john dalton study?", 
+    "id": 92, 
+    "result": [
+      "Chemist"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/adolf_hitler", 
+    "targetValue": "(list (description Berlin))", 
+    "utterance": "where did adolf hitler die?", 
+    "id": 93, 
+    "result": [
+      "Berlin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tatyana_ali", 
+    "targetValue": "(list (description \"Sonia Ali\") (description \"Sheriff Ali\"))", 
+    "utterance": "who is tatyana ali parents?", 
+    "id": 94, 
+    "result": [
+      "Sonia Ali", 
+      "Sheriff Ali"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/melba_beals", 
+    "targetValue": "(list (description Arkansas))", 
+    "utterance": "where did melba beals live?", 
+    "id": 95, 
+    "result": [
+      "Arkansas"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bobby_darin", 
+    "targetValue": "(list (description \"Surgical complications\"))", 
+    "utterance": "what did bobby darin die of?", 
+    "id": 96, 
+    "result": [
+      "Surgical complications"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tyrese", 
+    "targetValue": "(list (description Watts))", 
+    "utterance": "where is tyrese gibson from?", 
+    "id": 97, 
+    "result": [
+      "Watts"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tim_tebow", 
+    "targetValue": "(list (description Manila))", 
+    "utterance": "where did tim tebow grow up?", 
+    "id": 98, 
+    "result": [
+      "Manila"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_j_fox", 
+    "targetValue": "(list (description \"Tracy Pollan\"))", 
+    "utterance": "who is michael j fox's wife?", 
+    "id": 99, 
+    "result": [
+      "Tracy Pollan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_cena", 
+    "targetValue": "(list (description \"Elizabeth Huberdeau\"))", 
+    "utterance": "who is john cena married to?", 
+    "id": 100, 
+    "result": [
+      "Elizabeth Huberdeau"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_lopez", 
+    "targetValue": "(list (description \"Mission Hills\"))", 
+    "utterance": "where george lopez was born?", 
+    "id": 101, 
+    "result": [
+      "Mission Hills"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dr_seuss", 
+    "targetValue": "(list (description \"Theodor Robert Geisel\"))", 
+    "utterance": "what was dr seuss real name?", 
+    "id": 102, 
+    "result": [
+      "Theodor Robert Geisel"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/darth_vader", 
+    "targetValue": "(list (description \"James Earl Jones\"))", 
+    "utterance": "who does darth vaders voice?", 
+    "id": 103, 
+    "result": [
+      "James Earl Jones"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dave_ramsey", 
+    "targetValue": "(list (description Nashville))", 
+    "utterance": "where does dave ramsey live?", 
+    "id": 104, 
+    "result": [
+      "Nashville"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bernie_mac", 
+    "targetValue": "(list (description Pneumonia))", 
+    "utterance": "what did bernie mac died of?", 
+    "id": 105, 
+    "result": [
+      "Pneumonia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/miley_cyrus", 
+    "targetValue": "(list (description \"Heritage Elementary School\"))", 
+    "utterance": "what school did miley cyrus?", 
+    "id": 106, 
+    "result": [
+      "Heritage Elementary School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/riannah", 
+    "targetValue": "(list (description Barbados))", 
+    "utterance": "what nationality is rihanna?", 
+    "id": 107, 
+    "result": [
+      "Barbados"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nike_inc", 
+    "targetValue": "(list (description \"United States of America\"))", 
+    "utterance": "which country invented nike?", 
+    "id": 108, 
+    "result": [
+      "United States of America"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/google", 
+    "targetValue": "(list (description \"Google Maps\") (description \"Nexus 7\") (description \"Google Buzz\") (description \"Nexus 10\") (description \"Nexus One\") (description \"Nexus S\") (description \"Google Chrome\") (description \"Google Earth\") (description \"Google Wave\"))", 
+    "utterance": "what all does google now do?", 
+    "id": 109, 
+    "result": [
+      "Google Maps", 
+      "Nexus 7", 
+      "Google Buzz", 
+      "Nexus 10", 
+      "Nexus One", 
+      "Nexus S", 
+      "Google Chrome", 
+      "Google Earth", 
+      "Google Wave"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_j_fox", 
+    "targetValue": "(list (description \"Tracy Pollan\"))", 
+    "utterance": "who did michael j fox marry?", 
+    "id": 110, 
+    "result": [
+      "Tracy Pollan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/omar_epps", 
+    "targetValue": "(list (description Daybreak) (description \"Major League II\") (description \"Scream 2\") (description \"First Time Felon\") (description \"Breakfast of Champions\") (description Juice) (description \"The Program\") (description \"Deadly Voyage\") (description \"Higher Learning\") (description \"Don't Be a Menace to South Central While Drinking Your Juice in the Hood\"))", 
+    "utterance": "what movies is omar epps in?", 
+    "id": 111, 
+    "result": [
+      "Daybreak", 
+      "Major League II", 
+      "Scream 2", 
+      "First Time Felon", 
+      "Breakfast of Champions", 
+      "Juice", 
+      "The Program", 
+      "Deadly Voyage", 
+      "Higher Learning", 
+      "Don't Be a Menace to South Central While Drinking Your Juice in the Hood"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dr_seuss", 
+    "targetValue": "(list (description \"Dartmouth College\") (description \"University of Oxford\") (description \"Lincoln College, Oxford\"))", 
+    "utterance": "what was dr seuss education?", 
+    "id": 112, 
+    "result": [
+      "Dartmouth College", 
+      "University of Oxford", 
+      "Lincoln College, Oxford"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robin_roberts", 
+    "targetValue": "(list (description \"Lawrence E. Roberts\"))", 
+    "utterance": "who is robin roberts father?", 
+    "id": 113, 
+    "result": [
+      "Lawrence E. Roberts"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tibetan_people", 
+    "targetValue": "(list (description Tibet))", 
+    "utterance": "where do they speak tibetan?", 
+    "id": 114, 
+    "result": [
+      "Tibet"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/harvard_university", 
+    "targetValue": "(list (description Massachusetts))", 
+    "utterance": "where is harvard university?", 
+    "id": 115, 
+    "result": [
+      "Massachusetts"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/helen_flanagan", 
+    "targetValue": "(list (description Actor))", 
+    "utterance": "what does helen flanagan do?", 
+    "id": 116, 
+    "result": [
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/taliban_movement", 
+    "targetValue": "(list (description Afghanistan))", 
+    "utterance": "where did the taliban began?", 
+    "id": 117, 
+    "result": [
+      "Afghanistan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/richard_nixon", 
+    "targetValue": "(list (description \"New York City\"))", 
+    "utterance": "where did richard nixon die?", 
+    "id": 118, 
+    "result": [
+      "New York City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/huey_p_newton", 
+    "targetValue": "(list (description Oakland))", 
+    "utterance": "where was huey newton killed?", 
+    "id": 119, 
+    "result": [
+      "Oakland"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/novak_djokovic", 
+    "targetValue": "(list (description Serbia))", 
+    "utterance": "where did djokovic come from?", 
+    "id": 120, 
+    "result": [
+      "Serbia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/niall_ferguson", 
+    "targetValue": "(list (description \"Ayaan Hirsi Ali\"))", 
+    "utterance": "who is niall ferguson's wife?", 
+    "id": 121, 
+    "result": [
+      "Ayaan Hirsi Ali"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/anne_hathaway", 
+    "targetValue": "(list (description \"Gerald Hathaway\") (description \"Kate McCauley Hathaway\"))", 
+    "utterance": "who is anne hathaway parents?", 
+    "id": 122, 
+    "result": [
+      "Gerald Hathaway", 
+      "Kate McCauley Hathaway"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/matt_damon", 
+    "targetValue": "(list (description \"American Teacher\") (description Contagion) (description \"Che: Part Two\") (description \"All the Pretty Horses\") (description \"Courage Under Fire\") (description Dogma) (description \"Behind the Screens\") (description \"Confessions of a Dangerous Mind\") (description Elysium) (description \"Chasing Amy\"))", 
+    "utterance": "what does matt damon play in?", 
+    "id": 123, 
+    "result": [
+      "American Teacher", 
+      "Contagion", 
+      "Che: Part Two", 
+      "All the Pretty Horses", 
+      "Courage Under Fire", 
+      "Dogma", 
+      "Behind the Screens", 
+      "Confessions of a Dangerous Mind", 
+      "Elysium", 
+      "Chasing Amy"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/morgan_freeman", 
+    "targetValue": "(list (description \"Myrna Colley-Lee\"))", 
+    "utterance": "who did morgan freeman marry?", 
+    "id": 124, 
+    "result": [
+      "Myrna Colley-Lee"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/willow_smith", 
+    "targetValue": "(list (description \"Jada Pinkett Smith\"))", 
+    "utterance": "who is willow smith mom name?", 
+    "id": 125, 
+    "result": [
+      "Jada Pinkett Smith"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/vera-ellen", 
+    "targetValue": "(list (description Cancer))", 
+    "utterance": "what did vera ellen die from?", 
+    "id": 126, 
+    "result": [
+      "Cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_franklin_1967", 
+    "targetValue": "(list (description \"Blue Island\"))", 
+    "utterance": "where did john franklin live?", 
+    "id": 127, 
+    "result": [
+      "Blue Island"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/annie_oakley", 
+    "targetValue": "(list (description \"Frank E. Butler\"))", 
+    "utterance": "who did annie oakley married?", 
+    "id": 128, 
+    "result": [
+      "Frank E. Butler"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/vladimir_lenin", 
+    "targetValue": "(list (description \"Nadezhda Krupskaya\"))", 
+    "utterance": "who did vladimir lenin marry?", 
+    "id": 129, 
+    "result": [
+      "Nadezhda Krupskaya"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/russians", 
+    "targetValue": "(list (description \"East Slavs\") (description Europeans))", 
+    "utterance": "where did russians originate?", 
+    "id": 130, 
+    "result": [
+      "East Slavs", 
+      "Europeans"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/josef_mengele", 
+    "targetValue": "(list (description Physician))", 
+    "utterance": "what did dr josef mengele do?", 
+    "id": 131, 
+    "result": [
+      "Physician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_j_fox", 
+    "targetValue": "(list (description \"Phyllis Piper\") (description \"William Fox\"))", 
+    "utterance": "who is michael j fox parents?", 
+    "id": 132, 
+    "result": [
+      "Phyllis Piper", 
+      "William Fox"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jesus", 
+    "targetValue": "(list (description Preacher) (description Prophet) (description Carpenter))", 
+    "utterance": "what did jesus do for living?", 
+    "id": 133, 
+    "result": [
+      "Preacher", 
+      "Prophet", 
+      "Carpenter"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/vanessa_carlton", 
+    "targetValue": "(list (description Russian) (description Scandinavians))", 
+    "utterance": "what race is vanessa carlton?", 
+    "id": 134, 
+    "result": [
+      "Russian", 
+      "Scandinavians"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/thomas_hobbs", 
+    "targetValue": "(list (description \"Westport, Wiltshire\"))", 
+    "utterance": "where did thomas hobbes live?", 
+    "id": 135, 
+    "result": [
+      "Westport, Wiltshire"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sandra_bullock", 
+    "targetValue": "(list (description \"Jesse James\"))", 
+    "utterance": "who did sandra bullock marry?", 
+    "id": 136, 
+    "result": [
+      "Jesse James"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/andy_irons", 
+    "targetValue": "(list (description \"Myocardial infarction\"))", 
+    "utterance": "what did andy irons die from?", 
+    "id": 137, 
+    "result": [
+      "Myocardial infarction"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/brett_favre", 
+    "targetValue": "(list (description \"The University of Southern Mississippi\"))", 
+    "utterance": "what college did brett favre?", 
+    "id": 138, 
+    "result": [
+      "The University of Southern Mississippi"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/audrey_hepburn", 
+    "targetValue": "(list (description Ixelles))", 
+    "utterance": "where is audrey hepburn from?", 
+    "id": 139, 
+    "result": [
+      "Ixelles"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/f_scott_fitzgerald", 
+    "targetValue": "(list (description Poet) (description Novelist) (description Writer))", 
+    "utterance": "what was f. scott fitzgerald?", 
+    "id": 140, 
+    "result": [
+      "Poet", 
+      "Novelist", 
+      "Writer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/charles_darwin", 
+    "targetValue": "(list (description \"Down House\"))", 
+    "utterance": "where did charles darwin die?", 
+    "id": 141, 
+    "result": [
+      "Down House"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/janelle_corlass_brown", 
+    "targetValue": "(list (description Actor))", 
+    "utterance": "what does janelle brown work?", 
+    "id": 142, 
+    "result": [
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/w_h_smith", 
+    "targetValue": "(list (description \"William Henry Smith\"))", 
+    "utterance": "what does wh smith stand for?", 
+    "id": 143, 
+    "result": [
+      "William Henry Smith"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/paul_ryan", 
+    "targetValue": "(list (description \"Elizabeth Ryan\") (description \"Charles Ryan\") (description \"Samuel Ryan\"))", 
+    "utterance": "who is in paul ryan's family?", 
+    "id": 144, 
+    "result": [
+      "Elizabeth Ryan", 
+      "Charles Ryan", 
+      "Samuel Ryan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/miles_davis", 
+    "targetValue": "(list (description Pneumonia) (description Stroke) (description \"Respiratory failure\"))", 
+    "utterance": "what did miles davis died of?", 
+    "id": 145, 
+    "result": [
+      "Pneumonia", 
+      "Stroke", 
+      "Respiratory failure"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/serbs", 
+    "targetValue": "(list (description \"Serbian language\"))", 
+    "utterance": "what language do serbs speak?", 
+    "id": 146, 
+    "result": [
+      "Serbian language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nick_lachey", 
+    "targetValue": "(list (description \"Vanessa Minnillo\"))", 
+    "utterance": "who is nick lachey married to?", 
+    "id": 147, 
+    "result": [
+      "Vanessa Minnillo"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/s_e_hinton", 
+    "targetValue": "(list (description \"University of Tulsa\"))", 
+    "utterance": "what college did se hinton go?", 
+    "id": 148, 
+    "result": [
+      "University of Tulsa"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/adolf_hitler", 
+    "targetValue": "(list (description \"Nazi Germany\"))", 
+    "utterance": "what was hitler the leader of?", 
+    "id": 149, 
+    "result": [
+      "Nazi Germany"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/boeing", 
+    "targetValue": "(list (description Seattle) (description Chicago))", 
+    "utterance": "where are boeing headquarters?", 
+    "id": 150, 
+    "result": [
+      "Seattle", 
+      "Chicago"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/harley-davidson", 
+    "targetValue": "(list (description \"United States of America\"))", 
+    "utterance": "where is harley davidson made?", 
+    "id": 151, 
+    "result": [
+      "United States of America"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/roger_federer", 
+    "targetValue": "(list (description \"Mirka Federer\"))", 
+    "utterance": "who did roger federer married?", 
+    "id": 152, 
+    "result": [
+      "Mirka Federer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jesse_james", 
+    "targetValue": "(list (description \"The Assassination of Jesse James by the Coward Robert Ford\"))", 
+    "utterance": "who was jesse james killed by?", 
+    "id": 153, 
+    "result": [
+      "The Assassination of Jesse James by the Coward Robert Ford"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/diego_velazquez", 
+    "targetValue": "(list (description Madrid))", 
+    "utterance": "where did diego velazquez die?", 
+    "id": 154, 
+    "result": [
+      "Madrid"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/judi_dench", 
+    "targetValue": "(list (description \"Michael Williams\"))", 
+    "utterance": "who was judi dench married to?", 
+    "id": 155, 
+    "result": [
+      "Michael Williams"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bradley_walsh", 
+    "targetValue": "(list (description England))", 
+    "utterance": "where does bradley walsh live?", 
+    "id": 156, 
+    "result": [
+      "England"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kevin_jonas", 
+    "targetValue": "(list (description \"Danielle Deleasa\"))", 
+    "utterance": "who is kevin jonas married to?", 
+    "id": 157, 
+    "result": [
+      "Danielle Deleasa"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tim_roth", 
+    "targetValue": "(list (description England))", 
+    "utterance": "where does tim roth come from?", 
+    "id": 158, 
+    "result": [
+      "England"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nike_inc", 
+    "targetValue": "(list (description \"United States of America\"))", 
+    "utterance": "what country is nike based in?", 
+    "id": 159, 
+    "result": [
+      "United States of America"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/randy_savage", 
+    "targetValue": "(list (description \"Myocardial infarction\") (description \"Traffic collision\"))", 
+    "utterance": "what did randy savage died of?", 
+    "id": 160, 
+    "result": [
+      "Myocardial infarction", 
+      "Traffic collision"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/edward_scissorhands", 
+    "targetValue": "(list (description \"Johnny Depp\"))", 
+    "utterance": "who plays edward scissorhands?", 
+    "id": 161, 
+    "result": [
+      "Johnny Depp"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ultimate_fighting_championship", 
+    "targetValue": "(list (description \"Las Vegas\"))", 
+    "utterance": "where is the ufc headquarters?", 
+    "id": 162, 
+    "result": [
+      "Las Vegas"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tupac_shakur", 
+    "targetValue": "(list (description \"Nothing but Trouble\"))", 
+    "utterance": "what movies did tupac star in?", 
+    "id": 163, 
+    "result": [
+      "Nothing but Trouble"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dr_seuss", 
+    "targetValue": "(list (description \"Theodor Robert Geisel\"))", 
+    "utterance": "what was dr seuss's real name?", 
+    "id": 164, 
+    "result": [
+      "Theodor Robert Geisel"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ibrahim_afellay", 
+    "targetValue": "(list (description Utrecht))", 
+    "utterance": "where is ibrahim afellay from?", 
+    "id": 165, 
+    "result": [
+      "Utrecht"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/luke_skywalker", 
+    "targetValue": "(list (description \"Mark Hamill\"))", 
+    "utterance": "who would play luke skywalker?", 
+    "id": 166, 
+    "result": [
+      "Mark Hamill"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/elvis_costello", 
+    "targetValue": "(list (description Paddington))", 
+    "utterance": "where was elvis costello born?", 
+    "id": 167, 
+    "result": [
+      "Paddington"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sherrod_brown", 
+    "targetValue": "(list (description Mansfield))", 
+    "utterance": "where does sherrod brown live?", 
+    "id": 168, 
+    "result": [
+      "Mansfield"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/peter_tjajkovskij", 
+    "targetValue": "(list (description Composer))", 
+    "utterance": "what did peter tchaikovsky do?", 
+    "id": 169, 
+    "result": [
+      "Composer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/georges_clemenceau", 
+    "targetValue": "(list (description Newspaper) (description Physician) (description Statesman) (description Publisher))", 
+    "utterance": "what did george clemenceau do?", 
+    "id": 170, 
+    "result": [
+      "Newspaper", 
+      "Physician", 
+      "Statesman", 
+      "Publisher"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/william_shakespeare", 
+    "targetValue": "(list (description Stratford-upon-Avon))", 
+    "utterance": "where was shakespeare born at?", 
+    "id": 171, 
+    "result": [
+      "Stratford-upon-Avon"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/spike_lee", 
+    "targetValue": "(list (description \"Jungle Fever\") (description \"Inside Man\") (description \"He Got Game\") (description Clockers) (description Bamboozled) (description \"25th Hour\") (description \"Girl 6\") (description \"Get on the Bus\") (description Crooklyn) (description \"Do the Right Thing\"))", 
+    "utterance": "what movies has spike lee made?", 
+    "id": 172, 
+    "result": [
+      "Jungle Fever", 
+      "Inside Man", 
+      "He Got Game", 
+      "Clockers", 
+      "Bamboozled", 
+      "25th Hour", 
+      "Girl 6", 
+      "Get on the Bus", 
+      "Crooklyn", 
+      "Do the Right Thing"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kobe_bryant", 
+    "targetValue": "(list (description \"Los Angeles Lakers\"))", 
+    "utterance": "who was kobe bryant drafted by?", 
+    "id": 173, 
+    "result": [
+      "Los Angeles Lakers"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/leif_ericson", 
+    "targetValue": "(list (description Iceland))", 
+    "utterance": "where did leif ericson grow up?", 
+    "id": 174, 
+    "result": [
+      "Iceland"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/barack_obama", 
+    "targetValue": "(list (description Honolulu))", 
+    "utterance": "where president obama was born?", 
+    "id": 175, 
+    "result": [
+      "Honolulu"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/deere_company", 
+    "targetValue": "(list (description \"Agricultural machinery\"))", 
+    "utterance": "what was john deere famous for?", 
+    "id": 176, 
+    "result": [
+      "Agricultural machinery"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/joan_crawford", 
+    "targetValue": "(list (description \"Myocardial infarction\") (description \"Pancreatic cancer\"))", 
+    "utterance": "what did joan crawford died of?", 
+    "id": 177, 
+    "result": [
+      "Myocardial infarction", 
+      "Pancreatic cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/stephen_hawking", 
+    "targetValue": "(list (description Physics))", 
+    "utterance": "what did stephen hawking study?", 
+    "id": 178, 
+    "result": [
+      "Physics"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/elizabeth_ii_of_the_united_kingdom", 
+    "targetValue": "(list (description \"Queen Elizabeth The Queen Mother\"))", 
+    "utterance": "who was queen elizabeth ii mom?", 
+    "id": 179, 
+    "result": [
+      "Queen Elizabeth The Queen Mother"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ferdinand_magellan", 
+    "targetValue": "(list (description Navigator) (description Explorer))", 
+    "utterance": "what did ferdinand magellan do?", 
+    "id": 180, 
+    "result": [
+      "Navigator", 
+      "Explorer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mark_zuckerberg", 
+    "targetValue": "(list (description \"Harvard University\"))", 
+    "utterance": "what did mark zuckerberg study?", 
+    "id": 181, 
+    "result": [
+      "Harvard University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jesse_owens", 
+    "targetValue": "(list (description \"Ohio State University\"))", 
+    "utterance": "what was jesse owens education?", 
+    "id": 182, 
+    "result": [
+      "Ohio State University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/joseph", 
+    "targetValue": "(list (description Canaan))", 
+    "utterance": "where did joseph's family live?", 
+    "id": 183, 
+    "result": [
+      "Canaan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tupac_shakur", 
+    "targetValue": "(list (description \"East Harlem\"))", 
+    "utterance": "where is tupac from originally?", 
+    "id": 184, 
+    "result": [
+      "East Harlem"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dolly_parton", 
+    "targetValue": "(list (description Tennessee))", 
+    "utterance": "where did dolly parton grow up?", 
+    "id": 185, 
+    "result": [
+      "Tennessee"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ashley_greene", 
+    "targetValue": "(list (description Skateland) (description \"New Moon\") (description \"Radio Free Albemuth\") (description \"A Warrior's Heart\") (description Eclipse) (description \"Summer's Blood\") (description \"King of California\") (description \"The Apparition\") (description Twilight) (description \"The Twilight Saga: Breaking Dawn - Part 1\"))", 
+    "utterance": "what has ashley greene been in?", 
+    "id": 186, 
+    "result": [
+      "Skateland", 
+      "New Moon", 
+      "Radio Free Albemuth", 
+      "A Warrior's Heart", 
+      "Eclipse", 
+      "Summer's Blood", 
+      "King of California", 
+      "The Apparition", 
+      "Twilight", 
+      "The Twilight Saga: Breaking Dawn - Part 1"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/alice_paul", 
+    "targetValue": "(list (description \"Silent Sentinels\") (description \"National Woman's Party\"))", 
+    "utterance": "what did alice paul accomplish?", 
+    "id": 187, 
+    "result": [
+      "Silent Sentinels", 
+      "National Woman's Party"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lionel_messi", 
+    "targetValue": "(list (description \"Antonella Roccuzzo\"))", 
+    "utterance": "who did messi have a baby with?", 
+    "id": 188, 
+    "result": [
+      "Antonella Roccuzzo"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/patrick_swayze", 
+    "targetValue": "(list (description \"Pancreatic cancer\"))", 
+    "utterance": "what cancer did patrick swayze?", 
+    "id": 189, 
+    "result": [
+      "Pancreatic cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mitt_romney", 
+    "targetValue": "(list (description Massachusetts))", 
+    "utterance": "what state does romney live in?", 
+    "id": 190, 
+    "result": [
+      "Massachusetts"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_kors", 
+    "targetValue": "(list (description \"Karl Anderson\"))", 
+    "utterance": "what is michael kors real name?", 
+    "id": 191, 
+    "result": [
+      "Karl Anderson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/anne_boleyn", 
+    "targetValue": "(list (description \"Tower of London\"))", 
+    "utterance": "where was anne boleyn executed?", 
+    "id": 192, 
+    "result": [
+      "Tower of London"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/carlos_santana", 
+    "targetValue": "(list (description Jalisco))", 
+    "utterance": "where does carlos santana live?", 
+    "id": 193, 
+    "result": [
+      "Jalisco"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/louis_sachar", 
+    "targetValue": "(list (description \"East Meadow\"))", 
+    "utterance": "where did louis sachar grow up?", 
+    "id": 194, 
+    "result": [
+      "East Meadow"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/steve_nash", 
+    "targetValue": "(list (description Canada))", 
+    "utterance": "what is steve nash nationality?", 
+    "id": 195, 
+    "result": [
+      "Canada"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kurdish_people", 
+    "targetValue": "(list (description Asia))", 
+    "utterance": "where does kurdish people live?", 
+    "id": 196, 
+    "result": [
+      "Asia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/edgar_allan_poe", 
+    "targetValue": "(list (description Baltimore))", 
+    "utterance": "where did edgar allan poe died?", 
+    "id": 197, 
+    "result": [
+      "Baltimore"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jamie_lynn_spears", 
+    "targetValue": "(list (description \"Bryan Spears\"))", 
+    "utterance": "what is jamie spears baby name?", 
+    "id": 198, 
+    "result": [
+      "Bryan Spears"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/shannon_hoon", 
+    "targetValue": "(list (description \"Drug overdose\"))", 
+    "utterance": "what did shannon hoon die from?", 
+    "id": 199, 
+    "result": [
+      "Drug overdose"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/angelina_jolie", 
+    "targetValue": "(list (description \"James Haven\"))", 
+    "utterance": "who is angelina jolies brother?", 
+    "id": 200, 
+    "result": [
+      "James Haven"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/william_mckinley", 
+    "targetValue": "(list (description 9/14/1901))", 
+    "utterance": "when did william mckinley died?", 
+    "id": 201, 
+    "result": [
+      "9/14/1901"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jamie_little", 
+    "targetValue": "(list (description \"Cody Selman\"))", 
+    "utterance": "who is jamie little engaged to?", 
+    "id": 202, 
+    "result": [
+      "Cody Selman"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jamarcus_russell", 
+    "targetValue": "(list (description Mobile))", 
+    "utterance": "where is jamarcus russell from?", 
+    "id": 203, 
+    "result": [
+      "Mobile"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_orwell", 
+    "targetValue": "(list (description Tuberculosis))", 
+    "utterance": "what did george orwell died of?", 
+    "id": 204, 
+    "result": [
+      "Tuberculosis"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/francis_drake", 
+    "targetValue": "(list (description \"Mary Newman\") (description \"Elizabeth Sydenham\"))", 
+    "utterance": "who did sir francis drake marry?", 
+    "id": 205, 
+    "result": [
+      "Mary Newman", 
+      "Elizabeth Sydenham"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nikola_tesla", 
+    "targetValue": "(list (description Inventor))", 
+    "utterance": "what was nikola tesla known for?", 
+    "id": 206, 
+    "result": [
+      "Inventor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_cook", 
+    "targetValue": "(list (description Explorer))", 
+    "utterance": "who is captain james cook facts?", 
+    "id": 207, 
+    "result": [
+      "Explorer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_f_kennedy", 
+    "targetValue": "(list (description \"John F. Kennedy, Jr.\") (description \"Patrick Bouvier Kennedy\") (description \"Arabella Kennedy\") (description \"Caroline Kennedy\"))", 
+    "utterance": "who was john f kennedy's family?", 
+    "id": 208, 
+    "result": [
+      "John F. Kennedy, Jr.", 
+      "Patrick Bouvier Kennedy", 
+      "Arabella Kennedy", 
+      "Caroline Kennedy"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/f_scott_fitzgerald", 
+    "targetValue": "(list (description Poet) (description Novelist) (description Writer))", 
+    "utterance": "what did f. scott fitzgerald do?", 
+    "id": 209, 
+    "result": [
+      "Poet", 
+      "Novelist", 
+      "Writer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/gerald_ford", 
+    "targetValue": "(list (description \"Cardiovascular disease\"))", 
+    "utterance": "what did gerald r ford die from?", 
+    "id": 210, 
+    "result": [
+      "Cardiovascular disease"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/new_york_university", 
+    "targetValue": "(list (description \"Albert Gallatin\") (description \"Mordecai Manuel Noah\"))", 
+    "utterance": "who founded new york university?", 
+    "id": 211, 
+    "result": [
+      "Albert Gallatin", 
+      "Mordecai Manuel Noah"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/farrah_fawcett", 
+    "targetValue": "(list (description \"Westwood Village Memorial Park Cemetery\"))", 
+    "utterance": "where was farrah fawcett buried?", 
+    "id": 212, 
+    "result": [
+      "Westwood Village Memorial Park Cemetery"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/russians", 
+    "targetValue": "(list (description \"Russian Language\"))", 
+    "utterance": "what language do russians speak?", 
+    "id": 213, 
+    "result": [
+      "Russian Language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/eminem", 
+    "targetValue": "(list (description \"Marshall Bruce Mathers, Jr.\"))", 
+    "utterance": "what is eminem's real full name?", 
+    "id": 214, 
+    "result": [
+      "Marshall Bruce Mathers, Jr."
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/charlie_hunnam", 
+    "targetValue": "(list (description Deadfall) (description \"Nicholas Nickleby\") (description \"Pacific Rim\") (description \"Green Street\") (description \"Frankie Go Boom\") (description \"The Ledge\") (description \"Children of Men\") (description Abandon) (description \"Cold Mountain\") (description \"Whatever Happened to Harold Smith?\"))", 
+    "utterance": "what has charlie hunnam been in?", 
+    "id": 215, 
+    "result": [
+      "Deadfall", 
+      "Nicholas Nickleby", 
+      "Pacific Rim", 
+      "Green Street", 
+      "Frankie Go Boom", 
+      "The Ledge", 
+      "Children of Men", 
+      "Abandon", 
+      "Cold Mountain", 
+      "Whatever Happened to Harold Smith?"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/cindy_sherman", 
+    "targetValue": "(list (description Photographer))", 
+    "utterance": "what is cindy sherman known for?", 
+    "id": 216, 
+    "result": [
+      "Photographer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/karl_benz", 
+    "targetValue": "(list (description \"Karlsruhe Institute of Technology\") (description \"University of Karlsruhe\"))", 
+    "utterance": "what school did karl benz go to?", 
+    "id": 217, 
+    "result": [
+      "Karlsruhe Institute of Technology", 
+      "University of Karlsruhe"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/eleanor_roosevelt", 
+    "targetValue": "(list (description \"New York City\"))", 
+    "utterance": "where did eleanor roosevelt die?", 
+    "id": 218, 
+    "result": [
+      "New York City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/steve_mcnair", 
+    "targetValue": "(list (description \"Ballistic trauma\"))", 
+    "utterance": "what did steve mcnair died from?", 
+    "id": 219, 
+    "result": [
+      "Ballistic trauma"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_burns", 
+    "targetValue": "(list (description Poet) (description Writer) (description Bard) (description Author))", 
+    "utterance": "what jobs did robert burns have?", 
+    "id": 220, 
+    "result": [
+      "Poet", 
+      "Writer", 
+      "Bard", 
+      "Author"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/theodor_schwann", 
+    "targetValue": "(list (description \"Humboldt University of Berlin\"))", 
+    "utterance": "where did theodor schwann study?", 
+    "id": 221, 
+    "result": [
+      "Humboldt University of Berlin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/serena_williams", 
+    "targetValue": "(list (description \"Richard Williams\") (description \"Oracene Price\"))", 
+    "utterance": "who are serena williams parents?", 
+    "id": 222, 
+    "result": [
+      "Richard Williams", 
+      "Oracene Price"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/hirohito", 
+    "targetValue": "(list (description Japan))", 
+    "utterance": "where did emperor hirohito live?", 
+    "id": 223, 
+    "result": [
+      "Japan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/hank_marvin", 
+    "targetValue": "(list (description \"Newcastle upon Tyne\"))", 
+    "utterance": "where did hank marvin come from?", 
+    "id": 224, 
+    "result": [
+      "Newcastle upon Tyne"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ina_garten", 
+    "targetValue": "(list (description Brooklyn))", 
+    "utterance": "where does chef ina garten live?", 
+    "id": 225, 
+    "result": [
+      "Brooklyn"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kate_gosselin", 
+    "targetValue": "(list (description Philadelphia))", 
+    "utterance": "where did kate gosselin grew up?", 
+    "id": 226, 
+    "result": [
+      "Philadelphia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/queen_latifah", 
+    "targetValue": "(list (description Taxi) (description \"Jungle Fever\") (description \"Set It Off\") (description \"Stranger than Fiction\") (description \"Last Holiday\") (description \"Brown Sugar\") (description \"Ice Age: The Meltdown\") (description \"Ice Age: Dawn of the Dinosaurs\") (description Hairspray) (description \"Bringing Down the House\"))", 
+    "utterance": "what movies queen latifah is in?", 
+    "id": 227, 
+    "result": [
+      "Taxi", 
+      "Jungle Fever", 
+      "Set It Off", 
+      "Stranger than Fiction", 
+      "Last Holiday", 
+      "Brown Sugar", 
+      "Ice Age: The Meltdown", 
+      "Ice Age: Dawn of the Dinosaurs", 
+      "Hairspray", 
+      "Bringing Down the House"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kimberly_williams", 
+    "targetValue": "(list (description \"Brad Paisley\"))", 
+    "utterance": "who did kimberly williams marry?", 
+    "id": 228, 
+    "result": [
+      "Brad Paisley"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/gloria_steinem", 
+    "targetValue": "(list (description \"Coalition of Labor Union Women\") (description \"National Women's Political Caucus\") (description \"New York Media Holdings, LLC\") (description \"Women's Action Alliance\") (description \"Choice USA\") (description \"Feminist Majority Foundation\") (description \"Ms. Foundation for Women\"))", 
+    "utterance": "what did gloria steinem founded?", 
+    "id": 229, 
+    "result": [
+      "Coalition of Labor Union Women", 
+      "National Women's Political Caucus", 
+      "New York Media Holdings, LLC", 
+      "Women's Action Alliance", 
+      "Choice USA", 
+      "Feminist Majority Foundation", 
+      "Ms. Foundation for Women"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/claire_danes", 
+    "targetValue": "(list (description Actor))", 
+    "utterance": "what is claire danes famous for?", 
+    "id": 230, 
+    "result": [
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/volkswagen", 
+    "targetValue": "(list (description \"Volkswagen Group\"))", 
+    "utterance": "who owns volkswagen car company?", 
+    "id": 231, 
+    "result": [
+      "Volkswagen Group"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/marilyn_monroe", 
+    "targetValue": "(list (description Barbiturate))", 
+    "utterance": "what drug killed marilyn monroe?", 
+    "id": 232, 
+    "result": [
+      "Barbiturate"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/elvis_presley", 
+    "targetValue": "(list (description Singer))", 
+    "utterance": "what makes elvis presley famous?", 
+    "id": 233, 
+    "result": [
+      "Singer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/isabella_of_castile", 
+    "targetValue": "(list (description \"Maria of Aragon, Queen of Portugal\"))", 
+    "utterance": "who was queen isabella's mother?", 
+    "id": 234, 
+    "result": [
+      "Maria of Aragon, Queen of Portugal"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/antoine_lavoisier", 
+    "targetValue": "(list (description \"Place de la Concorde\"))", 
+    "utterance": "where did antoine lavoisier die?", 
+    "id": 235, 
+    "result": [
+      "Place de la Concorde"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martha_graham", 
+    "targetValue": "(list (description Screenwriter) (description Choreographer))", 
+    "utterance": "what did martha graham train as?", 
+    "id": 236, 
+    "result": [
+      "Screenwriter", 
+      "Choreographer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/madagascar_2005", 
+    "targetValue": "(list (description \"Sacha Baron Cohen\"))", 
+    "utterance": "who plays king julian madagascar?", 
+    "id": 237, 
+    "result": [
+      "Sacha Baron Cohen"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/philadelphia_phillies", 
+    "targetValue": "(list (description 1883))", 
+    "utterance": "what year did the phillies begin?", 
+    "id": 238, 
+    "result": [
+      "1883"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/pennsylvania_state_university", 
+    "targetValue": "(list (description \"University Park\"))", 
+    "utterance": "what is penn state's main campus?", 
+    "id": 239, 
+    "result": [
+      "University Park"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/peru", 
+    "targetValue": "(list (description \"Ollanta Humala\"))", 
+    "utterance": "who is the president of peru now?", 
+    "id": 240, 
+    "result": [
+      "Ollanta Humala"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lauren_conrad", 
+    "targetValue": "(list (description \"Fashion design\"))", 
+    "utterance": "what does lauren conrad major in?", 
+    "id": 241, 
+    "result": [
+      "Fashion design"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/henry_vii_of_england", 
+    "targetValue": "(list (description \"Arthur, Prince of Wales\") (description \"Margaret Tudor\") (description \"Mary Tudor, Queen of France\") (description \"Henry VIII of England\") (description \"Edward Tudor\") (description \"Katherine Tudor\") (description \"Edmund Tudor, Duke of Somerset\") (description \"Elizabeth Tudor\"))", 
+    "utterance": "who were king henry vii children?", 
+    "id": 242, 
+    "result": [
+      "Arthur, Prince of Wales", 
+      "Margaret Tudor", 
+      "Mary Tudor, Queen of France", 
+      "Henry VIII of England", 
+      "Edward Tudor", 
+      "Katherine Tudor", 
+      "Edmund Tudor, Duke of Somerset", 
+      "Elizabeth Tudor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/pamela_courson", 
+    "targetValue": "(list (description \"Heroin overdose\") (description \"Drug overdose\"))", 
+    "utterance": "what did pamela courson die from?", 
+    "id": 243, 
+    "result": [
+      "Heroin overdose", 
+      "Drug overdose"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/victoria_of_the_united_kingdom", 
+    "targetValue": "(list (description \"Albert, Prince Consort\"))", 
+    "utterance": "who was queen victoria's husband?", 
+    "id": 244, 
+    "result": [
+      "Albert, Prince Consort"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nicki_minaj", 
+    "targetValue": "(list (description \"Trinidad and Tobago\"))", 
+    "utterance": "what country is nicki minaj from?", 
+    "id": 245, 
+    "result": [
+      "Trinidad and Tobago"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/elvis_presley", 
+    "targetValue": "(list (description \"Myocardial infarction\"))", 
+    "utterance": "what did elvis presley died from?", 
+    "id": 246, 
+    "result": [
+      "Myocardial infarction"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_crabtree", 
+    "targetValue": "(list (description \"Texas Tech University\"))", 
+    "utterance": "where did crabtree go to college?", 
+    "id": 247, 
+    "result": [
+      "Texas Tech University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/laura_ingalls_wilder", 
+    "targetValue": "(list (description \"South Dakota\") (description Wisconsin))", 
+    "utterance": "where laura ingalls wilder lived?", 
+    "id": 248, 
+    "result": [
+      "South Dakota", 
+      "Wisconsin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/paul_ryan", 
+    "targetValue": "(list (description Janesville))", 
+    "utterance": "what city does paul ryan live in?", 
+    "id": 249, 
+    "result": [
+      "Janesville"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_burns", 
+    "targetValue": "(list (description Poet))", 
+    "utterance": "what was robert burns famous for?", 
+    "id": 250, 
+    "result": [
+      "Poet"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kim_kardashian", 
+    "targetValue": "(list (description Entrepreneur) (description Model) (description Businessperson) (description Actor))", 
+    "utterance": "what does kim kardashian work as?", 
+    "id": 251, 
+    "result": [
+      "Entrepreneur", 
+      "Model", 
+      "Businessperson", 
+      "Actor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mary_todd_lincoln", 
+    "targetValue": "(list (description Lexington) (description Springfield))", 
+    "utterance": "where was mary todd lincoln from?", 
+    "id": 252, 
+    "result": [
+      "Lexington", 
+      "Springfield"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/leonidas_i", 
+    "targetValue": "(list (description Pleistarchus))", 
+    "utterance": "who was the son of king leonidas?", 
+    "id": 253, 
+    "result": [
+      "Pleistarchus"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/benjamin_franklin", 
+    "targetValue": "(list (description \"James Franklin Printing Shop\") (description \"United States Postal Service\") (description \"Josiah Franklin\"))", 
+    "utterance": "where did benjamin franklin work?", 
+    "id": 254, 
+    "result": [
+      "James Franklin Printing Shop", 
+      "United States Postal Service", 
+      "Josiah Franklin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jesse_james", 
+    "targetValue": "(list (description Assassination) (description Firearm))", 
+    "utterance": "what was jesse james killed with?", 
+    "id": 255, 
+    "result": [
+      "Assassination", 
+      "Firearm"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dustin_johnson", 
+    "targetValue": "(list (description Golfer))", 
+    "utterance": "who is dustin johnson the golfer?", 
+    "id": 256, 
+    "result": [
+      "Golfer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/amy_grant", 
+    "targetValue": "(list (description \"Vince Gill\"))", 
+    "utterance": "who is amy grant's first husband?", 
+    "id": 257, 
+    "result": [
+      "Vince Gill"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/richard_nixon", 
+    "targetValue": "(list (description \"Pat Nixon\"))", 
+    "utterance": "who was richard nixon married to?", 
+    "id": 258, 
+    "result": [
+      "Pat Nixon"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lola_bunny", 
+    "targetValue": "(list (description \"Britt McKillip\") (description \"Kath Soucie\"))", 
+    "utterance": "who did the voice for lola bunny?", 
+    "id": 259, 
+    "result": [
+      "Britt McKillip", 
+      "Kath Soucie"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/osama_bin_laden", 
+    "targetValue": "(list (description Abbottabad))", 
+    "utterance": "where was osama bin laden killed?", 
+    "id": 260, 
+    "result": [
+      "Abbottabad"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/christopher_riley", 
+    "targetValue": "(list (description 1967))", 
+    "utterance": "when was father chris riley born?", 
+    "id": 261, 
+    "result": [
+      "1967"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/hosni_mubarak", 
+    "targetValue": "(list (description Politician))", 
+    "utterance": "where did mubarak get his wealth?", 
+    "id": 262, 
+    "result": [
+      "Politician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/louis_xiv_of_france", 
+    "targetValue": "(list (description Catholicism))", 
+    "utterance": "what religion was king louis xiv?", 
+    "id": 263, 
+    "result": [
+      "Catholicism"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/denise_van_outen", 
+    "targetValue": "(list (description \"Lee Mead\"))", 
+    "utterance": "who did denise van outen married?", 
+    "id": 264, 
+    "result": [
+      "Lee Mead"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/william_shakespeare", 
+    "targetValue": "(list (description \"Anne Hathaway\"))", 
+    "utterance": "who did william shakespeare marry?", 
+    "id": 265, 
+    "result": [
+      "Anne Hathaway"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/d_carter", 
+    "targetValue": "(list (description \"University of Houston\"))", 
+    "utterance": "where does lil wayne go to school?", 
+    "id": 266, 
+    "result": [
+      "University of Houston"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/princess_leia_organa", 
+    "targetValue": "(list (description \"Carrie Fisher\"))", 
+    "utterance": "who is princess leia in star wars?", 
+    "id": 267, 
+    "result": [
+      "Carrie Fisher"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_franco", 
+    "targetValue": "(list (description Him/Herself))", 
+    "utterance": "who did james franco play in milk?", 
+    "id": 268, 
+    "result": [
+      "Him/Herself"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/warren_buffett", 
+    "targetValue": "(list (description \"Berkshire Hathaway\"))", 
+    "utterance": "what did warren buffett invest in?", 
+    "id": 269, 
+    "result": [
+      "Berkshire Hathaway"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/riannah", 
+    "targetValue": "(list (description \"Saint Michael Parish\") (description Barbados))", 
+    "utterance": "where was rihanna born and raised?", 
+    "id": 270, 
+    "result": [
+      "Saint Michael Parish", 
+      "Barbados"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_f_kennedy", 
+    "targetValue": "(list (description \"Arlington National Cemetery\"))", 
+    "utterance": "where is president kennedy buried?", 
+    "id": 271, 
+    "result": [
+      "Arlington National Cemetery"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/juan_ponce_de_leon", 
+    "targetValue": "(list (description \"Leonor de Guzm\u00e1n de Silva\") (description \"Juan Ponce de Le\u00f3n, II conde de Arcos\"))", 
+    "utterance": "who was juan ponce de leon family?", 
+    "id": 272, 
+    "result": [
+      "Leonor de Guzm\u00e1n de Silva", 
+      "Juan Ponce de Le\u00f3n, II conde de Arcos"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/maya_moore", 
+    "targetValue": "(list (description \"University of Connecticut\"))", 
+    "utterance": "what college did maya moore go to?", 
+    "id": 273, 
+    "result": [
+      "University of Connecticut"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/the_rock_1972", 
+    "targetValue": "(list (description \"African American\") (description \"Samoan American\"))", 
+    "utterance": "where is dwayne johnson ethnicity?", 
+    "id": 274, 
+    "result": [
+      "African American", 
+      "Samoan American"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/khloe_kardashian", 
+    "targetValue": "(list (description \"Lamar Odom\"))", 
+    "utterance": "who is khloe kardashian's husband?", 
+    "id": 275, 
+    "result": [
+      "Lamar Odom"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/anne_frank", 
+    "targetValue": "(list (description \"Montessori Lyceum Amsterdam\"))", 
+    "utterance": "where did anne frank go to school?", 
+    "id": 276, 
+    "result": [
+      "Montessori Lyceum Amsterdam"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mother_teresa", 
+    "targetValue": "(list (description India))", 
+    "utterance": "what nationality is mother teresa?", 
+    "id": 277, 
+    "result": [
+      "India"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/giuliana_depandi", 
+    "targetValue": "(list (description Naples))", 
+    "utterance": "where did giuliana rancic grow up?", 
+    "id": 278, 
+    "result": [
+      "Naples"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/vasco_da_gama", 
+    "targetValue": "(list (description Portugal))", 
+    "utterance": "who did vasco de gama explore for?", 
+    "id": 279, 
+    "result": [
+      "Portugal"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_adams", 
+    "targetValue": "(list (description Massachusetts))", 
+    "utterance": "what state did john adams live in?", 
+    "id": 280, 
+    "result": [
+      "Massachusetts"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/scottie_pippen", 
+    "targetValue": "(list (description \"Basketball player\"))", 
+    "utterance": "what was scottie pippen known for?", 
+    "id": 281, 
+    "result": [
+      "Basketball player"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/angelina_jolie", 
+    "targetValue": "(list (description \"Jon Voight\") (description \"Marcheline Bertrand\"))", 
+    "utterance": "who is angelina jolie mom and dad?", 
+    "id": 282, 
+    "result": [
+      "Jon Voight", 
+      "Marcheline Bertrand"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/salvador_dali", 
+    "targetValue": "(list (description \"Real Academia de Bellas Artes de San Fernando\"))", 
+    "utterance": "where did salvador dali study art?", 
+    "id": 283, 
+    "result": [
+      "Real Academia de Bellas Artes de San Fernando"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/morgan_freeman", 
+    "targetValue": "(list (description \"Jackson State University\") (description \"Los Angeles City College\"))", 
+    "utterance": "where did morgan freeman graduate?", 
+    "id": 284, 
+    "result": [
+      "Jackson State University", 
+      "Los Angeles City College"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_vi_of_the_united_kingdom", 
+    "targetValue": "(list (description \"Queen Elizabeth The Queen Mother\"))", 
+    "utterance": "who was king george vi married to?", 
+    "id": 285, 
+    "result": [
+      "Queen Elizabeth The Queen Mother"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dana_scully", 
+    "targetValue": "(list (description \"Gillian Anderson\"))", 
+    "utterance": "who played dana scully in x files?", 
+    "id": 286, 
+    "result": [
+      "Gillian Anderson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/paula_deen", 
+    "targetValue": "(list (description \"Albany High School\"))", 
+    "utterance": "where did paula deen go to school?", 
+    "id": 287, 
+    "result": [
+      "Albany High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/maasai", 
+    "targetValue": "(list (description \"Maasai Language\"))", 
+    "utterance": "what language do the maasai speak?", 
+    "id": 288, 
+    "result": [
+      "Maasai Language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/theodore_roosevelt", 
+    "targetValue": "(list (description \"New York City\"))", 
+    "utterance": "where was teddy roosevelt's house?", 
+    "id": 289, 
+    "result": [
+      "New York City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kristen_stewart", 
+    "targetValue": "(list (description \"New Moon\") (description Eclipse) (description \"The Runaways\") (description \"Snow White and the Huntsman\") (description Twilight) (description \"The Twilight Saga: Breaking Dawn - Part 1\"))", 
+    "utterance": "what has kristen stewart acted in?", 
+    "id": 290, 
+    "result": [
+      "New Moon", 
+      "Eclipse", 
+      "The Runaways", 
+      "Snow White and the Huntsman", 
+      "Twilight", 
+      "The Twilight Saga: Breaking Dawn - Part 1"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/darth_vader", 
+    "targetValue": "(list (description \"James Earl Jones\"))", 
+    "utterance": "who does the voice for darth vader?", 
+    "id": 291, 
+    "result": [
+      "James Earl Jones"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/carlos_pena", 
+    "targetValue": "(list (description \"Dominican Republic\"))", 
+    "utterance": "what is carlos pena jr nationality?", 
+    "id": 292, 
+    "result": [
+      "Dominican Republic"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ptolemy", 
+    "targetValue": "(list (description Mathematician) (description Astronomer) (description Astrologer) (description Geographer) (description Philosopher))", 
+    "utterance": "who was ptolemy and what did he do?", 
+    "id": 293, 
+    "result": [
+      "Mathematician", 
+      "Astronomer", 
+      "Astrologer", 
+      "Geographer", 
+      "Philosopher"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/barbara_bush", 
+    "targetValue": "(list (description \"First Lady\"))", 
+    "utterance": "what does barbara bush do for work?", 
+    "id": 294, 
+    "result": [
+      "First Lady"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ancient_pueblo_peoples", 
+    "targetValue": "(list (description \"Four Corners\"))", 
+    "utterance": "where did the anasazi indians live?", 
+    "id": 295, 
+    "result": [
+      "Four Corners"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/fabio_capello", 
+    "targetValue": "(list (description Italy))", 
+    "utterance": "where does fabio capello come from?", 
+    "id": 296, 
+    "result": [
+      "Italy"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/wilfred_owen", 
+    "targetValue": "(list (description \"University of London\") (description \"University of Reading\"))", 
+    "utterance": "what school did wilfred owen go to?", 
+    "id": 297, 
+    "result": [
+      "University of London", 
+      "University of Reading"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/venus_williams", 
+    "targetValue": "(list (description Lynwood))", 
+    "utterance": "where did venus williams come from?", 
+    "id": 298, 
+    "result": [
+      "Lynwood"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bernie_mac", 
+    "targetValue": "(list (description Pneumonia))", 
+    "utterance": "what disease did bernie mac die of?", 
+    "id": 299, 
+    "result": [
+      "Pneumonia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/pope_john_paul_ii", 
+    "targetValue": "(list (description \"Myocardial infarction\") (description \"Parkinson's disease\"))", 
+    "utterance": "what happened to pope john paul ii?", 
+    "id": 300, 
+    "result": [
+      "Myocardial infarction", 
+      "Parkinson's disease"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/granville_woods", 
+    "targetValue": "(list (description \"Loretta Woods\"))", 
+    "utterance": "who did granville t. woods married?", 
+    "id": 301, 
+    "result": [
+      "Loretta Woods"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/shannen_doherty", 
+    "targetValue": "(list (description \"Girls Just Want to Have Fun\") (description \"A Burning Passion: The Margaret Mitchell Story\") (description \"Category 7: The End of the World\") (description \"Freeze Frame\") (description \"Christmas Caper\") (description \"Burning Palms\") (description \"Another Day\") (description \"Blindfold: Acts of Obsession\") (description \"Almost Dead\") (description \"Friends 'Til the End\"))", 
+    "utterance": "what has shannen doherty played in?", 
+    "id": 302, 
+    "result": [
+      "Girls Just Want to Have Fun", 
+      "A Burning Passion: The Margaret Mitchell Story", 
+      "Category 7: The End of the World", 
+      "Freeze Frame", 
+      "Christmas Caper", 
+      "Burning Palms", 
+      "Another Day", 
+      "Blindfold: Acts of Obsession", 
+      "Almost Dead", 
+      "Friends 'Til the End"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kim_kardashian", 
+    "targetValue": "(list (description \"Los Angeles\"))", 
+    "utterance": "where did kim kardashian come from?", 
+    "id": 303, 
+    "result": [
+      "Los Angeles"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/william_shakespeare", 
+    "targetValue": "(list (description \"Anne Hathaway\"))", 
+    "utterance": "what was shakespeare's wife called?", 
+    "id": 304, 
+    "result": [
+      "Anne Hathaway"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/otto_frank", 
+    "targetValue": "(list (description \"Heidelberg College\"))", 
+    "utterance": "where did otto frank go to college?", 
+    "id": 305, 
+    "result": [
+      "Heidelberg College"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/marilyn_monroe", 
+    "targetValue": "(list (description \"James Dougherty\"))", 
+    "utterance": "who did marilyn monroe marry at 16?", 
+    "id": 306, 
+    "result": [
+      "James Dougherty"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kevin_love_1988", 
+    "targetValue": "(list (description \"University of California, Los Angeles\"))", 
+    "utterance": "where did kevin love go to college?", 
+    "id": 307, 
+    "result": [
+      "University of California, Los Angeles"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/marco_polo", 
+    "targetValue": "(list (description Venice))", 
+    "utterance": "what city did marco polo came from?", 
+    "id": 308, 
+    "result": [
+      "Venice"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/j_r_r_tolkien", 
+    "targetValue": "(list (description \"Exeter College, Oxford\"))", 
+    "utterance": "what college did jrr tolkien go to?", 
+    "id": 309, 
+    "result": [
+      "Exeter College, Oxford"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mitt_romney", 
+    "targetValue": "(list (description \"Stanford University\") (description \"Cranbrook Schools\") (description \"Harvard Law School\") (description \"Harvard Business School\") (description \"Harvard University\") (description \"Brigham Young University\"))", 
+    "utterance": "where did romney graduated college?", 
+    "id": 310, 
+    "result": [
+      "Stanford University", 
+      "Cranbrook Schools", 
+      "Harvard Law School", 
+      "Harvard Business School", 
+      "Harvard University", 
+      "Brigham Young University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/matt_stone", 
+    "targetValue": "(list (description \"Kyle / Kenny / Jesus\"))", 
+    "utterance": "what characters does matt stone do?", 
+    "id": 311, 
+    "result": [
+      "Kyle / Kenny / Jesus"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/dutch_people", 
+    "targetValue": "(list (description Europeans))", 
+    "utterance": "where did dutch language come from?", 
+    "id": 312, 
+    "result": [
+      "Europeans"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/j_r_r_tolkien", 
+    "targetValue": "(list (description \"Exeter College, Oxford\") (description \"University of Oxford\"))", 
+    "utterance": "where did jrr tolkien go to school?", 
+    "id": 313, 
+    "result": [
+      "Exeter College, Oxford", 
+      "University of Oxford"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mitt_romney", 
+    "targetValue": "(list (description Detroit))", 
+    "utterance": "where is mitt romney's family from?", 
+    "id": 314, 
+    "result": [
+      "Detroit"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_mayer", 
+    "targetValue": "(list (description \"Berklee College of Music\"))", 
+    "utterance": "where did john mayer go to college?", 
+    "id": 315, 
+    "result": [
+      "Berklee College of Music"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_irvine", 
+    "targetValue": "(list (description Salisbury))", 
+    "utterance": "where does robert irvine come from?", 
+    "id": 316, 
+    "result": [
+      "Salisbury"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/anthony_of_padua", 
+    "targetValue": "(list (description Padua))", 
+    "utterance": "what is st anthony patron saint of?", 
+    "id": 317, 
+    "result": [
+      "Padua"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nicolas_cage", 
+    "targetValue": "(list (description \"Kal-El Coppola Cage\") (description \"Weston Coppola Cage\"))", 
+    "utterance": "what did nicolas cage name his son?", 
+    "id": 318, 
+    "result": [
+      "Kal-El Coppola Cage", 
+      "Weston Coppola Cage"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mario_lopez", 
+    "targetValue": "(list (description \"Chula Vista High School\"))", 
+    "utterance": "where did mario lopez go to school?", 
+    "id": 319, 
+    "result": [
+      "Chula Vista High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/charlie_chaplin", 
+    "targetValue": "(list (description Comedian))", 
+    "utterance": "what is charlie chaplin famous for?", 
+    "id": 320, 
+    "result": [
+      "Comedian"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jacob_black", 
+    "targetValue": "(list (description \"Taylor Lautner\"))", 
+    "utterance": "who played jacob black in twilight?", 
+    "id": 321, 
+    "result": [
+      "Taylor Lautner"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/lois_griffin", 
+    "targetValue": "(list (description \"Alex Borstein\"))", 
+    "utterance": "who originally voiced lois griffin?", 
+    "id": 322, 
+    "result": [
+      "Alex Borstein"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_willams", 
+    "targetValue": "(list (description \"A.I. Artificial Intelligence\") (description Always) (description \"Catch Me If You Can\") (description 1941) (description Daddy-O) (description Amistad) (description \"Close Encounters of the Third Kind\") (description \"E.T. the Extra-Terrestrial\") (description \"Empire of the Sun\") (description Earthquake))", 
+    "utterance": "what movies has john williams score?", 
+    "id": 323, 
+    "result": [
+      "A.I. Artificial Intelligence", 
+      "Always", 
+      "Catch Me If You Can", 
+      "1941", 
+      "Daddy-O", 
+      "Amistad", 
+      "Close Encounters of the Third Kind", 
+      "E.T. the Extra-Terrestrial", 
+      "Empire of the Sun", 
+      "Earthquake"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jamie_oliver", 
+    "targetValue": "(list (description \"Petal Blossom Rainbow Oliver\") (description \"Poppy Honey Rosie Oliver\") (description \"Daisy Boo Pamela Oliver\") (description \"Buddy Bear Maurice Oliver\"))", 
+    "utterance": "what is jamie oliver children names?", 
+    "id": 324, 
+    "result": [
+      "Petal Blossom Rainbow Oliver", 
+      "Poppy Honey Rosie Oliver", 
+      "Daisy Boo Pamela Oliver", 
+      "Buddy Bear Maurice Oliver"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/miley_cyrus", 
+    "targetValue": "(list (description \"Hannah Montana: The Movie\") (description \"Super Rhino\") (description \"Sonic the Hedgehog\") (description \"LOL: Laughing Out Loud\") (description \"Big Fish\") (description \"Sex and the City 2\") (description Bolt) (description \"The Last Song\") (description \"So Undercover\") (description \"High School Musical 2\"))", 
+    "utterance": "what movies has miley cyrus been in?", 
+    "id": 325, 
+    "result": [
+      "Hannah Montana: The Movie", 
+      "Super Rhino", 
+      "Sonic the Hedgehog", 
+      "LOL: Laughing Out Loud", 
+      "Big Fish", 
+      "Sex and the City 2", 
+      "Bolt", 
+      "The Last Song", 
+      "So Undercover", 
+      "High School Musical 2"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/adolf_hitler", 
+    "targetValue": "(list (description Gunshot) (description Suicide))", 
+    "utterance": "what did hitler use to kill himself?", 
+    "id": 326, 
+    "result": [
+      "Gunshot", 
+      "Suicide"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ferdinand_magellan", 
+    "targetValue": "(list (description Portugal))", 
+    "utterance": "what country did magellan represent?", 
+    "id": 327, 
+    "result": [
+      "Portugal"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_franco", 
+    "targetValue": "(list (description \"Yale University\"))", 
+    "utterance": "what school does james franco go to?", 
+    "id": 328, 
+    "result": [
+      "Yale University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jessica_simpson", 
+    "targetValue": "(list (description \"Nick Lachey\"))", 
+    "utterance": "who was jessica simpson married too?", 
+    "id": 329, 
+    "result": [
+      "Nick Lachey"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_t_kirk", 
+    "targetValue": "(list (description \"William Shatner\"))", 
+    "utterance": "who plays captain kirk in star trek?", 
+    "id": 330, 
+    "result": [
+      "William Shatner"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kate_middleton", 
+    "targetValue": "(list (description Reading))", 
+    "utterance": "where does kate middleton live 2012?", 
+    "id": 331, 
+    "result": [
+      "Reading"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/marilyn_monroe", 
+    "targetValue": "(list (description Brentwood))", 
+    "utterance": "where was marilyn monroe found dead?", 
+    "id": 332, 
+    "result": [
+      "Brentwood"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/theodore_roosevelt", 
+    "targetValue": "(list (description \"Youngs Memorial Cemetery\"))", 
+    "utterance": "where was theodore roosevelt buried?", 
+    "id": 333, 
+    "result": [
+      "Youngs Memorial Cemetery"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nick_cannon", 
+    "targetValue": "(list (description \"A Very School Gyrls Holla-Day\") (description Bobby) (description \"Day of the Dead\") (description \"Even Money\") (description \"Goal II: Living the Dream\") (description \"American Son\") (description Weapons) (description \"Ball Don't Lie\") (description \"The Killing Room\") (description \"Monster House\"))", 
+    "utterance": "what movies did nick cannon star in?", 
+    "id": 334, 
+    "result": [
+      "A Very School Gyrls Holla-Day", 
+      "Bobby", 
+      "Day of the Dead", 
+      "Even Money", 
+      "Goal II: Living the Dream", 
+      "American Son", 
+      "Weapons", 
+      "Ball Don't Lie", 
+      "The Killing Room", 
+      "Monster House"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/joe_biden", 
+    "targetValue": "(list (description \"Political Science\") (description History))", 
+    "utterance": "what did joe biden study in college?", 
+    "id": 335, 
+    "result": [
+      "Political Science", 
+      "History"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tom_hanks", 
+    "targetValue": "(list (description \"Jim Lovell\"))", 
+    "utterance": "who did tom hanks play in apollo 13?", 
+    "id": 336, 
+    "result": [
+      "Jim Lovell"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_forbes_nash", 
+    "targetValue": "(list (description \"Princeton University\"))", 
+    "utterance": "what college did john nash teach at?", 
+    "id": 337, 
+    "result": [
+      "Princeton University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/cheyenne", 
+    "targetValue": "(list (description \"Cheyenne Language\") (description \"English Language\"))", 
+    "utterance": "what language do the cheyenne speak?", 
+    "id": 338, 
+    "result": [
+      "Cheyenne Language", 
+      "English Language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_kors", 
+    "targetValue": "(list (description \"Fashion Designer\"))", 
+    "utterance": "what is michael kors best known for?", 
+    "id": 339, 
+    "result": [
+      "Fashion Designer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/alexander_graham_bell", 
+    "targetValue": "(list (description \"Beinn Bhreagh, Nova Scotia\"))", 
+    "utterance": "where did alexander graham bell die?", 
+    "id": 340, 
+    "result": [
+      "Beinn Bhreagh, Nova Scotia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sanjay_gupta", 
+    "targetValue": "(list (description \"University of Michigan\") (description \"University of Michigan Health System\") (description \"Novi High School\"))", 
+    "utterance": "where did sanjay gupta go to school?", 
+    "id": 341, 
+    "result": [
+      "University of Michigan", 
+      "University of Michigan Health System", 
+      "Novi High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/r_kelly", 
+    "targetValue": "(list (description \"Kenwood Academy\"))", 
+    "utterance": "what highschool did r. kelly attend?", 
+    "id": 342, 
+    "result": [
+      "Kenwood Academy"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/augustus", 
+    "targetValue": "(list (description \"Roman emperor\") (description Politician))", 
+    "utterance": "what was augustus caesar famous for?", 
+    "id": 343, 
+    "result": [
+      "Roman emperor", 
+      "Politician"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kevin_james", 
+    "targetValue": "(list (description \"SUNY College at Cortland\"))", 
+    "utterance": "where did kevin james go to college?", 
+    "id": 344, 
+    "result": [
+      "SUNY College at Cortland"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/william_mckinley", 
+    "targetValue": "(list (description \"Ida Saxton McKinley\"))", 
+    "utterance": "who was william mckinley married to?", 
+    "id": 345, 
+    "result": [
+      "Ida Saxton McKinley"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ron_howard", 
+    "targetValue": "(list (description \"How the Grinch Stole Christmas!\"))", 
+    "utterance": "what movies did ron howard director?", 
+    "id": 346, 
+    "result": [
+      "How the Grinch Stole Christmas!"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/joe_flacco", 
+    "targetValue": "(list (description \"University of Delaware\"))", 
+    "utterance": "where did joe flacco attend college?", 
+    "id": 347, 
+    "result": [
+      "University of Delaware"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/daniel_craig", 
+    "targetValue": "(list (description \"The Invasion\") (description \"Casino Royale\") (description Munich) (description \"Enduring Love\") (description \"Layer Cake\") (description \"A Kid in King Arthur's Court\") (description \"The Jacket\") (description \"The Mother\") (description Sylvia) (description \"Road to Perdition\"))", 
+    "utterance": "what films has daniel craig been in?", 
+    "id": 348, 
+    "result": [
+      "The Invasion", 
+      "Casino Royale", 
+      "Munich", 
+      "Enduring Love", 
+      "Layer Cake", 
+      "A Kid in King Arthur's Court", 
+      "The Jacket", 
+      "The Mother", 
+      "Sylvia", 
+      "Road to Perdition"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/richard_arkwright", 
+    "targetValue": "(list (description England))", 
+    "utterance": "where did richard arkwright grow up?", 
+    "id": 349, 
+    "result": [
+      "England"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/newt_gingrich", 
+    "targetValue": "(list (description \"Callista Gingrich\"))", 
+    "utterance": "what is newt gingrich's wife's name?", 
+    "id": 350, 
+    "result": [
+      "Callista Gingrich"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/madonna", 
+    "targetValue": "(list (description Catholicism) (description \"Jewish Renewal\"))", 
+    "utterance": "what religion does madonna practice?", 
+    "id": 351, 
+    "result": [
+      "Catholicism", 
+      "Jewish Renewal"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robin_williams", 
+    "targetValue": "(list (description \"San Francisco\"))", 
+    "utterance": "where does robin williams live 2011?", 
+    "id": 352, 
+    "result": [
+      "San Francisco"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kohler_company", 
+    "targetValue": "(list (description Kohler))", 
+    "utterance": "where are kohler sinks manufactured?", 
+    "id": 353, 
+    "result": [
+      "Kohler"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_f_kennedy", 
+    "targetValue": "(list (description \"Robert F. Kennedy\") (description \"Ted Kennedy\") (description \"Rosemary Kennedy\") (description \"Kathleen Cavendish\") (description \"Patricia Kennedy Lawford\") (description \"Jean Kennedy Smith\") (description \"Eunice Kennedy Shriver\") (description \"Joseph P. Kennedy, Jr.\"))", 
+    "utterance": "what was the name of jfk's brothers?", 
+    "id": 354, 
+    "result": [
+      "Robert F. Kennedy", 
+      "Ted Kennedy", 
+      "Rosemary Kennedy", 
+      "Kathleen Cavendish", 
+      "Patricia Kennedy Lawford", 
+      "Jean Kennedy Smith", 
+      "Eunice Kennedy Shriver", 
+      "Joseph P. Kennedy, Jr."
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/benjamin_franklin", 
+    "targetValue": "(list (description \"Boston Latin School\"))", 
+    "utterance": "where was benjamin franklin educated?", 
+    "id": 355, 
+    "result": [
+      "Boston Latin School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/matt_dallas", 
+    "targetValue": "(list (description \"The Story of Bonnie and Clyde\") (description \"Babysitter Wanted\") (description \"Hot Dudes with Kittens\") (description \"Beauty & the Briefcase\") (description \"In Between Days\") (description \"The Indian\") (description \"As Good as Dead\") (description \"Living the Dream\") (description \"Camp Slaughter\") (description \"Wyatt Earp's Revenge\"))", 
+    "utterance": "what movies does matt dallas play in?", 
+    "id": 356, 
+    "result": [
+      "The Story of Bonnie and Clyde", 
+      "Babysitter Wanted", 
+      "Hot Dudes with Kittens", 
+      "Beauty & the Briefcase", 
+      "In Between Days", 
+      "The Indian", 
+      "As Good as Dead", 
+      "Living the Dream", 
+      "Camp Slaughter", 
+      "Wyatt Earp's Revenge"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mitt_romney", 
+    "targetValue": "(list (description \"Stanford University\") (description \"Cranbrook Schools\") (description \"Harvard Law School\") (description \"Harvard Business School\") (description \"Harvard University\") (description \"Brigham Young University\"))", 
+    "utterance": "what colleges did mitt romney attend?", 
+    "id": 357, 
+    "result": [
+      "Stanford University", 
+      "Cranbrook Schools", 
+      "Harvard Law School", 
+      "Harvard Business School", 
+      "Harvard University", 
+      "Brigham Young University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/joseph_stalin", 
+    "targetValue": "(list (description \"Soviet Union\"))", 
+    "utterance": "what country was stalin in charge of?", 
+    "id": 358, 
+    "result": [
+      "Soviet Union"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/yoruba", 
+    "targetValue": "(list (description \"African people\"))", 
+    "utterance": "where did the yoruba originated from?", 
+    "id": 359, 
+    "result": [
+      "African people"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nike_inc", 
+    "targetValue": "(list (description \"Athletic Shoes & Apparel\"))", 
+    "utterance": "what kind of products does nike sell?", 
+    "id": 360, 
+    "result": [
+      "Athletic Shoes & Apparel"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ryan_reynolds", 
+    "targetValue": "(list (description \"Blake Lively\"))", 
+    "utterance": "who is ryan reynolds married to 2012?", 
+    "id": 361, 
+    "result": [
+      "Blake Lively"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/vin_scully", 
+    "targetValue": "(list (description \"Fordham University\"))", 
+    "utterance": "where did vince scully go to college?", 
+    "id": 362, 
+    "result": [
+      "Fordham University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_keaton", 
+    "targetValue": "(list (description \"Chick Hicks\"))", 
+    "utterance": "who does michael keaton play in cars?", 
+    "id": 363, 
+    "result": [
+      "Chick Hicks"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/carmen_cortez", 
+    "targetValue": "(list (description \"Alexa Vega\"))", 
+    "utterance": "who played carmen cortez in spy kids?", 
+    "id": 364, 
+    "result": [
+      "Alexa Vega"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/blackfoot", 
+    "targetValue": "(list (description \"English Language\") (description \"Blackfoot Language\"))", 
+    "utterance": "what did the blackfoot indians speak?", 
+    "id": 365, 
+    "result": [
+      "English Language", 
+      "Blackfoot Language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jack_london", 
+    "targetValue": "(list (description Author) (description Sailor) (description Journalist) (description Novelist) (description Screenwriter) (description Essayist))", 
+    "utterance": "what did jack london do for a living?", 
+    "id": 366, 
+    "result": [
+      "Author", 
+      "Sailor", 
+      "Journalist", 
+      "Novelist", 
+      "Screenwriter", 
+      "Essayist"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/osama_bin_laden", 
+    "targetValue": "(list (description Abbottabad))", 
+    "utterance": "where was bin laden found and killed?", 
+    "id": 367, 
+    "result": [
+      "Abbottabad"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_vi_of_the_united_kingdom", 
+    "targetValue": "(list (description \"George V\"))", 
+    "utterance": "who was the father of king george vi?", 
+    "id": 368, 
+    "result": [
+      "George V"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/julius_caesar", 
+    "targetValue": "(list (description \"Theatre of Pompey\"))", 
+    "utterance": "where was caesar when he was stabbed?", 
+    "id": 369, 
+    "result": [
+      "Theatre of Pompey"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/derek_fisher", 
+    "targetValue": "(list (description \"University of Arkansas at Little Rock\"))", 
+    "utterance": "where did derek fisher go to college?", 
+    "id": 370, 
+    "result": [
+      "University of Arkansas at Little Rock"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/saint_nicholas", 
+    "targetValue": "(list (description Bishop))", 
+    "utterance": "what did st. nicholas do in his life?", 
+    "id": 371, 
+    "result": [
+      "Bishop"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robin_williams", 
+    "targetValue": "(list (description \"St. Helena\"))", 
+    "utterance": "where did robin williams get married?", 
+    "id": 372, 
+    "result": [
+      "St. Helena"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/clay_matthews_iii", 
+    "targetValue": "(list (description \"Agoura High School\") (description \"University of Southern California\"))", 
+    "utterance": "where did clay matthews go to school?", 
+    "id": 373, 
+    "result": [
+      "Agoura High School", 
+      "University of Southern California"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/spencer_pratt", 
+    "targetValue": "(list (description \"University of Southern California\"))", 
+    "utterance": "where did spencer pratt go to school?", 
+    "id": 374, 
+    "result": [
+      "University of Southern California"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/galileo_galilei", 
+    "targetValue": "(list (description Astronomer))", 
+    "utterance": "what did galileo do to become famous?", 
+    "id": 375, 
+    "result": [
+      "Astronomer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/richard_nixon", 
+    "targetValue": "(list (description Richard))", 
+    "utterance": "what is president nixon's first name?", 
+    "id": 376, 
+    "result": [
+      "Richard"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_stockton", 
+    "targetValue": "(list (description \"Gonzaga University\"))", 
+    "utterance": "what college did john stockton go to?", 
+    "id": 377, 
+    "result": [
+      "Gonzaga University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/eowyn", 
+    "targetValue": "(list (description \"Miranda Otto\"))", 
+    "utterance": "who plays eowyn in lord of the rings?", 
+    "id": 378, 
+    "result": [
+      "Miranda Otto"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bristol_palin", 
+    "targetValue": "(list (description \"Wasilla High School\") (description \"West Anchorage High School\") (description \"Juneau-Douglas High School\"))", 
+    "utterance": "where did bristol palin go to school?", 
+    "id": 379, 
+    "result": [
+      "Wasilla High School", 
+      "West Anchorage High School", 
+      "Juneau-Douglas High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nick_cannon", 
+    "targetValue": "(list (description \"A Very School Gyrls Holla-Day\") (description Bobby) (description \"Day of the Dead\") (description \"Even Money\") (description \"Goal II: Living the Dream\") (description \"American Son\") (description Weapons) (description \"Ball Don't Lie\") (description \"The Killing Room\") (description \"Monster House\"))", 
+    "utterance": "what movies does nick cannon play in?", 
+    "id": 380, 
+    "result": [
+      "A Very School Gyrls Holla-Day", 
+      "Bobby", 
+      "Day of the Dead", 
+      "Even Money", 
+      "Goal II: Living the Dream", 
+      "American Son", 
+      "Weapons", 
+      "Ball Don't Lie", 
+      "The Killing Room", 
+      "Monster House"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/navajo_people", 
+    "targetValue": "(list (description \"Spanish Language\") (description \"Navajo Language\") (description \"English Language\"))", 
+    "utterance": "what language do navajo people speak?", 
+    "id": 381, 
+    "result": [
+      "Spanish Language", 
+      "Navajo Language", 
+      "English Language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/toussaint_louverture", 
+    "targetValue": "(list (description Haiti))", 
+    "utterance": "where was toussaint l'ouverture born?", 
+    "id": 382, 
+    "result": [
+      "Haiti"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ella_fitzgerald", 
+    "targetValue": "(list (description \"William Fitzgerald\") (description \"Temperance \"Tempie\" Fitzgerald\"))", 
+    "utterance": "what is ella fitzgerald parents name?", 
+    "id": 383, 
+    "result": [
+      "William Fitzgerald", 
+      "Temperance Tempie Fitzgerald"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jovan_belcher", 
+    "targetValue": "(list (description \"Kansas City\"))", 
+    "utterance": "where did jovan belcher kill himself?", 
+    "id": 384, 
+    "result": [
+      "Kansas City"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/nike_inc", 
+    "targetValue": "(list (description \"United States of America\"))", 
+    "utterance": "which country did nike originate from?", 
+    "id": 385, 
+    "result": [
+      "United States of America"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/wal-mart", 
+    "targetValue": "(list (description \"Department Stores\") (description Retail) (description \"Variety Stores\"))", 
+    "utterance": "what industry does walmart operate in?", 
+    "id": 386, 
+    "result": [
+      "Department Stores", 
+      "Retail", 
+      "Variety Stores"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/adolf_hitler", 
+    "targetValue": "(list (description Catholicism) (description Christianity))", 
+    "utterance": "what religion did adolf hitler follow?", 
+    "id": 387, 
+    "result": [
+      "Catholicism", 
+      "Christianity"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_michael", 
+    "targetValue": "(list (description \"Bushey Meads School\"))", 
+    "utterance": "where did george michael go to school?", 
+    "id": 388, 
+    "result": [
+      "Bushey Meads School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/herbert_hoover", 
+    "targetValue": "(list (description 8/10/1874))", 
+    "utterance": "when was herbert hoover born and died?", 
+    "id": 389, 
+    "result": [
+      "8/10/1874"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bilbo_baggins", 
+    "targetValue": "(list (description \"Norman Bird\") (description \"Martin Freeman\") (description \"Ian Holm\"))", 
+    "utterance": "who played bilbo in lord of the rings?", 
+    "id": 390, 
+    "result": [
+      "Norman Bird", 
+      "Martin Freeman", 
+      "Ian Holm"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jordan", 
+    "targetValue": "(list (description \"University of North Carolina at Chapel Hill\") (description \"Emsley A. Laney High School\"))", 
+    "utterance": "what school did michael jordan attend?", 
+    "id": 391, 
+    "result": [
+      "University of North Carolina at Chapel Hill", 
+      "Emsley A. Laney High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/logan_lerman", 
+    "targetValue": "(list (description \"The Only Living Boy in New York\") (description \"Stuck in Love\") (description \"The Perks of Being a Wallflower\") (description \"The Three Musketeers\") (description \"The Butterfly Effect\") (description \"The Number 23\") (description \"The Patriot\") (description \"The Scribe\") (description \"Riding in Cars with Boys\") (description \"What Women Want\"))", 
+    "utterance": "what movies does logan lerman play in?", 
+    "id": 392, 
+    "result": [
+      "The Only Living Boy in New York", 
+      "Stuck in Love", 
+      "The Perks of Being a Wallflower", 
+      "The Three Musketeers", 
+      "The Butterfly Effect", 
+      "The Number 23", 
+      "The Patriot", 
+      "The Scribe", 
+      "Riding in Cars with Boys", 
+      "What Women Want"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/harry_s_truman", 
+    "targetValue": "(list (description \"University of Missouri\u2013Kansas City School of Law\") (description \"University of Missouri\u2013Kansas City\") (description \"William Chrisman High School\"))", 
+    "utterance": "where did harry s truman go to school?", 
+    "id": 393, 
+    "result": [
+      "University of Missouri\u2013Kansas City School of Law", 
+      "University of Missouri\u2013Kansas City", 
+      "William Chrisman High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/selena_gomez", 
+    "targetValue": "(list (description Mexicans))", 
+    "utterance": "what kind of hispanic is selena gomez?", 
+    "id": 394, 
+    "result": [
+      "Mexicans"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/colorado_technical_university", 
+    "targetValue": "(list (description \"Career Education Corporation\"))", 
+    "utterance": "what is colorado technical university?", 
+    "id": 395, 
+    "result": [
+      "Career Education Corporation"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/seneca_nation", 
+    "targetValue": "(list (description \"New York\"))", 
+    "utterance": "where were the seneca indians located?", 
+    "id": 396, 
+    "result": [
+      "New York"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michelle_pfeiffer", 
+    "targetValue": "(list (description \"Orange County\"))", 
+    "utterance": "where does michelle pfeiffer live now?", 
+    "id": 397, 
+    "result": [
+      "Orange County"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jacqueline_kennedy_onassis", 
+    "targetValue": "(list (description Lymphoma))", 
+    "utterance": "what cancer did jackie kennedy die of?", 
+    "id": 398, 
+    "result": [
+      "Lymphoma"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/coretta_scott_king", 
+    "targetValue": "(list (description \"Respiratory failure\"))", 
+    "utterance": "what did coretta scott king died from?", 
+    "id": 399, 
+    "result": [
+      "Respiratory failure"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jackson", 
+    "targetValue": "(list (description Gary))", 
+    "utterance": "what city was michael jackson born in?", 
+    "id": 400, 
+    "result": [
+      "Gary"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/national_rifle_association", 
+    "targetValue": "(list (description Fairfax))", 
+    "utterance": "where is the nra headquarters located?", 
+    "id": 401, 
+    "result": [
+      "Fairfax"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/gerard_butler", 
+    "targetValue": "(list (description Attila) (description \"Beowulf & Grendel\") (description 300) (description \"Dear Frankie\") (description \"Butterfly on a Wheel\") (description Gamer) (description \"Fast Food\") (description \"Dracula 2000\") (description Coriolanus))", 
+    "utterance": "what movies gerard butler has been in?", 
+    "id": 402, 
+    "result": [
+      "Attila", 
+      "Beowulf & Grendel", 
+      "300", 
+      "Dear Frankie", 
+      "Butterfly on a Wheel", 
+      "Gamer", 
+      "Fast Food", 
+      "Dracula 2000", 
+      "Coriolanus"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/rob_kardashian", 
+    "targetValue": "(list (description \"University of Southern California\") (description \"Marshall School of Business\"))", 
+    "utterance": "where did rob kardashian go to school?", 
+    "id": 403, 
+    "result": [
+      "University of Southern California", 
+      "Marshall School of Business"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_terry", 
+    "targetValue": "(list (description \"Georgie John Terry\") (description \"Summer Rose Terry\"))", 
+    "utterance": "what are john terry's children called?", 
+    "id": 404, 
+    "result": [
+      "Georgie John Terry", 
+      "Summer Rose Terry"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/francisco_vasquez_de_coronado", 
+    "targetValue": "(list (description Salamanca))", 
+    "utterance": "where did francisco coronado come from?", 
+    "id": 405, 
+    "result": [
+      "Salamanca"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/carmen_electra", 
+    "targetValue": "(list (description \"The Mating Habits of the Earthbound Human\") (description \"Scary Movie\") (description \"Getting Played\") (description \"Cheaper by the Dozen 2\") (description \"Meet the Spartans\") (description \"I Want Candy\") (description \"Full of It\") (description \"The Chosen One: Legend of the Raven\") (description \"Scary Movie 4\") (description \"Dirty Love\"))", 
+    "utterance": "what movies has carmen electra been in?", 
+    "id": 406, 
+    "result": [
+      "The Mating Habits of the Earthbound Human", 
+      "Scary Movie", 
+      "Getting Played", 
+      "Cheaper by the Dozen 2", 
+      "Meet the Spartans", 
+      "I Want Candy", 
+      "Full of It", 
+      "The Chosen One: Legend of the Raven", 
+      "Scary Movie 4", 
+      "Dirty Love"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/amy_stiller", 
+    "targetValue": "(list (description \"Keno Waitress\"))", 
+    "utterance": "who does amy stiller play in dodgeball?", 
+    "id": 407, 
+    "result": [
+      "Keno Waitress"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/william_morris", 
+    "targetValue": "(list (description \"Marlborough College\") (description \"Exeter College, Oxford\") (description \"University of Oxford\"))", 
+    "utterance": "where did william morris go to college?", 
+    "id": 408, 
+    "result": [
+      "Marlborough College", 
+      "Exeter College, Oxford", 
+      "University of Oxford"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tutankhamun", 
+    "targetValue": "(list (description \"Ancient Egypt\"))", 
+    "utterance": "what country was king tut's tomb found?", 
+    "id": 409, 
+    "result": [
+      "Ancient Egypt"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_e_lee", 
+    "targetValue": "(list (description Pneumonia))", 
+    "utterance": "what did general robert e lee die from?", 
+    "id": 410, 
+    "result": [
+      "Pneumonia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bad_teacher", 
+    "targetValue": "(list (description \"Lucy Punch\"))", 
+    "utterance": "who played amy squirrel in bad teacher?", 
+    "id": 411, 
+    "result": [
+      "Lucy Punch"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/african_union", 
+    "targetValue": "(list (description \"Addis Ababa\"))", 
+    "utterance": "where is the seat of the african union?", 
+    "id": 412, 
+    "result": [
+      "Addis Ababa"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_steinbeck", 
+    "targetValue": "(list (description \"Stanford University\"))", 
+    "utterance": "where did john steinbeck go to college?", 
+    "id": 413, 
+    "result": [
+      "Stanford University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/emily_osment", 
+    "targetValue": "(list (description \"Flintridge Preparatory School\"))", 
+    "utterance": "what highschool did emily osment go to?", 
+    "id": 414, 
+    "result": [
+      "Flintridge Preparatory School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/berkshire_hathaway", 
+    "targetValue": "(list (description \"MOODY'S CORP Common Stock\") (description \"BURLINGTON NORTHERN SANTA FE Common Stock\"))", 
+    "utterance": "what is berkshire hathaway invested in?", 
+    "id": 415, 
+    "result": [
+      "MOODY'S CORP Common Stock", 
+      "BURLINGTON NORTHERN SANTA FE Common Stock"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martin_luther_king_jr", 
+    "targetValue": "(list (description \"Assassination by firearm\"))", 
+    "utterance": "who killed martin luther king jr video?", 
+    "id": 416, 
+    "result": [
+      "Assassination by firearm"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jackson", 
+    "targetValue": "(list (description \"United States of America\"))", 
+    "utterance": "which country was michael jackson born?", 
+    "id": 417, 
+    "result": [
+      "United States of America"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mark_zuckerberg", 
+    "targetValue": "(list (description \"Mercy College\") (description \"Phillips Exeter Academy\") (description \"Harvard University\") (description \"Ardsley High School\"))", 
+    "utterance": "what school did mark zuckerberg attend?", 
+    "id": 418, 
+    "result": [
+      "Mercy College", 
+      "Phillips Exeter Academy", 
+      "Harvard University", 
+      "Ardsley High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bosnians", 
+    "targetValue": "(list (description \"Bosnian language\"))", 
+    "utterance": "what language do bosnian muslims speak?", 
+    "id": 419, 
+    "result": [
+      "Bosnian language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/justin_bieber", 
+    "targetValue": "(list (description London))", 
+    "utterance": "what town did justin bieber grew up in?", 
+    "id": 420, 
+    "result": [
+      "London"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mila_kunis", 
+    "targetValue": "(list (description \"Meg Griffin\"))", 
+    "utterance": "who does mila kunis play on family guy?", 
+    "id": 421, 
+    "result": [
+      "Meg Griffin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_pattinson", 
+    "targetValue": "(list (description Eclipse) (description \"Dark Kingdom: The Dragon King\") (description \"New Moon\") (description \"Remember Me\") (description \"How to Be\") (description \"Harry Potter and the Order of the Phoenix\") (description \"Little Ashes\") (description \"Bel Ami\") (description Twilight) (description \"The Twilight Saga: Breaking Dawn - Part 1\"))", 
+    "utterance": "what new movies is robert pattinson in?", 
+    "id": 422, 
+    "result": [
+      "Eclipse", 
+      "Dark Kingdom: The Dragon King", 
+      "New Moon", 
+      "Remember Me", 
+      "How to Be", 
+      "Harry Potter and the Order of the Phoenix", 
+      "Little Ashes", 
+      "Bel Ami", 
+      "Twilight", 
+      "The Twilight Saga: Breaking Dawn - Part 1"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/fredrik_ljungberg", 
+    "targetValue": "(list (description Sweden))", 
+    "utterance": "where does freddie ljungberg come from?", 
+    "id": 423, 
+    "result": [
+      "Sweden"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_f_kennedy", 
+    "targetValue": "(list (description \"Bates College\") (description \"Milton Academy\") (description \"University of Virginia School of Law\") (description \"University of Virginia\") (description \"Harvard University\") (description \"Harvard College\"))", 
+    "utterance": "what school did robert f kennedy go to?", 
+    "id": 424, 
+    "result": [
+      "Bates College", 
+      "Milton Academy", 
+      "University of Virginia School of Law", 
+      "University of Virginia", 
+      "Harvard University", 
+      "Harvard College"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/morgan_freeman", 
+    "targetValue": "(list (description \"10 Items or Less\") (description \"Batman Begins\") (description \"All About Us\") (description \"A Raisin in the Sun\") (description \"Bruce Almighty\") (description Amistad) (description Brubaker) (description \"An Unfinished Life\") (description \"A Man Called Adam\") (description \"Along Came a Spider\"))", 
+    "utterance": "what movies did morgan freeman star in?", 
+    "id": 425, 
+    "result": [
+      "10 Items or Less", 
+      "Batman Begins", 
+      "All About Us", 
+      "A Raisin in the Sun", 
+      "Bruce Almighty", 
+      "Amistad", 
+      "Brubaker", 
+      "An Unfinished Life", 
+      "A Man Called Adam", 
+      "Along Came a Spider"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/barack_obama", 
+    "targetValue": "(list (description Honolulu))", 
+    "utterance": "where was barack hussein obama sr born?", 
+    "id": 426, 
+    "result": [
+      "Honolulu"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martin_luther_king_jr", 
+    "targetValue": "(list (description \"Martin Luther King, Jr., National Historic Site\"))", 
+    "utterance": "where was martin luther king jr buried?", 
+    "id": 427, 
+    "result": [
+      "Martin Luther King, Jr., National Historic Site"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/eva_peron", 
+    "targetValue": "(list (description \"Cervical cancer\"))", 
+    "utterance": "what type of cancer did eva peron have?", 
+    "id": 428, 
+    "result": [
+      "Cervical cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/whitney_houston", 
+    "targetValue": "(list (description \"Cocaine overdose\"))", 
+    "utterance": "what type of drugs did whitney houston?", 
+    "id": 429, 
+    "result": [
+      "Cocaine overdose"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/gregor_mendel", 
+    "targetValue": "(list (description Brno) (description \"Austrian Silesia\"))", 
+    "utterance": "what country did gregor mendel live in?", 
+    "id": 430, 
+    "result": [
+      "Brno", 
+      "Austrian Silesia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/yale_university", 
+    "targetValue": "(list (description Connecticut))", 
+    "utterance": "what city and state is yale located in?", 
+    "id": 431, 
+    "result": [
+      "Connecticut"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martin_luther_king_jr", 
+    "targetValue": "(list (description Atlanta))", 
+    "utterance": "where was martin luther king jr raised?", 
+    "id": 432, 
+    "result": [
+      "Atlanta"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/anders_celsius", 
+    "targetValue": "(list (description \"Uppsala University\"))", 
+    "utterance": "what schools did anders celsius attend?", 
+    "id": 433, 
+    "result": [
+      "Uppsala University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/william_shakespeare", 
+    "targetValue": "(list (description Poet) (description Playwright) (description Dramatist) (description Lyricist) (description Author))", 
+    "utterance": "what did shakespeare become famous for?", 
+    "id": 434, 
+    "result": [
+      "Poet", 
+      "Playwright", 
+      "Dramatist", 
+      "Lyricist", 
+      "Author"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_wilson_1981", 
+    "targetValue": "(list (description \"American football player\"))", 
+    "utterance": "what does george wilson do for a living?", 
+    "id": 435, 
+    "result": [
+      "American football player"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/desmond_tutu", 
+    "targetValue": "(list (description \"South Africa\"))", 
+    "utterance": "where does archbishop desmond tutu live?", 
+    "id": 436, 
+    "result": [
+      "South Africa"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/isaac_newton", 
+    "targetValue": "(list (description Mathematician) (description Physicist) (description Philosopher) (description Astronomer) (description Scientist) (description Chemist))", 
+    "utterance": "who was isaac newton and what did he do?", 
+    "id": 437, 
+    "result": [
+      "Mathematician", 
+      "Physicist", 
+      "Philosopher", 
+      "Astronomer", 
+      "Scientist", 
+      "Chemist"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jennifer_lawrence", 
+    "targetValue": "(list (description Mystique))", 
+    "utterance": "who did jennifer lawrence play in x men?", 
+    "id": 438, 
+    "result": [
+      "Mystique"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/maasai", 
+    "targetValue": "(list (description \"Maasai Language\"))", 
+    "utterance": "what language do the maasai tribe speak?", 
+    "id": 439, 
+    "result": [
+      "Maasai Language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michelle_obama", 
+    "targetValue": "(list (description \"Harvard Law School\") (description \"Whitney M. Young Magnet High School\") (description \"Princeton University\"))", 
+    "utterance": "where did michelle obama graduated from?", 
+    "id": 440, 
+    "result": [
+      "Harvard Law School", 
+      "Whitney M. Young Magnet High School", 
+      "Princeton University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/isaac_newton", 
+    "targetValue": "(list (description \"The King's School, Grantham\") (description \"Trinity College, Cambridge\"))", 
+    "utterance": "what schools did sir isaac newton go to?", 
+    "id": 441, 
+    "result": [
+      "The King's School, Grantham", 
+      "Trinity College, Cambridge"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/saint_louis_university", 
+    "targetValue": "(list (description Missouri))", 
+    "utterance": "what state is saint louis university in?", 
+    "id": 442, 
+    "result": [
+      "Missouri"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kellan_lutz", 
+    "targetValue": "(list (description \"Mark Rider\"))", 
+    "utterance": "who does kellan lutz play in prom night?", 
+    "id": 443, 
+    "result": [
+      "Mark Rider"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/isaac_newton", 
+    "targetValue": "(list (description \"The King's School, Grantham\") (description \"Trinity College, Cambridge\"))", 
+    "utterance": "what college did sir isaac newton go to?", 
+    "id": 444, 
+    "result": [
+      "The King's School, Grantham", 
+      "Trinity College, Cambridge"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/justin_bieber", 
+    "targetValue": "(list (description Canada))", 
+    "utterance": "which country was justin bieber born in?", 
+    "id": 445, 
+    "result": [
+      "Canada"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jenni_rivera", 
+    "targetValue": "(list (description \"Iturbide, Nuevo Le\u00f3n\"))", 
+    "utterance": "where did they find jenni rivera's body?", 
+    "id": 446, 
+    "result": [
+      "Iturbide, Nuevo Le\u00f3n"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/carrie_ann_inaba", 
+    "targetValue": "(list (description \"Jesse Sloan\"))", 
+    "utterance": "who did carrie ann inaba get engaged to?", 
+    "id": 447, 
+    "result": [
+      "Jesse Sloan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/scottish", 
+    "targetValue": "(list (description Celts) (description Europeans))", 
+    "utterance": "where do scottish people originate from?", 
+    "id": 448, 
+    "result": [
+      "Celts", 
+      "Europeans"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/maya_angelou", 
+    "targetValue": "(list (description \"George Washington High School\"))", 
+    "utterance": "what high school did maya angelou go to?", 
+    "id": 449, 
+    "result": [
+      "George Washington High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_w_bush", 
+    "targetValue": "(list (description \"New Haven\"))", 
+    "utterance": "where did george w bush live as a child?", 
+    "id": 450, 
+    "result": [
+      "New Haven"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/meg_griffin", 
+    "targetValue": "(list (description \"Mila Kunis\"))", 
+    "utterance": "who originally voiced meg on family guy?", 
+    "id": 451, 
+    "result": [
+      "Mila Kunis"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_washington_carver", 
+    "targetValue": "(list (description Diamond))", 
+    "utterance": "where was george washington carver from?", 
+    "id": 452, 
+    "result": [
+      "Diamond"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/gordon_brown", 
+    "targetValue": "(list (description \"University of Edinburgh\"))", 
+    "utterance": "what university did gordon brown attend?", 
+    "id": 453, 
+    "result": [
+      "University of Edinburgh"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/amelia_earhart", 
+    "targetValue": "(list (description Writer) (description Pilot))", 
+    "utterance": "what were amelia earhart's achievements?", 
+    "id": 454, 
+    "result": [
+      "Writer", 
+      "Pilot"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/rafael_nadal", 
+    "targetValue": "(list (description Spain))", 
+    "utterance": "what country does rafael nadal play for?", 
+    "id": 455, 
+    "result": [
+      "Spain"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/josh_hutcherson", 
+    "targetValue": "(list (description \"The Hunger Games\") (description \"Bridge to Terabithia\") (description \"The Kids Are All Right\"))", 
+    "utterance": "what other movies is josh hutcherson in?", 
+    "id": 456, 
+    "result": [
+      "The Hunger Games", 
+      "Bridge to Terabithia", 
+      "The Kids Are All Right"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_carter_of_mars", 
+    "targetValue": "(list (description \"Adventure film\") (description \"Science Fiction\") (description \"Action film\") (description Fantasy))", 
+    "utterance": "what is the new movie john carter about?", 
+    "id": 457, 
+    "result": [
+      "Adventure film", 
+      "Science Fiction", 
+      "Action film", 
+      "Fantasy"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/margaret_hoover", 
+    "targetValue": "(list (description \"Davidson College\"))", 
+    "utterance": "where did margaret hoover go to college?", 
+    "id": 458, 
+    "result": [
+      "Davidson College"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/magic_johnson", 
+    "targetValue": "(list (description \"Michigan State University\"))", 
+    "utterance": "what college did magic johnson play for?", 
+    "id": 459, 
+    "result": [
+      "Michigan State University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/douglas_macarthur", 
+    "targetValue": "(list (description \"TMI \u2014 The Episcopal School of Texas\"))", 
+    "utterance": "what school did douglas macarthur go to?", 
+    "id": 460, 
+    "result": [
+      "TMI \u2014 The Episcopal School of Texas"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/deion_sanders", 
+    "targetValue": "(list (description \"Florida State University\"))", 
+    "utterance": "what college did deion sanders jr go to?", 
+    "id": 461, 
+    "result": [
+      "Florida State University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_vi_of_the_united_kingdom", 
+    "targetValue": "(list (description \"Queen Elizabeth The Queen Mother\"))", 
+    "utterance": "what is the name of king george vi wife?", 
+    "id": 462, 
+    "result": [
+      "Queen Elizabeth The Queen Mother"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/timon_and_pumbaa", 
+    "targetValue": "(list (description \"Nathan Lane\"))", 
+    "utterance": "who plays timon's voice in the lion king?", 
+    "id": 463, 
+    "result": [
+      "Nathan Lane"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kourtney_kardashian", 
+    "targetValue": "(list (description \"Scott Disick\"))", 
+    "utterance": "what kourtney kardashian boyfriends name?", 
+    "id": 464, 
+    "result": [
+      "Scott Disick"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/google", 
+    "targetValue": "(list (description California))", 
+    "utterance": "where is the main headquarters of google?", 
+    "id": 465, 
+    "result": [
+      "California"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martin_luther_king_jr", 
+    "targetValue": "(list (description Memphis))", 
+    "utterance": "where did martin luther king got shot at?", 
+    "id": 466, 
+    "result": [
+      "Memphis"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/reese_witherspoon", 
+    "targetValue": "(list (description \"Ryan Phillippe\"))", 
+    "utterance": "who did reese witherspoon get married to?", 
+    "id": 467, 
+    "result": [
+      "Ryan Phillippe"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/johnny_depp", 
+    "targetValue": "(list (description \"Victor Van Dort\"))", 
+    "utterance": "who did johnny depp play in corpse bride?", 
+    "id": 468, 
+    "result": [
+      "Victor Van Dort"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/iroquois", 
+    "targetValue": "(list (description Qu\u00e9bec))", 
+    "utterance": "where did the iroquois indians come from?", 
+    "id": 469, 
+    "result": [
+      "Qu\u00e9bec"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/liam_hemsworth", 
+    "targetValue": "(list (description Knowing) (description Triangle) (description \"The Hunger Games\") (description \"The Expendables 2\") (description \"The Last Song\") (description Timeless) (description \"Empire State\") (description \"The Hunger Games: Catching Fire\") (description \"Arabian Nights\") (description \"Love and Honor\"))", 
+    "utterance": "what movies has liam hemsworth played in?", 
+    "id": 470, 
+    "result": [
+      "Knowing", 
+      "Triangle", 
+      "The Hunger Games", 
+      "The Expendables 2", 
+      "The Last Song", 
+      "Timeless", 
+      "Empire State", 
+      "The Hunger Games: Catching Fire", 
+      "Arabian Nights", 
+      "Love and Honor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/germanic_peoples", 
+    "targetValue": "(list (description Icelanders) (description \"Dutch people\") (description Austrians) (description \"Faroese people\") (description Danes) (description \"Flemish people\") (description Frisians) (description Swedes) (description Germans) (description \"English people\"))", 
+    "utterance": "which countries speak germanic languages?", 
+    "id": 471, 
+    "result": [
+      "Icelanders", 
+      "Dutch people", 
+      "Austrians", 
+      "Faroese people", 
+      "Danes", 
+      "Flemish people", 
+      "Frisians", 
+      "Swedes", 
+      "Germans", 
+      "English people"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/buster_posey", 
+    "targetValue": "(list (description Leesburg))", 
+    "utterance": "where did buster posey go to high school?", 
+    "id": 472, 
+    "result": [
+      "Leesburg"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/carl_wilson", 
+    "targetValue": "(list (description \"Lung cancer\"))", 
+    "utterance": "what kind of cancer did carl wilson have?", 
+    "id": 473, 
+    "result": [
+      "Lung cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/barack_obama", 
+    "targetValue": "(list (description \"Columbia University\"))", 
+    "utterance": "what university did obama graduated from?", 
+    "id": 474, 
+    "result": [
+      "Columbia University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/f_scott_fitzgerald", 
+    "targetValue": "(list (description \"Princeton University\"))", 
+    "utterance": "where did scott fitzgerald go to college?", 
+    "id": 475, 
+    "result": [
+      "Princeton University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ben_roethlisberger", 
+    "targetValue": "(list (description \"Miami University\"))", 
+    "utterance": "what school did ben roethlisberger go to?", 
+    "id": 476, 
+    "result": [
+      "Miami University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/listz", 
+    "targetValue": "(list (description Priest) (description Pianist) (description Composer) (description Virtuoso))", 
+    "utterance": "what did franz liszt do to earn a living?", 
+    "id": 477, 
+    "result": [
+      "Priest", 
+      "Pianist", 
+      "Composer", 
+      "Virtuoso"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/laura_ingalls_wilder", 
+    "targetValue": "(list (description Writer) (description Author))", 
+    "utterance": "what was laura ingalls wilder famous for?", 
+    "id": 478, 
+    "result": [
+      "Writer", 
+      "Author"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/benjamin_franklin", 
+    "targetValue": "(list (description \"Deborah Read\"))", 
+    "utterance": "who did benjamin franklin get married to?", 
+    "id": 479, 
+    "result": [
+      "Deborah Read"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mitt_romney", 
+    "targetValue": "(list (description \"Stanford University\") (description \"Cranbrook Schools\") (description \"Harvard Law School\") (description \"Harvard Business School\") (description \"Harvard University\") (description \"Brigham Young University\"))", 
+    "utterance": "what university did romney graduated from?", 
+    "id": 480, 
+    "result": [
+      "Stanford University", 
+      "Cranbrook Schools", 
+      "Harvard Law School", 
+      "Harvard Business School", 
+      "Harvard University", 
+      "Brigham Young University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/patrick_swayze", 
+    "targetValue": "(list (description \"Pancreatic cancer\"))", 
+    "utterance": "what disease did patrick swayze died from?", 
+    "id": 481, 
+    "result": [
+      "Pancreatic cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ferdinand_magellan", 
+    "targetValue": "(list (description Portugal))", 
+    "utterance": "what country sponsored ferdinand magellan?", 
+    "id": 482, 
+    "result": [
+      "Portugal"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sonia_gandhi", 
+    "targetValue": "(list (description \"Priyanka Vadra\"))", 
+    "utterance": "what is the name of sonia gandhi daughter?", 
+    "id": 483, 
+    "result": [
+      "Priyanka Vadra"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tom_hardy", 
+    "targetValue": "(list (description Warrior) (description \"Mad Max: Fury Road\") (description \"Thick as Thieves\") (description Lawless) (description \"This Means War\") (description \"Tinker, Tailor, Soldier, Spy\") (description Bronson) (description \"The Dark Knight Rises\") (description Inception) (description \"Sergeant Slaughter, My Big Brother\"))", 
+    "utterance": "what other movies has tom hardy played in?", 
+    "id": 484, 
+    "result": [
+      "Warrior", 
+      "Mad Max: Fury Road", 
+      "Thick as Thieves", 
+      "Lawless", 
+      "This Means War", 
+      "Tinker, Tailor, Soldier, Spy", 
+      "Bronson", 
+      "The Dark Knight Rises", 
+      "Inception", 
+      "Sergeant Slaughter, My Big Brother"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_f_kennedy", 
+    "targetValue": "(list (description Dallas))", 
+    "utterance": "where was john f kennedy when he got shot?", 
+    "id": 485, 
+    "result": [
+      "Dallas"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_henry_poynting", 
+    "targetValue": "(list (description \"Victoria University of Manchester\") (description \"University of Manchester\") (description \"University of Cambridge\"))", 
+    "utterance": "what school did john henry thompson go to?", 
+    "id": 486, 
+    "result": [
+      "Victoria University of Manchester", 
+      "University of Manchester", 
+      "University of Cambridge"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/larry_hagman", 
+    "targetValue": "(list (description \"Head and neck cancer\") (description Cancer) (description Leukemia))", 
+    "utterance": "what type of cancer did larry hagman have?", 
+    "id": 487, 
+    "result": [
+      "Head and neck cancer", 
+      "Cancer", 
+      "Leukemia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_kardashian", 
+    "targetValue": "(list (description \"University of San Diego\") (description \"University of San Diego School of Law\") (description \"University of Southern California\"))", 
+    "utterance": "where did robert kardashian go to college?", 
+    "id": 488, 
+    "result": [
+      "University of San Diego", 
+      "University of San Diego School of Law", 
+      "University of Southern California"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sioux", 
+    "targetValue": "(list (description \"Sioux language\") (description \"French Language\") (description \"English Language\"))", 
+    "utterance": "what language did the sioux indians speak?", 
+    "id": 489, 
+    "result": [
+      "Sioux language", 
+      "French Language", 
+      "English Language"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ellen_degeneres", 
+    "targetValue": "(list (description \"Beverly Hills\"))", 
+    "utterance": "where is the ellen degenerous show filmed?", 
+    "id": 490, 
+    "result": [
+      "Beverly Hills"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jeff_conaway", 
+    "targetValue": "(list (description \"Kenickie Murdoch\"))", 
+    "utterance": "what part did jeff conaway play in grease?", 
+    "id": 491, 
+    "result": [
+      "Kenickie Murdoch"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jennifer_lawrence", 
+    "targetValue": "(list (description \"The Poker House\") (description \"The Hunger Games\") (description \"Garden Party\") (description \"The Burning Plain\") (description \"Like Crazy\") (description \"Winter\u2019s Bone\") (description \"The Beaver\") (description \"X-Men: First Class\") (description \"Devil You Know\") (description \"House at the End of the Street\"))", 
+    "utterance": "what else has jennifer lawrence played in?", 
+    "id": 492, 
+    "result": [
+      "The Poker House", 
+      "The Hunger Games", 
+      "Garden Party", 
+      "The Burning Plain", 
+      "Like Crazy", 
+      "Winter\u2019s Bone", 
+      "The Beaver", 
+      "X-Men: First Class", 
+      "Devil You Know", 
+      "House at the End of the Street"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/chris_hemsworth", 
+    "targetValue": "(list (description \"Elsa Pataky\"))", 
+    "utterance": "who does chris hemsworth have a baby with?", 
+    "id": 493, 
+    "result": [
+      "Elsa Pataky"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robert_pattinson", 
+    "targetValue": "(list (description Eclipse) (description \"Dark Kingdom: The Dragon King\") (description \"New Moon\") (description \"Remember Me\") (description \"How to Be\") (description \"Harry Potter and the Order of the Phoenix\") (description \"Little Ashes\") (description \"Bel Ami\") (description Twilight) (description \"The Twilight Saga: Breaking Dawn - Part 1\"))", 
+    "utterance": "what movies have robert pattinson in them?", 
+    "id": 494, 
+    "result": [
+      "Eclipse", 
+      "Dark Kingdom: The Dragon King", 
+      "New Moon", 
+      "Remember Me", 
+      "How to Be", 
+      "Harry Potter and the Order of the Phoenix", 
+      "Little Ashes", 
+      "Bel Ami", 
+      "Twilight", 
+      "The Twilight Saga: Breaking Dawn - Part 1"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bruce_lee", 
+    "targetValue": "(list (description \"Cerebral edema\"))", 
+    "utterance": "what was the cause of death for bruce lee?", 
+    "id": 495, 
+    "result": [
+      "Cerebral edema"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mitt_romney", 
+    "targetValue": "(list (description \"Bloomfield Hills\"))", 
+    "utterance": "where did mitt romney's parents come from?", 
+    "id": 496, 
+    "result": [
+      "Bloomfield Hills"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/aaron_rodgers", 
+    "targetValue": "(list (description \"Pleasant Valley High School\"))", 
+    "utterance": "where did aaron rodgers go to high school?", 
+    "id": 497, 
+    "result": [
+      "Pleasant Valley High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/justin_bieber", 
+    "targetValue": "(list (description Canada))", 
+    "utterance": "what country does justin bieber come from?", 
+    "id": 498, 
+    "result": [
+      "Canada"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/darth_vader", 
+    "targetValue": "(list (description \"Jake Lloyd\"))", 
+    "utterance": "who plays anakin skywalker in star wars 1?", 
+    "id": 499, 
+    "result": [
+      "Jake Lloyd"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/robin_hood", 
+    "targetValue": "(list (description \"Kevin Costner\"))", 
+    "utterance": "who plays robin hood in prince of thieves?", 
+    "id": 500, 
+    "result": [
+      "Kevin Costner"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/andrew_carnegie", 
+    "targetValue": "(list (description \"U.S. Steel\"))", 
+    "utterance": "what business did andrew carnegie dominate?", 
+    "id": 501, 
+    "result": [
+      "U.S. Steel"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/rick_santorum", 
+    "targetValue": "(list (description \"Carmel High School\"))", 
+    "utterance": "where did rick santorum attend high school?", 
+    "id": 502, 
+    "result": [
+      "Carmel High School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ryan_gosling", 
+    "targetValue": "(list (description \"The United States of Leland\") (description \"Half Nelson\") (description \"The Slaughter Rule\") (description Stay) (description \"Lars and the Real Girl\") (description \"The Believer\") (description Fracture) (description \"Murder by Numbers\") (description \"The Notebook\") (description \"All Good Things\"))", 
+    "utterance": "what other movies has ryan gosling been in?", 
+    "id": 503, 
+    "result": [
+      "The United States of Leland", 
+      "Half Nelson", 
+      "The Slaughter Rule", 
+      "Stay", 
+      "Lars and the Real Girl", 
+      "The Believer", 
+      "Fracture", 
+      "Murder by Numbers", 
+      "The Notebook", 
+      "All Good Things"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/charles_darwin", 
+    "targetValue": "(list (description \"Downe, Kent\") (description England) (description London) (description Shrewsbury))", 
+    "utterance": "where did charles darwin and his wife live?", 
+    "id": 504, 
+    "result": [
+      "Downe, Kent", 
+      "England", 
+      "London", 
+      "Shrewsbury"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jesus", 
+    "targetValue": "(list (description \"Church of the Holy Sepulchre\"))", 
+    "utterance": "where was jesus after he died on the cross?", 
+    "id": 505, 
+    "result": [
+      "Church of the Holy Sepulchre"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/henry_viii_of_england", 
+    "targetValue": "(list (description \"Catherine of Aragon\"))", 
+    "utterance": "what was the name of henry viii first wife?", 
+    "id": 506, 
+    "result": [
+      "Catherine of Aragon"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/stephen_hawking", 
+    "targetValue": "(list (description Author) (description Mathematician) (description Professor) (description Writer) (description Cosmologist) (description Physicist) (description Actor) (description Astronomer) (description Scientist) (description \"Science writer\"))", 
+    "utterance": "what did stephen hawking become famous for?", 
+    "id": 507, 
+    "result": [
+      "Author", 
+      "Mathematician", 
+      "Professor", 
+      "Writer", 
+      "Cosmologist", 
+      "Physicist", 
+      "Actor", 
+      "Astronomer", 
+      "Scientist", 
+      "Science writer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/benjamin_franklin", 
+    "targetValue": "(list (description \"Boston Latin School\"))", 
+    "utterance": "where did benjamin franklin went to school?", 
+    "id": 508, 
+    "result": [
+      "Boston Latin School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ibrahim", 
+    "targetValue": "(list (description Canaan))", 
+    "utterance": "where did abraham and his descendants live?", 
+    "id": 509, 
+    "result": [
+      "Canaan"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/eva_peron", 
+    "targetValue": "(list (description \"Cervical cancer\"))", 
+    "utterance": "what type of cancer did eva peron die from?", 
+    "id": 510, 
+    "result": [
+      "Cervical cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/russia", 
+    "targetValue": "(list (description Moscow))", 
+    "utterance": "where do most of the people live in russia?", 
+    "id": 511, 
+    "result": [
+      "Moscow"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_t_kirk", 
+    "targetValue": "(list (description \"William Shatner\"))", 
+    "utterance": "who played captain kirk in star trek movie?", 
+    "id": 512, 
+    "result": [
+      "William Shatner"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bruno_mars", 
+    "targetValue": "(list (description Honolulu))", 
+    "utterance": "how old is bruno mars and where is he from?", 
+    "id": 513, 
+    "result": [
+      "Honolulu"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/tennessee_williams", 
+    "targetValue": "(list (description \"Washington University in St. Louis\") (description \"University of Missouri\u2013Columbia\") (description \"University of Iowa\") (description \"The New School\"))", 
+    "utterance": "where did tennessee williams go to college?", 
+    "id": 514, 
+    "result": [
+      "Washington University in St. Louis", 
+      "University of Missouri\u2013Columbia", 
+      "University of Iowa", 
+      "The New School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_jones", 
+    "targetValue": "(list (description Saratoga))", 
+    "utterance": "where was country singer george jones born?", 
+    "id": 515, 
+    "result": [
+      "Saratoga"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/gilda_radner", 
+    "targetValue": "(list (description \"Ovarian cancer\"))", 
+    "utterance": "what type of cancer did gilda radner die of?", 
+    "id": 516, 
+    "result": [
+      "Ovarian cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/kitt", 
+    "targetValue": "(list (description \"William Daniels\"))", 
+    "utterance": "who plays the voice of kitt in knight rider?", 
+    "id": 517, 
+    "result": [
+      "William Daniels"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_washington", 
+    "targetValue": "(list (description Surveyor))", 
+    "utterance": "what did george washington do as a teenager?", 
+    "id": 518, 
+    "result": [
+      "Surveyor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/monica_1980", 
+    "targetValue": "(list (description \"Shannon Brown\"))", 
+    "utterance": "what basketball player is married to monica?", 
+    "id": 519, 
+    "result": [
+      "Shannon Brown"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mary_jane_watson", 
+    "targetValue": "(list (description \"Sara Ballantine\") (description \"Kirsten Dunst\"))", 
+    "utterance": "who plays mary jane in the spiderman movies?", 
+    "id": 520, 
+    "result": [
+      "Sara Ballantine", 
+      "Kirsten Dunst"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/ernest_rutherford", 
+    "targetValue": "(list (description \"Trinity College, Cambridge\") (description \"Nelson College\") (description \"University of Canterbury\") (description \"University of Cambridge\") (description \"University of New Zealand\"))", 
+    "utterance": "what school did sir ernest rutherford go to?", 
+    "id": 521, 
+    "result": [
+      "Trinity College, Cambridge", 
+      "Nelson College", 
+      "University of Canterbury", 
+      "University of Cambridge", 
+      "University of New Zealand"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/christopher_plummer", 
+    "targetValue": "(list (description \"The Girl with the Dragon Tattoo\") (description Gandahar) (description \"My Dog Tulip\") (description Up) (description \"The Imaginarium of Dr. Parnassus\") (description Beginners) (description Priest) (description \"Five Good Years\") (description 9) (description \"The Last Station\"))", 
+    "utterance": "what movies did christopher plummer play in?", 
+    "id": 522, 
+    "result": [
+      "The Girl with the Dragon Tattoo", 
+      "Gandahar", 
+      "My Dog Tulip", 
+      "Up", 
+      "The Imaginarium of Dr. Parnassus", 
+      "Beginners", 
+      "Priest", 
+      "Five Good Years", 
+      "9", 
+      "The Last Station"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/theodor_schwann", 
+    "targetValue": "(list (description \"Humboldt University of Berlin\"))", 
+    "utterance": "where did theodor schwann get his education?", 
+    "id": 523, 
+    "result": [
+      "Humboldt University of Berlin"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bank_of_america", 
+    "targetValue": "(list (description Charlotte))", 
+    "utterance": "where is the main branch of bank of america?", 
+    "id": 524, 
+    "result": [
+      "Charlotte"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/sean_connery", 
+    "targetValue": "(list (description \"Sir Billi\"))", 
+    "utterance": "what was the last movie sean connery was in?", 
+    "id": 525, 
+    "result": [
+      "Sir Billi"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jackson", 
+    "targetValue": "(list (description \"Katherine Jackson\") (description \"Joseph Jackson\"))", 
+    "utterance": "who is the mother of prince michael jackson?", 
+    "id": 526, 
+    "result": [
+      "Katherine Jackson", 
+      "Joseph Jackson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/benjamin_franklin", 
+    "targetValue": "(list (description \"Deborah Read\"))", 
+    "utterance": "what was the name of benjamin franklin wife?", 
+    "id": 527, 
+    "result": [
+      "Deborah Read"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jackson", 
+    "targetValue": "(list (description \"Paris-Michael Katherine Jackson\"))", 
+    "utterance": "what are the names of michael jackson's kids?", 
+    "id": 528, 
+    "result": [
+      "Paris-Michael Katherine Jackson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_lucas", 
+    "targetValue": "(list (description \"Film Director\"))", 
+    "utterance": "what role did george lucas play in star wars?", 
+    "id": 529, 
+    "result": [
+      "Film Director"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/huell_howser", 
+    "targetValue": "(list (description \"Prostate cancer\"))", 
+    "utterance": "what was the cause of death for huell howser?", 
+    "id": 530, 
+    "result": [
+      "Prostate cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bank_of_america", 
+    "targetValue": "(list (description Charlotte))", 
+    "utterance": "where is the headquarters of bank of america?", 
+    "id": 531, 
+    "result": [
+      "Charlotte"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martin_luther_king_jr", 
+    "targetValue": "(list (description \"Morehouse College\"))", 
+    "utterance": "what college did martin luther king jr go to?", 
+    "id": 532, 
+    "result": [
+      "Morehouse College"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/winona_ryder", 
+    "targetValue": "(list (description \"Amanda Grayson\"))", 
+    "utterance": "what part did winona ryder play in star trek?", 
+    "id": 533, 
+    "result": [
+      "Amanda Grayson"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/farrah_fawcett", 
+    "targetValue": "(list (description \"Anal cancer\"))", 
+    "utterance": "what kind of cancer did farrah fawcett die of?", 
+    "id": 534, 
+    "result": [
+      "Anal cancer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/stephanie_plum", 
+    "targetValue": "(list (description \"Katherine Heigl\"))", 
+    "utterance": "who plays stephanie plum in one for the money?", 
+    "id": 535, 
+    "result": [
+      "Katherine Heigl"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/laci_peterson", 
+    "targetValue": "(list (description Murder))", 
+    "utterance": "what was the cause of death for laci peterson?", 
+    "id": 536, 
+    "result": [
+      "Murder"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/rudolf_virchow", 
+    "targetValue": "(list (description \"Humboldt University of Berlin\") (description \"University of W\u00fcrzburg\"))", 
+    "utterance": "where did rudolf virchow conduct his research?", 
+    "id": 537, 
+    "result": [
+      "Humboldt University of Berlin", 
+      "University of W\u00fcrzburg"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/jill_clayburgh", 
+    "targetValue": "(list (description \"B-cell chronic lymphocytic leukemia\"))", 
+    "utterance": "what kind of leukemia did jill clayburgh have?", 
+    "id": 538, 
+    "result": [
+      "B-cell chronic lymphocytic leukemia"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/walter_raleigh", 
+    "targetValue": "(list (description Poet) (description Courtier) (description Sailor) (description Writer) (description Soldier))", 
+    "utterance": "who was sir walter raleigh and what did he do?", 
+    "id": 539, 
+    "result": [
+      "Poet", 
+      "Courtier", 
+      "Sailor", 
+      "Writer", 
+      "Soldier"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/charles_lee_ray", 
+    "targetValue": "(list (description \"Brad Dourif\"))", 
+    "utterance": "who does the voice for chucky in child's play?", 
+    "id": 540, 
+    "result": [
+      "Brad Dourif"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/yamaha_motor_company", 
+    "targetValue": "(list (description \"Shizuoka Prefecture\"))", 
+    "utterance": "where are yamaha outboard motors manufactured?", 
+    "id": 541, 
+    "result": [
+      "Shizuoka Prefecture"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/eric_cartman", 
+    "targetValue": "(list (description \"Trey Parker\"))", 
+    "utterance": "who is the voice of eric cartman on south park?", 
+    "id": 542, 
+    "result": [
+      "Trey Parker"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/egyptians", 
+    "targetValue": "(list (description \"Egyptian Arabic\"))", 
+    "utterance": "what was the ancient egyptians spoken language?", 
+    "id": 543, 
+    "result": [
+      "Egyptian Arabic"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/taylor_lautner", 
+    "targetValue": "(list (description \"United States of America\"))", 
+    "utterance": "what nationality is taylor lautner jacob black?", 
+    "id": 544, 
+    "result": [
+      "United States of America"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/bilbo_baggins", 
+    "targetValue": "(list (description \"Ian Holm\"))", 
+    "utterance": "who played bilbo in the fellowship of the ring?", 
+    "id": 545, 
+    "result": [
+      "Ian Holm"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/john_f_kennedy", 
+    "targetValue": "(list (description \"Robert F. Kennedy\") (description \"Ted Kennedy\") (description \"Rosemary Kennedy\") (description \"Kathleen Cavendish\") (description \"Patricia Kennedy Lawford\") (description \"Jean Kennedy Smith\") (description \"Eunice Kennedy Shriver\") (description \"Joseph P. Kennedy, Jr.\"))", 
+    "utterance": "how many kids were there in the kennedy family?", 
+    "id": 546, 
+    "result": [
+      "Robert F. Kennedy", 
+      "Ted Kennedy", 
+      "Rosemary Kennedy", 
+      "Kathleen Cavendish", 
+      "Patricia Kennedy Lawford", 
+      "Jean Kennedy Smith", 
+      "Eunice Kennedy Shriver", 
+      "Joseph P. Kennedy, Jr."
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mark_zuckerberg", 
+    "targetValue": "(list (description \"Phillips Exeter Academy\"))", 
+    "utterance": "what boarding school did mark zuckerberg go to?", 
+    "id": 547, 
+    "result": [
+      "Phillips Exeter Academy"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/anne_frank", 
+    "targetValue": "(list (description \"Bergen-Belsen concentration camp\"))", 
+    "utterance": "what concentration camp did anne frank died in?", 
+    "id": 548, 
+    "result": [
+      "Bergen-Belsen concentration camp"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/drew_brees", 
+    "targetValue": "(list (description \"Purdue University\"))", 
+    "utterance": "where did drew brees go to college wikianswers?", 
+    "id": 549, 
+    "result": [
+      "Purdue University"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/university_of_oregon", 
+    "targetValue": "(list (description Eugene))", 
+    "utterance": "what city is the university of oregon state in?", 
+    "id": 550, 
+    "result": [
+      "Eugene"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/mark_twain", 
+    "targetValue": "(list (description Lecturer) (description Author) (description Writer) (description Journalist) (description Novelist) (description Humorist))", 
+    "utterance": "what is samuel langhorne clemens well known for?", 
+    "id": 551, 
+    "result": [
+      "Lecturer", 
+      "Author", 
+      "Writer", 
+      "Journalist", 
+      "Novelist", 
+      "Humorist"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/harley-davidson", 
+    "targetValue": "(list (description Milwaukee))", 
+    "utterance": "where is harley davidson corporate headquarters?", 
+    "id": 552, 
+    "result": [
+      "Milwaukee"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/donnie_wahlberg", 
+    "targetValue": "(list (description \"Vincent Grey\"))", 
+    "utterance": "who does donnie wahlberg play in the sixth sense?", 
+    "id": 553, 
+    "result": [
+      "Vincent Grey"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/taylor_swift", 
+    "targetValue": "(list (description \"Hannah Montana: The Movie\") (description \"Campfire Stories;Comes Around Gos Around\") (description \"The Lorax\") (description \"Valentine's Day\"))", 
+    "utterance": "what are all the movies taylor swift has been in?", 
+    "id": 554, 
+    "result": [
+      "Hannah Montana: The Movie", 
+      "Campfire Stories;Comes Around Gos Around", 
+      "The Lorax", 
+      "Valentine's Day"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/james_k_polk", 
+    "targetValue": "(list (description Lawyer))", 
+    "utterance": "what did james k polk do before he was president?", 
+    "id": 555, 
+    "result": [
+      "Lawyer"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martin_luther_king_jr", 
+    "targetValue": "(list (description Memphis))", 
+    "utterance": "what town was martin luther king assassinated in?", 
+    "id": 556, 
+    "result": [
+      "Memphis"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_washington_carver", 
+    "targetValue": "(list (description \"Tuskegee University\") (description \"Iowa State University\") (description \"Simpson College\"))", 
+    "utterance": "where did george washington carver go to collage?", 
+    "id": 557, 
+    "result": [
+      "Tuskegee University", 
+      "Iowa State University", 
+      "Simpson College"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jackson", 
+    "targetValue": "(list (description \"Montclair College Preparatory School\"))", 
+    "utterance": "what school did michael jackson go to high school?", 
+    "id": 558, 
+    "result": [
+      "Montclair College Preparatory School"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/united_states", 
+    "targetValue": "(list (description California))", 
+    "utterance": "what is the most populated state in united states?", 
+    "id": 559, 
+    "result": [
+      "California"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/viggo_mortensen", 
+    "targetValue": "(list (description Aragorn))", 
+    "utterance": "who did viggo mortensen play in lord of the rings?", 
+    "id": 560, 
+    "result": [
+      "Aragorn"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/george_h_w_bush", 
+    "targetValue": "(list (description \"Yale University\") (description \"Phillips Academy\") (description \"Davenport College\"))", 
+    "utterance": "where did george herbert walker bush go to college?", 
+    "id": 561, 
+    "result": [
+      "Yale University", 
+      "Phillips Academy", 
+      "Davenport College"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/microsoft", 
+    "targetValue": "(list (description Redmond))", 
+    "utterance": "where was the first microsoft headquarters located?", 
+    "id": 562, 
+    "result": [
+      "Redmond"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/michael_jackson", 
+    "targetValue": "(list (description \"Paris-Michael Katherine Jackson\") (description \"Prince Michael Jackson I\") (description \"Prince Michael Jackson II\"))", 
+    "utterance": "what are the names of michael jackson's 3 children?", 
+    "id": 563, 
+    "result": [
+      "Paris-Michael Katherine Jackson", 
+      "Prince Michael Jackson I", 
+      "Prince Michael Jackson II"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/billy_dee_williams", 
+    "targetValue": "(list (description \"Lando Calrissian\"))", 
+    "utterance": "what character did billy d williams play in star wars?", 
+    "id": 564, 
+    "result": [
+      "Lando Calrissian"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/neil_armstrong", 
+    "targetValue": "(list (description \"That's one small step for man, one giant leap for mankind.\"))", 
+    "utterance": "what did neil armstrong say when he landed on the moon?", 
+    "id": 565, 
+    "result": [
+      "That's one small step for man, one giant leap for mankind."
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/thomas_jefferson", 
+    "targetValue": "(list (description Statesman) (description Author) (description Writer) (description Philosopher) (description Architect) (description Lawyer) (description Farmer) (description Archaeologist) (description Teacher) (description Inventor))", 
+    "utterance": "what did thomas jefferson do before he became president?", 
+    "id": 566, 
+    "result": [
+      "Statesman", 
+      "Author", 
+      "Writer", 
+      "Philosopher", 
+      "Architect", 
+      "Lawyer", 
+      "Farmer", 
+      "Archaeologist", 
+      "Teacher", 
+      "Inventor"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/darth_vader", 
+    "targetValue": "(list (description \"James Earl Jones\"))", 
+    "utterance": "who played darth vader at the end of return of the jedi?", 
+    "id": 567, 
+    "result": [
+      "James Earl Jones"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/darth_vader", 
+    "targetValue": "(list (description \"James Earl Jones\"))", 
+    "utterance": "who voiced darth vader in the original star wars movies?", 
+    "id": 568, 
+    "result": [
+      "James Earl Jones"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/julius_caesar", 
+    "targetValue": "(list (description \"Cornelia Cinna minor\") (description Pompeia) (description \"Calpurnia Pisonis\"))", 
+    "utterance": "with which ancient ruler did julius caesar fall in love?", 
+    "id": 569, 
+    "result": [
+      "Cornelia Cinna minor", 
+      "Pompeia", 
+      "Calpurnia Pisonis"
+    ]
+  }, 
+  {
+    "url": "http://www.freebase.com/view/en/martin_luther_king_jr", 
+    "targetValue": "(list (description \"Boston University\"))", 
+    "utterance": "what school did martin luther king jr received his doctorate degree from?", 
+    "id": 570, 
+    "result": [
+      "Boston University"
+    ]
+  }
+]
