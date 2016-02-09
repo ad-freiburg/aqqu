@@ -13,6 +13,7 @@ import translator
 import random
 import globals
 import numpy as np
+import data
 from random import Random
 from sklearn import utils
 from sklearn import metrics
@@ -33,6 +34,7 @@ from features import FeatureExtractor
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
 from sklearn.cross_validation import KFold
+from sklearn.metrics import classification_report
 
 RANDOM_SHUFFLE = 0.3
 
@@ -246,6 +248,9 @@ class AccuModel(MLModel, Ranker):
             test_fold = [train_queries[i] for i in test]
             train_fold = [train_queries[i] for i in train]
             rel_model = self.learn_rel_score_model(train_fold)
+            rel_model.test_model(test_fold)
+            rel_model.write_examples(train_fold, "train", num_fold)
+            rel_model.write_examples(test_fold, "test", num_fold)
             self.feature_extractor.relation_score_model = rel_model
             logger.info("Applying relation score model.")
             testfoldpair_features, testfoldpair_labels = construct_pair_examples(
@@ -577,6 +582,24 @@ class RelationNgramScorer(MLModel):
             logger.warn("Model file %s could not be loaded." % model_file)
             raise
 
+    def test_model(self, test_queries):
+        logger.info("Scoring on test fold")
+        features, labels = construct_examples(test_queries,
+                                              self.feature_extractor,
+                                              use_score=True)
+        labels = self.label_encoder.transform(labels)
+        X = self.dict_vec.transform(features)
+        X = self.scaler.transform(X)
+        labels_predict = self.model.predict(X)
+        logger.info(classification_report(labels, labels_predict))
+
+    def write_examples(self, queries, name, fold_num):
+        name = "dl_examples_%s_fold_%s.txt" % (name, str(fold_num))
+        logger.info("Writing examples to %s" % name)
+        features, labels = construct_examples(queries,
+                                              self.feature_extractor)
+        write_dl_examples(queries, name)
+
     def learn_model(self, train_queries):
         if self.top_percentile:
             logger.info("Collecting frequent n-gram features...")
@@ -586,7 +609,8 @@ class RelationNgramScorer(MLModel):
             logger.info("Collected %s n-gram features" % len(n_grams_dict))
             self.feature_extractor.ngram_dict = n_grams_dict
         features, labels = construct_examples(train_queries,
-                                              self.feature_extractor)
+                                              self.feature_extractor,
+                                              use_score=True)
         logger.info("#of labeled examples: %s" % len(features))
         logger.info("#labels non-zero: %s" % sum(labels))
         label_encoder = LabelEncoder()
@@ -602,8 +626,7 @@ class RelationNgramScorer(MLModel):
         if self.regularization_C is None:
             logger.info("Performing grid search.")
             relation_scorer = SGDClassifier(loss='log', class_weight='auto',
-                                            n_iter=np.ceil(
-                                                10 ** 6 / len(labels)),
+                                            #n_iter=np.ceil(10 ** 6 / len(labels)),
                                             random_state=999)
             cv_params = [{"alpha": [10.0, 5.0, 2.0, 1.5, 1.0, 0.5,
                                     0.1, 0.01, 0.001, 0.0001]}]
@@ -620,9 +643,8 @@ class RelationNgramScorer(MLModel):
         else:
             logger.info("Learning relation scorer with C: %s."
                         % self.regularization_C)
-            relation_scorer = SGDClassifier(loss='log', class_weight='auto',
-                                            n_iter=np.ceil(
-                                                10 ** 6 / len(labels)),
+            relation_scorer = SGDClassifier(loss='log', class_weight='balanced',
+                                            #n_iter=np.ceil(10 ** 6 / len(labels)),
                                             alpha=self.regularization_C,
                                             random_state=999)
             relation_scorer.fit(X, labels)
@@ -1028,7 +1050,42 @@ def construct_pair_examples(queries, f_extractor):
     return features, labels
 
 
-def construct_examples(queries, f_extractor):
+def write_dl_examples(queries, file_name):
+    from features import get_query_text_tokens
+    rev_rels = data.read_reverse_relations("data/reverse-relations")
+    med_rels = data.read_mediator_relations("data/mediator-relations")
+    no_rev_rels = set()
+    with open(file_name, "w") as f:
+        for query in queries:
+            oracle_position = query.oracle_position
+            candidates = [x.query_candidate for x in query.eval_candidates]
+            for i, candidate in enumerate(candidates):
+                relations = candidate.get_relation_names()
+                correct_directions = []
+                for r in relations:
+                    if r in med_rels:
+                        if r in rev_rels:
+                            correct_directions.append(rev_rels[r])
+                        elif r not in no_rev_rels:
+                            logger.warn("%s has no reverse relation" % r)
+                            no_rev_rels.add(r)
+                            continue
+                        else:
+                            continue
+                    else:
+                        correct_directions.append(r)
+                if not correct_directions:
+                    continue
+                rel = "+".join(sorted(correct_directions))
+                f1 = query.eval_candidates[i].evaluation_result.f1
+                text = " ".join(get_query_text_tokens(candidate))
+                f.write("%d\t%d\t%.2f\t%s\t%s\t%s\n" % (query.id, i,
+                                                        f1, query.utterance,
+                                                        text, rel))
+
+
+
+def construct_examples(queries, f_extractor, use_score=False):
     """Construct training examples from candidates.
 
     Construct a list of examples from the given evaluated queries.
@@ -1045,10 +1102,16 @@ def construct_examples(queries, f_extractor):
         for i, candidate in enumerate(candidates):
             candidate_features = f_extractor.extract_features(candidate)
             features.append(candidate_features)
-            if i + 1 == oracle_position:
-                labels.append(1)
+            if use_score:
+                if query.eval_candidates[i].evaluation_result.f1 > 0.9:
+                    labels.append(1)
+                else:
+                    labels.append(0)
             else:
-                labels.append(0)
+                if i + 1 == oracle_position:
+                    labels.append(1)
+                else:
+                    labels.append(0)
     return features, labels
 
 

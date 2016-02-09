@@ -15,6 +15,7 @@ N_GRAM_STOPWORDS = {'be', 'do', '?', 'the', 'of', 'is', 'are', 'in', 'was',
                     'did', 'does', 'a', 'for', 'have', 'there', 'on', 'has',
                     'to', 'by', 's', 'some', 'were', 'at', 'been', 'do',
                     'and', 'an', 'as'}
+N_GRAM_STOPWORDS = {}
 
 
 def get_n_grams(tokens, n=2):

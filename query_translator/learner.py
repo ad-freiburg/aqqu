@@ -51,7 +51,7 @@ def rank_candidates(query, ranker):
 
 
 def evaluate_scorer_parallel(test_queries, scorer_obj,
-                             num_processes=6):
+                             num_processes=2):
     """Parallel rank the candidates and evaluate the result.
 
     :rtype (EvaluationResult, list[EvaluationQuery])
@@ -230,7 +230,7 @@ def test(scorer_name, test_dataset, cached, avg_runs=1):
         n_runs += 1
         res, test_queries = evaluate_scorer_parallel(queries,
                                                      scorer_obj,
-                                                     num_processes=3)
+                                                     num_processes=2)
         logger.info(res)
         for k, v in res._asdict().iteritems():
             result[k] += v
@@ -277,7 +277,7 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
             num_fold += 1
             res, test_queries = evaluate_scorer_parallel(test_fold,
                                                          scorer_obj,
-                                                         num_processes=6)
+                                                         num_processes=2)
             logger.info(res)
             for k, v in res._asdict().iteritems():
                 result[k] += v
