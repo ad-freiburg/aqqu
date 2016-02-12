@@ -9,7 +9,6 @@ import time
 import datetime
 import tensorflow as tf
 from gensim import models
-from ranker import MLModel
 import features
 
 
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
 
-class DeepCNNAqquRelScorer(MLModel):
+class DeepCNNAqquRelScorer():
 
     UNK = '---UNK---'
 
@@ -30,7 +29,6 @@ class DeepCNNAqquRelScorer(MLModel):
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 40
         self.filter_sizes = [2, 3, 4]
-        self.build_deep_model()
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -38,27 +36,43 @@ class DeepCNNAqquRelScorer(MLModel):
         logger.info("Preparing embeddings matrix")
         gensim_model = models.Word2Vec.load(gensim_model_fname)
         vector_size = gensim_model.vector_size
+        common_words = set()
+        # Find the most frequent words to keep the embeddings small.
+        # TF doesn't work when they are larger than 2GB !?
+        with open("data/google-books-common-words.txt") as f:
+            for line in f:
+                cols = line.strip().split()
+                common_words.add(cols[0].lower())
+                if len(common_words) > 300000:
+                    break
         vocab = {}
         # +1 for UNK +1 for PAD
-        num_words = len(gensim_model.vocab) + 2
+        num_words = len(common_words) + 2
+        logger.info("#words: %d" % num_words)
         vectors = np.zeros(shape=(num_words, vector_size))
         # Vector for UNK, 0 is reserved for PAD
-        vocab[DeepCNNAqquRelScorer.UNK] = num_words - 1
-        vectors[DeepCNNAqquRelScorer.UNK] = np.random.uniform(-0.05, 0.05,
-                                                           vector_size)
+        UNK_ID = num_words - 1
+        vocab[DeepCNNAqquRelScorer.UNK] = UNK_ID
+        vectors[UNK_ID, :] = np.random.uniform(-0.05, 0.05,
+                                               vector_size)
         vector_index = 1
-        for w in gensim_model:
+        for w in gensim_model.vocab:
+            if w not in common_words:
+                continue
             vocab[w] = vector_index
-            vectors[vector_index] = gensim_model[w]
+            vectors[vector_index, :] = gensim_model[w]
             vector_index += 1
         logger.info("Done")
         return vector_size, vocab, vectors
 
-    def learn_model(self, train_queries, num_epochs=10):
+    def learn_model(self, train_queries, num_epochs=2):
         train_batches = self.create_train_batches(train_queries)
-
+        sentence_len = train_batches[0][1].shape[1]
+        rel_width_len = train_batches[0][2].shape[1]
         g = tf.Graph()
         with g.as_default():
+            self.build_deep_model(sentence_len, self.embeddings,
+                                  self.embedding_size, rel_width_len)
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True)
             sess = tf.Session(config=session_conf)
@@ -66,9 +80,9 @@ class DeepCNNAqquRelScorer(MLModel):
                 with sess.as_default():
                     optimizer = tf.train.AdamOptimizer()
                     grads_and_vars = optimizer.compute_gradients(self.loss)
+                    global_step = tf.Variable(0, name="global_step", trainable=False)
                     train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
                     sess.run(tf.initialize_all_variables())
-                    global_step = tf.Variable(0, name="global_step", trainable=False)
 
                     def train_step(x_batch, x_rel_batch, y_batch):
                         """
@@ -80,12 +94,13 @@ class DeepCNNAqquRelScorer(MLModel):
                           self.input_y: y_batch,
                           self.dropout_keep_prob: 0.5
                         }
-                        _, step, summaries, loss, probs = sess.run(
+                        _, step, loss, probs = sess.run(
                             [train_op, global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
-                        print("{}: step {}, loss {:g}".format(time_str, step, loss))
+                        print("{}: step {}, loss {}".format(time_str, step, loss))
                     for n in range(num_epochs):
+                        logger.info("Starting epoch %d" % (n + 1))
                         for y_batch, x_batch, x_rel_batch in train_batches:
                             train_step(x_batch, x_rel_batch, y_batch)
 
@@ -96,15 +111,18 @@ class DeepCNNAqquRelScorer(MLModel):
             batch = []
             oracle_position = query.oracle_position
             candidates = [x.query_candidate for x in query.eval_candidates]
+            has_correct_candidate = False
             for i, candidate in enumerate(candidates):
-                if query.eval_candidates[
-                    i].evaluation_result.f1 >= correct_threshold \
+                if query.eval_candidates[i].evaluation_result.f1 >= correct_threshold \
                         or i + 1 == oracle_position:
                     batch.append((1, candidate))
+                    has_correct_candidate = True
                 else:
                     batch.append((0, candidate))
-            query_batches.append(self.create_batch_features(batch))
-        logger.info("Done.")
+            if has_correct_candidate and len(batch) > 1:
+                batch_features = self.create_batch_features(batch)
+                query_batches.append(batch_features)
+        logger.info("Done. %d batches." % len(query_batches))
         return query_batches
 
     def create_batch_features(self, batch):
@@ -114,7 +132,7 @@ class DeepCNNAqquRelScorer(MLModel):
         num_candidates = len(batch)
         # How much to add left and right.
         pad = max(self.filter_sizes) - 1
-        words = np.zeros(shape=(num_candidates, self.max_query_len + pad),
+        words = np.zeros(shape=(num_candidates, self.max_query_len + 2 * pad),
                          dtype=int)
         rel_features = np.zeros(shape=(num_candidates, 6 * self.embedding_size),
                                 dtype=float)
@@ -178,11 +196,10 @@ class DeepCNNAqquRelScorer(MLModel):
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
                          rel_width, filter_sizes=[2, 3, 4], num_filters=200,
                          n_hidden_nodes_1=200, num_classes=1):
+        logger.info("sentence_len: %s"% sentence_len)
+        logger.info("embedding_size: %s"% embedding_size)
+        logger.info("rel_width: %s"% rel_width)
 
-        self.sentence_len = sentence_len
-        self.embedding_size = embedding_size
-        self.rel_width = rel_width
-        self.embeddings = embeddings.astype('float32')
         self.input_s = tf.placeholder(tf.int32, [None, sentence_len], name="input_s")
         self.input_r = tf.placeholder(tf.float32, [None, rel_width], name="input_r")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
@@ -191,7 +208,7 @@ class DeepCNNAqquRelScorer(MLModel):
 
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
             W = tf.Variable(
-                self.embeddings,
+                embeddings.astype(np.float32),
                 name="W",
                 trainable=False)
             self.embedded_chars = tf.nn.embedding_lookup(W, self.input_s)

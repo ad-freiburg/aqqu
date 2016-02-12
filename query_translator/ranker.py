@@ -35,6 +35,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
 from sklearn.cross_validation import KFold
 from sklearn.metrics import classification_report
+from deep_relscorer import DeepCNNAqquRelScorer
 
 RANDOM_SHUFFLE = 0.3
 
@@ -177,6 +178,7 @@ class AccuModel(MLModel, Ranker):
         self.correct_index = -1
         self.cmp_cache = dict()
         self.relation_scorer = None
+        self.deep_relation_scorer = None
         self.pruner = None
         self.scaler = None
         self.kwargs = kwargs
@@ -219,6 +221,12 @@ class AccuModel(MLModel, Ranker):
         rel_model.learn_model(queries)
         return rel_model
 
+    def learn_deep_rel_score_model(self, queries):
+        rel_model = DeepCNNAqquRelScorer(self.get_model_name(),
+                                         "data/GoogleNews-vectors-negative300.gensim")
+        rel_model.learn_model(queries)
+        return rel_model
+
     def learn_prune_model(self, labels, features):
         prune_model = CandidatePruner(self.get_model_name(),
                                       self.relation_scorer)
@@ -247,6 +255,7 @@ class AccuModel(MLModel, Ranker):
                 num_fold, n_folds))
             test_fold = [train_queries[i] for i in test]
             train_fold = [train_queries[i] for i in train]
+            deep_rel_model = self.learn_deep_rel_score_model(train_fold)
             rel_model = self.learn_rel_score_model(train_fold)
             rel_model.test_model(test_fold)
             rel_model.write_examples(train_fold, "train", num_fold)
