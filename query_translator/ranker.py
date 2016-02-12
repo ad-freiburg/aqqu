@@ -201,7 +201,11 @@ class AccuModel(MLModel, Ranker):
                                                   self.rel_regularization_C,
                                                   percentile=self.top_ngram_percentile)
             relation_scorer.load_model()
+            deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(),
+                                                 "data/GoogleNews-vectors-negative300.gensim")
+            deep_relation_scorer.load_model()
             self.feature_extractor.relation_score_model = relation_scorer
+            self.feature_extractor.deep_relation_score_model = deep_relation_scorer
             pruner = CandidatePruner(self.get_model_name(),
                                      relation_scorer)
             pruner.load_model()
@@ -258,8 +262,8 @@ class AccuModel(MLModel, Ranker):
             deep_rel_model = self.learn_deep_rel_score_model(train_fold)
             rel_model = self.learn_rel_score_model(train_fold)
             rel_model.test_model(test_fold)
-            rel_model.write_examples(train_fold, "train", num_fold)
-            rel_model.write_examples(test_fold, "test", num_fold)
+            #rel_model.write_examples(train_fold, "train", num_fold)
+            #rel_model.write_examples(test_fold, "test", num_fold)
             self.feature_extractor.relation_score_model = rel_model
             self.feature_extractor.deep_relation_score_model = deep_rel_model
             logger.info("Applying relation score model.")
@@ -313,6 +317,7 @@ class AccuModel(MLModel, Ranker):
                      self.dict_vec, self.scaler],
                     self.get_model_filename())
         self.relation_scorer.store_model()
+        self.deep_relation_scorer.store_model()
         self.pruner.store_model()
         logger.info("Done.")
 

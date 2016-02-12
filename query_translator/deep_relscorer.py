@@ -9,7 +9,6 @@ import time
 import datetime
 import tensorflow as tf
 from gensim import models
-from ranker import RankScore
 import features
 
 
@@ -23,13 +22,15 @@ class DeepCNNAqquRelScorer():
     UNK = '---UNK---'
 
     def __init__(self, name, embedding_file):
-        name += "_DeepRelScorer"
+        self.name = name + "_DeepRelScorer"
         [self.embedding_size, self.vocab,
          self.embeddings] = self.extract_vectors(embedding_file)
         self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 40
         self.filter_sizes = [2, 3, 4]
+        self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
+        self.rel_width_len = 6 * self.embedding_size
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -66,25 +67,24 @@ class DeepCNNAqquRelScorer():
         logger.info("Done")
         return vector_size, vocab, vectors
 
-    def learn_model(self, train_queries, num_epochs=2):
+    def learn_model(self, train_queries, num_epochs=10):
         train_batches = self.create_train_batches(train_queries)
-        sentence_len = train_batches[0][1].shape[1]
-        rel_width_len = train_batches[0][2].shape[1]
-        g = tf.Graph()
-        with g.as_default():
-            self.build_deep_model(sentence_len, self.embeddings,
-                                  self.embedding_size, rel_width_len)
+        self.g = tf.Graph()
+        with self.g.as_default():
+            self.build_deep_model(self.sentence_len, self.embeddings,
+                                  self.embedding_size, self.rel_width_len)
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True)
             sess = tf.Session(config=session_conf)
             self.sess = sess
-            with g.device("/gpu:0"):
+            with self.g.device("/gpu:0"):
                 with sess.as_default():
                     optimizer = tf.train.AdamOptimizer()
                     grads_and_vars = optimizer.compute_gradients(self.loss)
                     global_step = tf.Variable(0, name="global_step", trainable=False)
                     train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
                     sess.run(tf.initialize_all_variables())
+                    self.saver = tf.train.Saver()
 
                     def train_step(x_batch, x_rel_batch, y_batch):
                         """
@@ -171,40 +171,52 @@ class DeepCNNAqquRelScorer():
 
     def store_model(self):
         # Store UNK, as well as name of embeddings_source?
-        logger.info("Writing model to %s." % self.get_model_filename())
-        joblib.dump([self.model, self.label_encoder,
-                     self.dict_vec, self.scaler], self.get_model_filename())
+        filename = "data/model-dir/tf/" + self.name + "/"
+        logger.info("Writing model to %s." % filename)
+        #try:
+        #    os.remove(self.name)
+        #except OSError:
+        #    pass
+        if not os.path.exists(filename):
+           os.makedirs(filename)
+        filename += self.name
+        logger.info("Writing model to %s." % filename)
+        self.saver.save(self.sess, filename, global_step=100)
         logger.info("Done.")
 
     def load_model(self):
-        model_file = self.get_model_filename()
-        try:
-            [model, label_enc, dict_vec, scaler] \
-                = joblib.load(model_file)
-            self.model = model
-            self.dict_vec = dict_vec
-            self.scaler = scaler
-            self.label_encoder = label_enc
-            self.correct_index = label_enc.transform([1])[0]
-            logger.info("Loaded scorer model from %s" % model_file)
-        except IOError:
-            logger.warn("Model file %s could not be loaded." % model_file)
-            raise
+        filename = "data/model-dir/tf/" + self.name + "/"
+        logger.info("Loading model from %s." % filename)
+        ckpt = tf.train.get_checkpoint_state(filename)
+        if ckpt and ckpt.model_checkpoint_path:
+            logger.info("Loading model from %s." % filename)
+            self.g = tf.Graph()
+            with self.g.as_default():
+                self.build_deep_model(self.sentence_len, self.embeddings,
+                                      self.embedding_size, self.rel_width_len)
+                saver = tf.train.Saver()
+                session_conf = tf.ConfigProto(
+                    allow_soft_placement=True)
+                sess = tf.Session(config=session_conf)
+                self.sess = sess
+                saver.restore(sess, ckpt.model_checkpoint_path)
+
 
     def score(self, candidate):
-        _, words, rel_features = self.create_batch_features((0, candidate))
+        from ranker import RankScore
+        _, words, rel_features = self.create_batch_features([(0, candidate)])
         feed_dict = {
           self.input_s: words,
           self.input_r: rel_features,
           self.dropout_keep_prob: 1.0
         }
-        with g.device("/gpu:0"):
-            with self.sess.as_default():
-                probs = self.sess.run(
-                    [self.probs],
-                    feed_dict)
-                print(probs)
-        return RankScore(score)
+        with self.g.as_default():
+            with self.g.device("/gpu:0"):
+                with self.sess.as_default():
+                    probs = self.sess.run(
+                        [self.probs],
+                        feed_dict)
+                    return RankScore(probs[0][0][0])
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
                          rel_width, filter_sizes=[2, 3, 4], num_filters=200,

@@ -90,6 +90,7 @@ class FeatureExtractor(object):
         # If this is provided each candidate is scored using this model
         # and the resulting score is added as an extracted feature.
         self.relation_score_model = relation_score_model
+        self.deep_relation_score_model = relation_score_model
         self.entity_features = entity_features
 
     def extract_features(self, candidate):
