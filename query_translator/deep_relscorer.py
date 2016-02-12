@@ -9,6 +9,7 @@ import time
 import datetime
 import tensorflow as tf
 from gensim import models
+from ranker import MLModel
 import features
 
 
@@ -17,55 +18,136 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
 
-class DeepAqquRelScorer(MLModel):
+class DeepCNNAqquRelScorer(MLModel):
+
+    UNK = '---UNK---'
 
     def __init__(self, name, embedding_file):
         name += "_DeepRelScorer"
-        self.embedding_size = self.embeddings.vector_size
-        # Our vector for unknown words
-        self.UNK = np.random.uniform(-0.05, 0.05, self.embedding_size)
-        # Id for UNK.
-        self.UNK_id = len(self.embeddings.vocab)
-        self.embeddings = self.extract_vectors(embedding_file)
+        [self.embedding_size, self.vocab,
+         self.embeddings] = self.extract_vectors(embedding_file)
+        self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
+        # This is the maximum number of tokens in a query we consider.
+        self.max_query_len = 40
+        self.filter_sizes = [2, 3, 4]
+        self.build_deep_model()
 
     def extract_vectors(self, gensim_model_fname):
+        """Extract vectors from gensim model and add UNK/PAD vectors.
+        """
         logger.info("Preparing embeddings matrix")
-        gensim_model = models.Word2Vec.load(model_fname)
+        gensim_model = models.Word2Vec.load(gensim_model_fname)
+        vector_size = gensim_model.vector_size
         vocab = {}
         # +1 for UNK +1 for PAD
         num_words = len(gensim_model.vocab) + 2
-        embedding_size = gensim_model.vector_size
-        vectors = np.zeros(shape=(num_words, self.embedding_size))
-        vector_index = 0
-        for w in self.embeddings:
-            vocab[w] = vocab_index
-            vectors[vector_index] = self.embeddings[w]
+        vectors = np.zeros(shape=(num_words, vector_size))
+        # Vector for UNK, 0 is reserved for PAD
+        vocab[DeepCNNAqquRelScorer.UNK] = num_words - 1
+        vectors[DeepCNNAqquRelScorer.UNK] = np.random.uniform(-0.05, 0.05,
+                                                           vector_size)
+        vector_index = 1
+        for w in gensim_model:
+            vocab[w] = vector_index
+            vectors[vector_index] = gensim_model[w]
             vector_index += 1
+        logger.info("Done")
+        return vector_size, vocab, vectors
 
+    def learn_model(self, train_queries, num_epochs=10):
+        train_batches = self.create_train_batches(train_queries)
 
-    def learn_model(self, train_queries, correct_threshold=1.0):
+        g = tf.Graph()
+        with g.as_default():
+            session_conf = tf.ConfigProto(
+                allow_soft_placement=True)
+            sess = tf.Session(config=session_conf)
+            with g.device("/gpu:0"):
+                with sess.as_default():
+                    optimizer = tf.train.AdamOptimizer()
+                    grads_and_vars = optimizer.compute_gradients(self.loss)
+                    train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
+                    sess.run(tf.initialize_all_variables())
+                    global_step = tf.Variable(0, name="global_step", trainable=False)
+
+                    def train_step(x_batch, x_rel_batch, y_batch):
+                        """
+                        A single training step
+                        """
+                        feed_dict = {
+                          self.input_s: x_batch,
+                          self.input_r: x_rel_batch,
+                          self.input_y: y_batch,
+                          self.dropout_keep_prob: 0.5
+                        }
+                        _, step, summaries, loss, probs = sess.run(
+                            [train_op, global_step, self.loss, self.probs],
+                            feed_dict)
+                        time_str = datetime.datetime.now().isoformat()
+                        print("{}: step {}, loss {:g}".format(time_str, step, loss))
+                    for n in range(num_epochs):
+                        for y_batch, x_batch, x_rel_batch in train_batches:
+                            train_step(x_batch, x_rel_batch, y_batch)
+
+    def create_train_batches(self, train_queries, correct_threshold=1.0):
+        logger.info("Creating train batches.")
         query_batches = []
-        for query in queries:
+        for query in train_queries:
             batch = []
             oracle_position = query.oracle_position
             candidates = [x.query_candidate for x in query.eval_candidates]
             for i, candidate in enumerate(candidates):
-                relation = " ".join(candidate.get_relation_names())
-                if query.eval_candidates[i].evaluation_result.f1 >= correct_threshold \
-                    or i + 1 == oracle_position:
+                if query.eval_candidates[
+                    i].evaluation_result.f1 >= correct_threshold \
+                        or i + 1 == oracle_position:
                     batch.append((1, candidate))
                 else:
                     batch.append((0, candidate))
-            query_batches.append(batch)
+            query_batches.append(self.create_batch_features(batch))
+        logger.info("Done.")
+        return query_batches
 
-    def extract_features_from_candidate(self, candidate):
-        text_tokens = features.get_query_text_tokens(candidate)
-        text_sequence = []
-        # Transform to IDs.
-        for t in text_tokens:
-            if t in self.embeddings:
-                text_sequence.append(self.embeddings.vocab[t].index)
-
+    def create_batch_features(self, batch):
+        # Sort so that first candidate is correct - needed for training.
+        # Ignores that there may be several correct candidates!
+        batch = sorted(batch, key=lambda x: x[0], reverse=True)
+        num_candidates = len(batch)
+        # How much to add left and right.
+        pad = max(self.filter_sizes) - 1
+        words = np.zeros(shape=(num_candidates, self.max_query_len + pad),
+                         dtype=int)
+        rel_features = np.zeros(shape=(num_candidates, 6 * self.embedding_size),
+                                dtype=float)
+        labels = np.zeros(shape=(num_candidates, 1))
+        for i, (label, candidate) in enumerate(batch):
+            text_tokens = features.get_query_text_tokens(candidate)
+            text_sequence = []
+            # Transform to IDs.
+            for t in text_tokens:
+                if t in self.vocab:
+                    text_sequence.append(self.vocab[t])
+                else:
+                    text_sequence.append(self.UNK_ID)
+            if len(text_sequence) > self.max_query_len:
+                logger.warn("Max length exceeded: %s. Truncating" % text_sequence)
+                text_sequence = text_sequence[:self.max_query_len]
+            for j, t in enumerate(text_sequence):
+                words[i, pad + j] = t
+            relations = candidate.get_relation_names()
+            for j, r in enumerate(relations):
+                parts = r.strip().split('.')
+                for k, p in enumerate(parts[-3:]):
+                    rel_vectors = []
+                    for w in p.split('_'):
+                        if w in self.vocab:
+                            rel_vectors.append(self.embeddings[self.vocab[w]])
+                        else:
+                            rel_vectors.append(self.embeddings[self.UNK_ID])
+                    start = (j * 3 + k) * self.embedding_size
+                    end = (j * 3 + k + 1) * self.embedding_size
+                    rel_features[i, start:end] = np.average(rel_vectors)
+            labels[i] = label
+        return labels, words, rel_features
 
     def store_model(self):
         # Store UNK, as well as name of embeddings_source?
@@ -94,10 +176,8 @@ class DeepAqquRelScorer(MLModel):
         return RankScore(score)
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
-                         rel_width,
-                         filter_sizes=[2, 3, 4], num_filters=200,
-                         n_hidden_nodes_1=200,
-                         num_classes=1):
+                         rel_width, filter_sizes=[2, 3, 4], num_filters=200,
+                         n_hidden_nodes_1=200, num_classes=1):
 
         self.sentence_len = sentence_len
         self.embedding_size = embedding_size
@@ -203,251 +283,3 @@ class DeepAqquRelScorer(MLModel):
             losses = tf.maximum(0.0, self.margin + wrong_scores - correct_score)
             self.loss = tf.reduce_sum(r_loss * losses / rank)
             #self.loss = tf.reduce_mean(losses)
-
-
-
-def batch_iter_qid(num_epochs, qids, data):
-    """
-    Generates a batch iterator for a dataset.
-    """
-    # qids are tuples of qid - score
-    qids = [q[0] for q in qids]
-    qids = np.array(qids, dtype='int32')
-    unique_qids = np.unique(qids)
-    num_unique_ids = len(unique_qids)
-    logger.info("Unique qids: %d" % num_unique_ids)
-    # A batch consists of one query
-    for epoch in range(num_epochs):
-        # Shuffle the data at each epoch
-        shuffle_qid_indices = np.random.permutation(np.arange(num_unique_ids))
-        for batch_num in range(num_unique_ids):
-            qid = unique_qids[shuffle_qid_indices[batch_num]]
-            indices = np.argwhere(qids == qid)
-            indices = indices.T[0]
-            result = []
-            for d in data:
-                x = d[indices, :]
-                result.append(x)
-            yield epoch, batch_num, result
-
-
-def batch_iter(batch_size, data):
-    """
-    Generates a batch iterator for a dataset.
-    """
-    data_size = len(data[0])
-    num_batches = math.ceil(data_size/batch_size)
-    # qids are tuples of qid - score
-    for batch_num in range(num_batches):
-        start_index = batch_num * batch_size
-        end_index = min((batch_num + 1) * batch_size, data_size)
-        result = []
-        for d in data:
-            x = d[start_index:end_index, :]
-            result.append(x)
-        yield result
-
-
-def binary_accuracy(probs, y_true):
-    predictions = probs > 0.5
-    correct = y_true == predictions
-    accuracy = np.mean(correct)
-    return accuracy
-
-# for reproducibility
-np.random.seed(133)
-random.seed(133)
-infile = "data/aqqu_fancy_rank.pickle"
-logger.info("Loading data from %s" % infile)
-[X_train, X_rel_train, y_train,
- X_dev, X_rel_dev, y_dev,
- X_test, X_rel_test, y_test,
- vocab_embeddings, vocab, r_vocab,
- q_ids_train,
- q_ids_dev,
- q_ids_test] = joblib.load(
-    infile)
-rel_width = X_rel_train.shape[1]
-max_len = X_train.shape[1]
-n_features = len(vocab) + 2
-embedding_size = vocab_embeddings.shape[1]
-logger.info("Vector dimension: %d" % embedding_size)
-logger.info("Max sequence length: %d" % max_len)
-logger.info("#features: %s" % n_features)
-logger.info("rel_width: %s" % rel_width)
-
-
-y_train = np.reshape(y_train, (y_train.shape[0], 1))
-y_test = np.reshape(y_test, (y_test.shape[0], 1))
-y_dev = np.reshape(y_dev, (y_dev.shape[0], 1))
-
-
-print(y_train.shape)
-print(X_train.shape)
-print(X_rel_train.shape)
-
-print(y_dev.shape)
-print(X_dev.shape)
-print(X_rel_dev.shape)
-
-print(y_test.shape)
-print(X_test.shape)
-print(X_rel_test.shape)
-
-# Parameters
-# ==================================================
-
-# Model Hyperparameters
-tf.flags.DEFINE_string("filter_sizes", "3,4,5", "Comma-separated filter sizes (default: '3,4,5')")
-tf.flags.DEFINE_integer("num_filters", 128, "Number of filters per filter size (default: 128)")
-tf.flags.DEFINE_float("dropout_keep_prob", 0.5, "Dropout keep probability (default: 0.5)")
-
-# Training parameters
-tf.flags.DEFINE_integer("batch_size", 50, "Batch Size (default: 64)")
-tf.flags.DEFINE_integer("num_epochs", 50, "Number of training epochs (default: 200)")
-tf.flags.DEFINE_integer("evaluate_every", 100, "Evaluate model on dev set after this many steps (default: 100)")
-tf.flags.DEFINE_integer("checkpoint_every", 100, "Save model after this many steps (default: 100)")
-# Misc Parameters
-tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
-tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
-
-FLAGS = tf.flags.FLAGS
-FLAGS.batch_size
-FLAGS.embedding_dim = embedding_size
-
-print("\nParameters:")
-for attr, value in sorted(FLAGS.__flags.items()):
-    print("{}={}".format(attr.upper(), value))
-print("")
-
-
-
-# Training
-# ==================================================
-
-g = tf.Graph()
-with g.as_default():
-    session_conf = tf.ConfigProto(
-      allow_soft_placement=FLAGS.allow_soft_placement,
-      log_device_placement=FLAGS.log_device_placement)
-
-    sess = tf.Session(config=session_conf)
-    with g.device("/gpu:0"):
-        with sess.as_default():
-            cnn = AqquCNN(max_len, vocab_embeddings, embedding_size, rel_width)
-            # Define Training procedure
-            global_step = tf.Variable(0, name="global_step", trainable=False)
-            optimizer = tf.train.AdamOptimizer()
-            grads_and_vars = optimizer.compute_gradients(cnn.loss)
-            train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
-
-            # Keep track of gradient values and sparsity (optional)
-            grad_summaries = []
-            for g, v in grads_and_vars:
-                if g is not None:
-                    grad_hist_summary = tf.histogram_summary("{}/grad/hist".format(v.name), g)
-                    sparsity_summary = tf.scalar_summary("{}/grad/sparsity".format(v.name), tf.nn.zero_fraction(g))
-                    grad_summaries.append(grad_hist_summary)
-                    grad_summaries.append(sparsity_summary)
-            grad_summaries_merged = tf.merge_summary(grad_summaries)
-
-            # Output directory for models and summaries
-            timestamp = str(int(time.time()))
-            out_dir = os.path.abspath(os.path.join(os.path.curdir, "runs", timestamp))
-            print("Writing to {}\n".format(out_dir))
-
-            # Summaries for loss and accuracy
-            loss_summary = tf.scalar_summary("loss", cnn.loss)
-            #acc_summary = tf.scalar_summary("accuracy", cnn.accuracy)
-
-            # Train Summaries
-            train_summary_op = tf.merge_summary([loss_summary, grad_summaries_merged])
-            train_summary_dir = os.path.join(out_dir, "summaries", "train")
-            train_summary_writer = tf.train.SummaryWriter(train_summary_dir, sess.graph_def)
-
-            # Dev summaries
-            dev_summary_op = tf.merge_summary([loss_summary])
-            dev_summary_dir = os.path.join(out_dir, "summaries", "dev")
-            dev_summary_writer = tf.train.SummaryWriter(dev_summary_dir, sess.graph_def)
-
-            # Checkpoint directory. Tensorflow assumes this directory already exists so we need to create it
-            checkpoint_dir = os.path.abspath(os.path.join(out_dir, "checkpoints"))
-            checkpoint_prefix = os.path.join(checkpoint_dir, "model")
-            if not os.path.exists(checkpoint_dir):
-                os.makedirs(checkpoint_dir)
-            saver = tf.train.Saver(tf.all_variables())
-
-            # Initialize all variables
-            sess.run(tf.initialize_all_variables())
-
-            def train_step(x_batch, x_rel_batch, y_batch, output_summary=False):
-                """
-                A single training step
-                """
-                feed_dict = {
-                  cnn.input_s: x_batch,
-                  cnn.input_r: x_rel_batch,
-                  cnn.input_y: y_batch,
-                  cnn.dropout_keep_prob: FLAGS.dropout_keep_prob
-                }
-                _, step, summaries, loss, probs = sess.run(
-                    [train_op, global_step, train_summary_op, cnn.loss, cnn.probs],
-                    feed_dict)
-                accuracy = binary_accuracy(probs, y_batch)
-                if output_summary:
-                    time_str = datetime.datetime.now().isoformat()
-                    print("{}: step {}, loss {:g}, acc {:g}".format(time_str, step, loss, accuracy))
-                    #train_summary_writer.add_summary(summaries, step)
-
-            def test_step(x_batch, x_rel_batch, y_batch, qids_batch, writer=None):
-                """
-                Evaluates model on a dev set
-                """
-                batches = batch_iter(1000, [x_batch, x_rel_batch, y_batch])
-                all_probs = []
-                for x_b, x_rel_b, y_b in batches:
-                    feed_dict = {
-                      cnn.input_s: x_b,
-                      cnn.input_r: x_rel_b,
-                      cnn.input_y: y_b,
-                      cnn.dropout_keep_prob: 1.0
-                    }
-                    step, summaries, loss, probs = sess.run(
-                        [global_step, dev_summary_op, cnn.loss, cnn.probs],
-                        feed_dict)
-                    all_probs.append(probs)
-                all_probs = np.vstack(all_probs)
-                accuracy = binary_accuracy(all_probs, y_batch)
-                avg_f1 = evaluate_queries(qids_batch, all_probs, y_batch)
-                time_str = datetime.datetime.now().isoformat()
-                print("{}: step {}, loss {:g}, acc {:g}, avg_f1 {:g}".format(time_str, step,
-                                                                             loss, accuracy, avg_f1))
-                if writer:
-                    writer.add_summary(summaries, step)
-            last_epoch = -1
-            # Generate batches
-            n_train_queries = len(np.unique(q_ids_train))
-            batches = batch_iter_qid(FLAGS.num_epochs, q_ids_train,
-                                     [X_train, X_rel_train, y_train])
-            # Training loop. For each batch...
-            for n_epoch, n_batch, (x_batch, x_rel_batch, y_batch) in batches:
-                output_summary = False
-                if n_batch % 100 == 0:
-                    output_summary = True
-                train_step(x_batch, x_rel_batch, y_batch,
-                           output_summary=output_summary)
-                current_step = tf.train.global_step(sess, global_step)
-                if last_epoch != n_epoch:
-                    logger.info("Epoch %d, batch %d" % (n_epoch, n_batch))
-                    print("\nEvaluation:")
-                    test_step(X_test, X_rel_test, y_test, q_ids_test, writer=dev_summary_writer)
-                    print("\nEvaluation on dev:")
-                    test_step(X_dev, X_rel_dev, y_dev, q_ids_dev, writer=dev_summary_writer)
-                    print("")
-                    last_epoch = n_epoch
-                    path = saver.save(sess, checkpoint_prefix, global_step=current_step)
-                    print("Saved model checkpoint to {}\n".format(path))
-            test_step(X_test, X_rel_test, y_test, writer=dev_summary_writer)
-            print("")
-            last_epoch = n_epoch
-            path = saver.save(sess, checkpoint_prefix, global_step=current_step)
