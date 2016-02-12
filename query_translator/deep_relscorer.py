@@ -9,6 +9,7 @@ import time
 import datetime
 import tensorflow as tf
 from gensim import models
+from ranker import RankScore
 import features
 
 
@@ -76,6 +77,7 @@ class DeepCNNAqquRelScorer():
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True)
             sess = tf.Session(config=session_conf)
+            self.sess = sess
             with g.device("/gpu:0"):
                 with sess.as_default():
                     optimizer = tf.train.AdamOptimizer()
@@ -190,7 +192,18 @@ class DeepCNNAqquRelScorer():
             raise
 
     def score(self, candidate):
-        score = 0.0
+        _, words, rel_features = self.create_batch_features((0, candidate))
+        feed_dict = {
+          self.input_s: words,
+          self.input_r: rel_features,
+          self.dropout_keep_prob: 1.0
+        }
+        with g.device("/gpu:0"):
+            with self.sess.as_default():
+                probs = self.sess.run(
+                    [self.probs],
+                    feed_dict)
+                print(probs)
         return RankScore(score)
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,

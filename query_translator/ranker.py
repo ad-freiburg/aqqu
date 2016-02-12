@@ -261,6 +261,7 @@ class AccuModel(MLModel, Ranker):
             rel_model.write_examples(train_fold, "train", num_fold)
             rel_model.write_examples(test_fold, "test", num_fold)
             self.feature_extractor.relation_score_model = rel_model
+            self.feature_extractor.deep_relation_score_model = deep_rel_model
             logger.info("Applying relation score model.")
             testfoldpair_features, testfoldpair_labels = construct_pair_examples(
                 test_fold,
@@ -276,8 +277,11 @@ class AccuModel(MLModel, Ranker):
             logger.info("Done collecting features for fold.")
         logger.info("Training final relation scorer.")
         rel_model = self.learn_rel_score_model(train_queries)
+        deep_rel_model = self.learn_deep_rel_score_model(train_queries)
         self.feature_extractor.relation_score_model = rel_model
+        self.feature_extractor.deep_relation_score_model = deep_rel_model
         self.relation_scorer = rel_model
+        self.deep_relation_scorer = deep_rel_model
         self.pruner = self.learn_prune_model(labels, features)
         self.learn_ranking_model(pair_features, pair_labels)
 

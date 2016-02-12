@@ -80,6 +80,7 @@ class FeatureExtractor(object):
                  generic_features,
                  n_gram_features,
                  relation_score_model=None,
+                 deep_relation_score_model=None,
                  entity_features=True):
         self.generic_features = generic_features
         self.n_gram_features = n_gram_features
@@ -237,6 +238,9 @@ class FeatureExtractor(object):
         if self.relation_score_model:
             rank_score = self.relation_score_model.score(candidate)
             features['relation_score'] = rank_score.score
+        if self.deep_relation_score_model:
+            rank_score = self.deep_relation_score_model.score(candidate)
+            features['deep_relation_score'] = rank_score.score
         return features
 
     def extract_ngram_features(self, candidate):
