@@ -726,13 +726,15 @@ class RelationNgramScorer(MLModel):
         """
         if not self.model:
             self.load_model()
-        features = self.feature_extractor.extract_features(candidates)
+        features = []
+        for c in candidates:
+            features += self.feature_extractor.extract_features(c)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
-        prob = self.model.predict_proba(X)
+        probs = self.model.predict_proba(X)
         # Prob is an array of n_examples, n_classes
-        score = prob[0][self.correct_index]
-        return [RankScore(score)]
+        scores = probs[:, self.correct_index]
+        return [RankScore(score) for score in scores]
 
 
 class SimpleScoreRanker(Ranker):

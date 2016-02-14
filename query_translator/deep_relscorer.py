@@ -231,7 +231,7 @@ class DeepCNNAqquRelScorer():
         :return:
         """
         from ranker import RankScore
-        _, words, rel_features = self.create_batch_features([(0, candidate)])
+        _, words, rel_features = self.create_batch_features([(0, c) for c in candidates])
         feed_dict = {
           self.input_s: words,
           self.input_r: rel_features,
@@ -243,7 +243,8 @@ class DeepCNNAqquRelScorer():
                     probs = self.sess.run(
                         [self.probs],
                         feed_dict)
-                    return RankScore(probs[0][0][0])
+                    print(probs.shape)
+                    return RankScore(probs[:][0][0])
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
                          rel_width, filter_sizes=[2, 3, 4], num_filters=100,
