@@ -254,7 +254,6 @@ class DeepCNNAqquRelScorer():
                             [self.probs],
                             feed_dict)
                         probs = res[0]
-                        print(probs)
                         # probs is a matrix: n x c (for n examples and c
                         # classes)
                         for i in range(probs.shape[0]):

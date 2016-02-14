@@ -160,7 +160,7 @@ def extract_features(train_queries, feature_extractor):
     :param train_queries:
     :return:
     """
-    features = feature_extractor.feature_extractor.extract_features_multiple(train_queries)
+    features = feature_extractor.extract_features_multiple(train_queries)
     logger.info("Extracting features from candidates.")
     labels = []
     for query in train_queries:
@@ -263,7 +263,8 @@ class AccuModel(MLModel, Ranker):
         labels = []
         # Extract features for each candidate once
         dict_vec = DictVectorizer(sparse=False)
-        labels, features = extract_features(train_queries)
+        labels, features = extract_features(train_queries,
+                                            self.feature_extractor)
         features = dict_vec.fit_transform(features)
         # Compute deep/ngram relation-score based on folds and add
         dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec)
