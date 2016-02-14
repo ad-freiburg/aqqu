@@ -90,7 +90,7 @@ class FeatureExtractor(object):
         # If this is provided each candidate is scored using this model
         # and the resulting score is added as an extracted feature.
         self.relation_score_model = relation_score_model
-        self.deep_relation_score_model = relation_score_model
+        self.deep_relation_score_model = deep_relation_score_model
         self.entity_features = entity_features
 
     def extract_features(self, candidate):
@@ -261,3 +261,22 @@ class FeatureExtractor(object):
             if self.ngram_dict is None or f_name in self.ngram_dict:
                 ngram_features[f_name] = 1
         return ngram_features
+
+    def extract_features_multiple(self, candidates):
+        """Extract features for multiple candidates at once.
+
+        :param candidates:
+        :return:
+        """
+        all_features = []
+        for c in candidates:
+            all_features.append(self.extract_features(c))
+        if self.deep_relation_score_model:
+            deep_rel_scores = self.deep_relation_score_model.score_multiple(candidates)
+            for i, f in enumerate(all_features):
+                f['deep_relation_score'] = deep_rel_scores
+        if self.relation_score_model:
+            rel_scores = self.relation_score_model.score_multiple(candidates)
+            for i, f in enumerate(all_features):
+                f['relation_score'] = rel_scores
+        return all_features

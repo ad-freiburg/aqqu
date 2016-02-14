@@ -106,7 +106,7 @@ class DeepCNNAqquRelScorer():
                         for y_batch, x_batch, x_rel_batch in train_batches:
                             train_step(x_batch, x_rel_batch, y_batch)
 
-    def create_train_batches(self, train_queries, correct_threshold=1.0):
+    def create_train_batches(self, train_queries, correct_threshold=.5):
         logger.info("Creating train batches.")
         query_batches = []
         for query in train_queries:
@@ -203,6 +203,27 @@ class DeepCNNAqquRelScorer():
 
 
     def score(self, candidate):
+        from ranker import RankScore
+        _, words, rel_features = self.create_batch_features([(0, candidate)])
+        feed_dict = {
+          self.input_s: words,
+          self.input_r: rel_features,
+          self.dropout_keep_prob: 1.0
+        }
+        with self.g.as_default():
+            with self.g.device("/gpu:0"):
+                with self.sess.as_default():
+                    probs = self.sess.run(
+                        [self.probs],
+                        feed_dict)
+                    return RankScore(probs[0][0][0])
+
+    def score_multiple(self, candidates):
+        """
+        Return a lis tof scores
+        :param candidates:
+        :return:
+        """
         from ranker import RankScore
         _, words, rel_features = self.create_batch_features([(0, candidate)])
         feed_dict = {

@@ -153,6 +153,16 @@ class MLModel(object):
         pass
 
 
+def extract_features(train_queries):
+    """Extract features from each candidate.
+    Return a matrix of features + a dict vec.
+
+    :param train_queries:
+    :return:
+    """
+    pass
+
+
 class AccuModel(MLModel, Ranker):
     """Performs a pair-wise transform to learn a ranking.
 
@@ -231,54 +241,20 @@ class AccuModel(MLModel, Ranker):
         rel_model.learn_model(queries)
         return rel_model
 
-    def learn_prune_model(self, labels, features):
+    def learn_prune_model(self, labels, features, dict_vec):
         prune_model = CandidatePruner(self.get_model_name(),
                                       self.relation_scorer)
         prune_model.learn_model(labels, features)
         return prune_model
 
     def learn_model(self, train_queries, n_folds=6):
-        # split the training queries into folds
-        # for each fold extract n-gram features (and select best ones)
-        # also extract regular features
-        # learn the relation classifier and score the "test" fold
-        # add the score as feature in the test-fold
-        # collect all test-folds
-        # train the treepair classifier on the collected test-folds
-        # train the relation classifier on the all relation-features
-
-        kf = KFold(len(train_queries), n_folds=n_folds, shuffle=True,
-                   random_state=999)
-        num_fold = 1
-        pair_features = []
-        pair_labels = []
-        features = []
         labels = []
-        for train, test in kf:
-            logger.info("Training relation score model on fold %s/%s" % (
-                num_fold, n_folds))
-            test_fold = [train_queries[i] for i in test]
-            train_fold = [train_queries[i] for i in train]
-            deep_rel_model = self.learn_deep_rel_score_model(train_fold)
-            rel_model = self.learn_rel_score_model(train_fold)
-            rel_model.test_model(test_fold)
-            #rel_model.write_examples(train_fold, "train", num_fold)
-            #rel_model.write_examples(test_fold, "test", num_fold)
-            self.feature_extractor.relation_score_model = rel_model
-            self.feature_extractor.deep_relation_score_model = deep_rel_model
-            logger.info("Applying relation score model.")
-            testfoldpair_features, testfoldpair_labels = construct_pair_examples(
-                test_fold,
-                self.feature_extractor)
-            testfold_features, testfold_labels = construct_examples(
-                test_fold,
-                self.feature_extractor)
-            features.extend(testfold_features)
-            labels.extend(testfold_labels)
-            pair_features.extend(testfoldpair_features)
-            pair_labels.extend(testfoldpair_labels)
-            num_fold += 1
-            logger.info("Done collecting features for fold.")
+        # Extract features for each candidate once
+        dict_vec = DictVectorizer(sparse=False)
+        features = self.feature_extractor.extract_features_multiple(train_queries)
+        features = dict_vec.fit_transform(features)
+        # Compute deep/ngram relation-score based on folds and add
+        dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec)
         logger.info("Training final relation scorer.")
         rel_model = self.learn_rel_score_model(train_queries)
         deep_rel_model = self.learn_deep_rel_score_model(train_queries)
@@ -286,28 +262,30 @@ class AccuModel(MLModel, Ranker):
         self.feature_extractor.deep_relation_score_model = deep_rel_model
         self.relation_scorer = rel_model
         self.deep_relation_scorer = deep_rel_model
-        self.pruner = self.learn_prune_model(labels, features)
-        self.learn_ranking_model(pair_features, pair_labels)
+        # Pass sparse matrix + dict_vec
+        self.pruner = self.learn_prune_model(labels, features, dict_vec)
+        self.learn_ranking_model(train_queries, labels, features, dict_vec)
 
-    def learn_ranking_model(self, features, labels):
+    def learn_ranking_model(self, queries, labels, features, dict_vec):
+        # Construct pair examples from whole, pass sparse matrix + train_queries
+        pair_dict_vec, pair_features, pair_labels = construct_pair_examples(queries,
+                                                                            features)
         logger.info("Training tree classifier for ranking.")
         logger.info("#of labeled examples: %s" % len(features))
         logger.info("#labels non-zero: %s" % sum(labels))
         label_encoder = LabelEncoder()
         logger.info(features[-1])
-        labels = label_encoder.fit_transform(labels)
-        vec = DictVectorizer(sparse=False)
-        X = vec.fit_transform(features)
-        X, labels = utils.shuffle(X, labels, random_state=999)
+        pair_labels = label_encoder.fit_transform(pair_labels)
+        X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
         decision_tree = RandomForestClassifier(class_weight='auto',
                                                random_state=999,
                                                n_jobs=6,
                                                n_estimators=90)
         logger.info("Training random forest...")
-        decision_tree.fit(X, labels)
+        decision_tree.fit(X, pair_labels)
         logger.info("Done.")
         self.model = decision_tree
-        self.dict_vec = vec
+        self.dict_vec = pair_dict_vec
         self.label_encoder = label_encoder
         self.correct_index = label_encoder.transform([1])[0]
 
@@ -419,6 +397,7 @@ class AccuModel(MLModel, Ranker):
         query_candidates = shuffle_candidates(query_candidates, key)
         num_candidates = len(query_candidates)
         logger.debug("Pruning %s candidates" % num_candidates)
+        # Extract features from all candidates and create matrix
         query_candidates = self.prune_candidates(query_candidates, key)
         logger.debug("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
@@ -444,19 +423,56 @@ class AccuModel(MLModel, Ranker):
             remaining = self.pruner.prune_candidates(query_candidates, key)
         return remaining
 
+    def learn_submodel_features(self, train_queries, dict_vec, n_folds=6):
+        """Learn additional models based on folds that appear as additional
+        features in the final ranking model.
+
+        Return a matrix of additional features + the updated provided dict_vec
+
+        :param train_queries:
+        :param dict_vec:
+        :return:
+        """
+        kf = KFold(len(train_queries), n_folds=n_folds, shuffle=True,
+                   random_state=999)
+        num_fold = 1
+        num_features = 2
+        features = np.zeros(shape=(len(train_queries), num_features))
+        for train, test in kf:
+            logger.info("Training relation score model on fold %s/%s" % (
+                num_fold, n_folds))
+            test_fold = [train_queries[i] for i in test]
+            train_fold = [train_queries[i] for i in train]
+            rel_model = self.learn_rel_score_model(train_fold)
+            deep_rel_model = self.learn_deep_rel_score_model(train_fold)
+            rel_scores = rel_model.score_multiple(test_fold)
+            deep_rel_scores = deep_rel_model.score_multiple(test_fold)
+            for i, s in zip(test, range(len(rel_scores))):
+                features[i, 0] = rel_scores[s]
+                features[i, 1] = deep_rel_scores[s]
+            num_fold += 1
+        # TODO: better to create a copy and return changed copy
+        append_feature_to_dictvec(dict_vec, 'relation_score')
+        append_feature_to_dictvec(dict_vec, 'deep_relation_score')
+        return dict_vec, features
+
+def append_feature_to_dictvec(dict_vec, feature_name):
+    max_index = max(dict_vec.vocabulary_.values())
+    dict_vec.vocabulary_[feature_name] = max_index + 1
 
 class CandidatePruner(MLModel):
     """Learns a recall-optimized pruning model."""
 
     def __init__(self,
                  name,
-                 rel_score_model):
+                 rel_score_model,
+                 dict_vec):
         name += self.get_pruner_suffix()
         MLModel.__init__(self, name, None)
         # Note: The model is lazily when needed.
         self.model = None
         self.label_encoder = None
-        self.dict_vec = None
+        self.dict_vec = dict_vec
         self.scaler = None
         # The index of the correct label.
         self.correct_index = -1
@@ -493,8 +509,7 @@ class CandidatePruner(MLModel):
         pos_class_boost = 2.0
         label_encoder = LabelEncoder()
         logger.info(features[-1])
-        vec = DictVectorizer(sparse=False)
-        X = vec.fit_transform(features)
+        X = self.dict_vec.transform(features)
         labels = label_encoder.fit_transform(labels)
         self.label_encoder = label_encoder
         self.scaler = StandardScaler()
@@ -517,7 +532,6 @@ class CandidatePruner(MLModel):
                                                                   pos_label=1))
         logger.info("Classification report:\n"
                     + classification_report(labels, pred))
-        self.dict_vec = vec
         self.label_encoder = label_encoder
         self.print_model()
         logger.info("Done learning prune classifier.")
@@ -703,6 +717,22 @@ class RelationNgramScorer(MLModel):
         # Prob is an array of n_examples, n_classes
         score = prob[0][self.correct_index]
         return RankScore(score)
+
+    def score_multiple(self, candidates):
+        """
+        Return a list of scores.
+        :param candidates:
+        :return:
+        """
+        if not self.model:
+            self.load_model()
+        features = self.feature_extractor.extract_features(candidates)
+        X = self.dict_vec.transform(features)
+        X = self.scaler.transform(X)
+        prob = self.model.predict_proba(X)
+        # Prob is an array of n_examples, n_classes
+        score = prob[0][self.correct_index]
+        return [RankScore(score)]
 
 
 class SimpleScoreRanker(Ranker):
@@ -1022,50 +1052,71 @@ def get_top_chi2_candidate_ngrams(queries, f_extractor, percentile):
     return ngrams_dict
 
 
-def construct_pair_examples(queries, f_extractor):
-    """Construct training examples from candidates using pair-wise transform.
-
-    Construct a list of examples from the given evaluated queries.
-    Returns a list of features and a list of corresponding labels
-    :type queries list[EvaluationQuery]
-    :return:
-    """
-    logger.info("Extracting features from candidates.")
-    labels = []
-    features = []
+def get_compare_indices_for_pairs(queries):
+    compare_indices = []
+    candidate_offset = 0
     for query in queries:
         oracle_position = query.oracle_position
         # Only create pairs for which we "know" a correct solution
         # The oracle answer is the one with highest F1 but not necessarily
         # perfect.
-        correct_cands = set()
+        correct_cands_index = set()
         candidates = [x.query_candidate for x in query.eval_candidates]
-        for i, candidate in enumerate(candidates):
+        for i, _ in enumerate(candidates):
             if i + 1 == oracle_position:
-                correct_cands.add(candidate)
-        if correct_cands:
-            candidates = [x.query_candidate for x in query.eval_candidates]
+                correct_cands_index.add(i)
+        if correct_cands_index:
             n_candidates = len(candidates)
             sample_size = n_candidates / 2
             if sample_size < 200:
                 sample_size = min(200, n_candidates)
-            sample_candidates = random.sample(candidates, sample_size)
-            #sample_candidates = candidates
-            for candidate in sample_candidates:
-                for correct_cand in correct_cands:
-                    if candidate in correct_cands:
+            sample_candidates_index = random.sample(range(n_candidates), sample_size)
+            for sample_candidate_index in sample_candidates_index:
+                for correct_cand_index in correct_cands_index:
+                    if sample_candidate_index in correct_cands_index:
                         continue
-                    correct_cand_features = f_extractor.extract_features(correct_cand)
-                    candidate_features = f_extractor.extract_features(candidate)
-                    diff = feature_diff(correct_cand_features,
-                                        candidate_features)
-                    features.append(diff)
-                    labels.append(1)
-                    diff = feature_diff(candidate_features,
-                                        correct_cand_features)
-                    features.append(diff)
-                    labels.append(0)
-    return features, labels
+                    correct_index = correct_cand_index + candidate_offset
+                    incorrect_index = sample_candidate_index + candidate_offset
+                    compare_indices.append((correct_index, incorrect_index))
+    return compare_indices
+
+
+def construct_pair_examples(queries, features, dict_vec):
+    """Construct training examples from candidates using pair-wise transform.
+
+    :type queries list[EvaluationQuery]
+    :return:
+    """
+    # Create a new matrix of pair examples based on the queries and labels
+    # Append one matrix to the other
+    # Return the matrix + an updated dict_vec
+    logger.info("Extracting ranking features from candidates.")
+    labels = []
+    # A list of tuples of indices where the element at first index is better.
+    compare_indices = get_compare_indices_for_pairs(queries)
+    # Create the feature matrix
+    num_compare_examples = len(compare_indices)
+    num_features = features.shape[1]
+    pos_i = [c[0] for c in compare_indices]
+    neg_i = [c[1] for c in compare_indices]
+    correct = features[pos_i, :] - features[neg_i, :]
+    incorrect = features[neg_i, :]
+    correct_examples = np.hstack([correct - incorrect, correct, incorrect])
+    incorrect_examples = np.hstack([incorrect - correct, incorrect, correct])
+    pair_features = np.vstack([correct_examples, incorrect_examples])
+    pair_labels = [1 for _ in range(num_compare_examples)]
+    pair_labels += [0 for _ in range(num_compare_examples)]
+    # Update the dict_vec
+    feature_names = [f + "_a-b" for f in dict_vec.feature_names_]
+    feature_names += [f + "_a" for f in dict_vec.feature_names_]
+    feature_names += [f + "_b" for f in dict_vec.feature_names_]
+    pair_vocab = {f: i for i, f in enumerate(feature_names)}
+    # This is a HACK.
+    pair_dict_vec = dict_vec.copy()
+    pair_dict_vec.feature_names_ = feature_names
+    pair_dict_vec.vocabulary_ = pair_vocab
+    return pair_dict_vec, pair_features, pair_labels
+
 
 
 def write_dl_examples(queries, file_name):
