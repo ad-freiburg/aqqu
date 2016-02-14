@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
                     level=logging.INFO)
+gensim_model = None
 
 class DeepCNNAqquRelScorer():
 
@@ -36,7 +37,9 @@ class DeepCNNAqquRelScorer():
         """Extract vectors from gensim model and add UNK/PAD vectors.
         """
         logger.info("Preparing embeddings matrix")
-        gensim_model = models.Word2Vec.load(gensim_model_fname)
+        global gensim_model
+        if gensim_model is None:
+            gensim_model = models.Word2Vec.load(gensim_model_fname)
         vector_size = gensim_model.vector_size
         common_words = set()
         # Find the most frequent words to keep the embeddings small.

@@ -9,6 +9,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import math
 import time
 import logging
+import copy
 import translator
 import random
 import globals
@@ -283,10 +284,11 @@ class AccuModel(MLModel, Ranker):
     def learn_ranking_model(self, queries, labels, features, dict_vec):
         # Construct pair examples from whole, pass sparse matrix + train_queries
         pair_dict_vec, pair_features, pair_labels = construct_pair_examples(queries,
-                                                                            features)
+                                                                            features,
+                                                                            dict_vec)
         logger.info("Training tree classifier for ranking.")
-        logger.info("#of labeled examples: %s" % len(features))
-        logger.info("#labels non-zero: %s" % sum(labels))
+        logger.info("#of labeled examples: %s" % len(pair_features))
+        logger.info("#labels non-zero: %s" % sum(pair_labels))
         label_encoder = LabelEncoder()
         logger.info(features[-1])
         pair_labels = label_encoder.fit_transform(pair_labels)
@@ -471,8 +473,6 @@ class AccuModel(MLModel, Ranker):
                                for x in query.eval_candidates]
             rel_scores = rel_model.score_multiple(test_candidates)
             deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
-            print(len(deep_rel_scores))
-            print(len(rel_scores))
             c_index = 0
             for i in test:
                 for c in qc_indices[i]:
@@ -1142,7 +1142,7 @@ def construct_pair_examples(queries, features, dict_vec):
     feature_names += [f + "_b" for f in dict_vec.feature_names_]
     pair_vocab = {f: i for i, f in enumerate(feature_names)}
     # This is a HACK.
-    pair_dict_vec = dict_vec.copy()
+    pair_dict_vec = copy.deepcopy(dict_vec)
     pair_dict_vec.feature_names_ = feature_names
     pair_dict_vec.vocabulary_ = pair_vocab
     return pair_dict_vec, pair_features, pair_labels
