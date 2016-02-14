@@ -274,9 +274,9 @@ class FeatureExtractor(object):
         if self.deep_relation_score_model:
             deep_rel_scores = self.deep_relation_score_model.score_multiple(candidates)
             for i, f in enumerate(all_features):
-                f['deep_relation_score'] = deep_rel_scores
+                f['deep_relation_score'] = deep_rel_scores[i].score
         if self.relation_score_model:
             rel_scores = self.relation_score_model.score_multiple(candidates)
             for i, f in enumerate(all_features):
-                f['relation_score'] = rel_scores
+                f['relation_score'] = rel_scores[i].score
         return all_features

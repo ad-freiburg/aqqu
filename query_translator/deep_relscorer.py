@@ -229,7 +229,7 @@ class DeepCNNAqquRelScorer():
                     probs = result[0]
                     # probs is a matrix: n x c (for n examples and c
                     # classes)
-                    return RankScore(probs[0][0][0])
+                    return RankScore(probs[0][0])
 
     def score_multiple(self, score_candidates, batch_size=100):
         """

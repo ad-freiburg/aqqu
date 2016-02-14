@@ -217,7 +217,7 @@ class AccuModel(MLModel, Ranker):
         model_file = self.get_model_filename()
         try:
 
-            [model, label_enc, dict_vec, scaler] \
+            [model, label_enc, dict_vec, pair_dict_vec, scaler] \
                 = joblib.load(model_file)
             self.model = model
             self.scaler = scaler
@@ -230,11 +230,13 @@ class AccuModel(MLModel, Ranker):
             deep_relation_scorer.load_model()
             self.feature_extractor.relation_score_model = relation_scorer
             self.feature_extractor.deep_relation_score_model = deep_relation_scorer
+            self.dict_vec = dict_vec
+            self.pair_dict_vec = pair_dict_vec
             pruner = CandidatePruner(self.get_model_name(),
-                                     relation_scorer)
+                                     relation_scorer,
+                                     dict_vec)
             pruner.load_model()
             self.pruner = pruner
-            self.dict_vec = dict_vec
             self.label_encoder = label_enc
             self.correct_index = label_enc.transform([1])[0]
             logger.info("Loaded scorer model from %s" % model_file)
@@ -279,6 +281,7 @@ class AccuModel(MLModel, Ranker):
         self.feature_extractor.deep_relation_score_model = deep_rel_model
         self.relation_scorer = rel_model
         self.deep_relation_scorer = deep_rel_model
+        self.dict_vec = dict_vec
         # Pass sparse matrix + dict_vec
         self.pruner = self.learn_prune_model(labels, features, dict_vec)
         self.learn_ranking_model(train_queries, labels, features, dict_vec)
@@ -292,7 +295,7 @@ class AccuModel(MLModel, Ranker):
         logger.info("#of labeled examples: %s" % len(pair_features))
         logger.info("#labels non-zero: %s" % sum(pair_labels))
         label_encoder = LabelEncoder()
-        logger.info(features[-1])
+        logger.info(features.shape)
         pair_labels = label_encoder.fit_transform(pair_labels)
         X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
         decision_tree = RandomForestClassifier(class_weight='auto',
@@ -300,17 +303,17 @@ class AccuModel(MLModel, Ranker):
                                                n_jobs=6,
                                                n_estimators=90)
         logger.info("Training random forest...")
-        decision_tree.fit(X, pair_labels)
+        decision_tree.fit(X, labels)
         logger.info("Done.")
         self.model = decision_tree
-        self.dict_vec = pair_dict_vec
+        self.pair_dict_vec = pair_dict_vec
         self.label_encoder = label_encoder
         self.correct_index = label_encoder.transform([1])[0]
 
     def store_model(self):
         logger.info("Writing model to %s." % self.get_model_filename())
         joblib.dump([self.model, self.label_encoder,
-                     self.dict_vec, self.scaler],
+                     self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
         self.relation_scorer.store_model()
         self.deep_relation_scorer.store_model()
@@ -350,7 +353,7 @@ class AccuModel(MLModel, Ranker):
             else:
                 return -1
 
-    def _precompute_cmp(self, candidates, features, max_cache_candidates=300):
+    def rank_candidates(self, candidates, features, max_cache_candidates=300):
         """Pre-compute comparisons.
 
         The main overhead is calling the classification routine. Therefore,
@@ -364,41 +367,20 @@ class AccuModel(MLModel, Ranker):
         if not self.model:
             self.load_model()
         self.cmp_cache = dict()
-        pairs = []
-        pair_features = []
-        features = []
         start = time.time()
-        cross = itertools.product(range(len(candidates)),
-                                  range(len(candidates)))
-        index_a, index_b = zip(*cross)
-        pair_features = construct_pair_examples(features, index_a, index_b)
+        pairs = list(itertools.combinations(range(len(candidates)), 2))
+        print(pairs)
+        index_a = [x[0] for x in pairs]
+        index_b = [x[1] for x in pairs]
+        pair_features = construct_pair_features(features,
+                                                np.array(index_a),
+                                                np.array(index_b))
         duration = (time.time() - start) * 1000
         logger.debug("Constructed %d pair features in %s ms" % (len(pair_features),
                                                                 duration))
 
-        if len(candidates) > max_cache_candidates:
-            logger.info("Cannot precoumpte for  all of %s candidates."
-                        % len(candidates))
-            return
-        for c in candidates[:max_cache_candidates]:
-            f = self.feature_extractor.extract_features(c)
-            features.append(f)
-        duration = (time.time() - start) * 1000
-        logger.debug("FExtract took %s ms" % duration)
-        start = time.time()
-        for i, x in enumerate(candidates[:max_cache_candidates]):
-            x_f = features[i]
-            for j, y in enumerate(candidates[:max_cache_candidates]):
-                if i == y:
-                    continue
-                y_f = features[j]
-                diff = feature_diff(x_f, y_f)
-                pair_features.append(diff)
-                pairs.append((x, y))
-        duration = (time.time() - start) * 1000
-        logger.debug("FDiff for %s took %s ms" % (len(pairs), duration))
         if len(pairs) > 0:
-            X = self.dict_vec.transform(pair_features)
+            X = pair_features
             if self.scaler:
                 X = self.scaler.transform(X)
             self.model.n_jobs = 1
@@ -426,17 +408,16 @@ class AccuModel(MLModel, Ranker):
         # Extract features from all candidates and create matrix
         candidates = [key(q) for q in query_candidates]
         features = self.feature_extractor.extract_features_multiple(candidates)
+        features = self.dict_vec.transform(features)
         query_candidates, features = self.prune_candidates(query_candidates,
                                                            features)
-        logger.debug("%s of %s candidates remain" % (len(query_candidates),
+        logger.info("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
         start = time.time()
         candidates = [key(q) for q in query_candidates]
-        self._precompute_cmp(candidates)
-        ranked_candidates = sorted(query_candidates,
-                                   cmp=self.compare_pair,
-                                   key=key,
-                                   reverse=True)
+        self._precompute_cmp(candidates, features)
+        ranked_candidates = self.rank_candidates(query_candidates,
+                                                 features)
         self.cmp_cache = dict()
         if len(query_candidates) > 0:
             duration = (time.time() - start) * 1000
@@ -600,6 +581,7 @@ class CandidatePruner(MLModel):
 
     def prune_candidates(self, query_candidates, features):
         remaining = []
+        print(features)
         X = self.scaler.transform(features)
         p = self.model.predict(X)
         # c = self.prune_label_encoder.inverse_transform(p)
@@ -1164,6 +1146,9 @@ def construct_pair_features(features, indexes_a, indexes_b):
     :param indexes_b:
     :return:
     """
+    print(indexes_a)
+    print(features)
+    print(indexes_b)
     f_a = features[indexes_a, :]
     f_b = features[indexes_b, :]
     correct_examples = np.hstack([f_a - f_b, f_a, f_b])
