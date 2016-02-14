@@ -284,9 +284,9 @@ class AccuModel(MLModel, Ranker):
         self.dict_vec = dict_vec
         # Pass sparse matrix + dict_vec
         self.pruner = self.learn_prune_model(labels, features, dict_vec)
-        self.learn_ranking_model(train_queries, labels, features, dict_vec)
+        self.learn_ranking_model(train_queries, features, dict_vec)
 
-    def learn_ranking_model(self, queries, labels, features, dict_vec):
+    def learn_ranking_model(self, queries, features, dict_vec):
         # Construct pair examples from whole, pass sparse matrix + train_queries
         pair_dict_vec, pair_features, pair_labels = construct_pair_examples(queries,
                                                                             features,
@@ -295,7 +295,7 @@ class AccuModel(MLModel, Ranker):
         logger.info("#of labeled examples: %s" % len(pair_features))
         logger.info("#labels non-zero: %s" % sum(pair_labels))
         label_encoder = LabelEncoder()
-        logger.info(features.shape)
+        logger.info(pair_features.shape)
         pair_labels = label_encoder.fit_transform(pair_labels)
         X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
         decision_tree = RandomForestClassifier(class_weight='auto',
@@ -320,38 +320,6 @@ class AccuModel(MLModel, Ranker):
         self.pruner.store_model()
         logger.info("Done.")
 
-    def compare_pair(self, x_candidate, y_candidate):
-        """Compare two candidates.
-
-        Return 1 if x_candidate > y_candidate, else return -1.
-        :param x_candidate:
-        :param y_candidate:
-        :return:
-        """
-        if not self.model:
-            self.load_model()
-        # Use the preferences for sorting.
-        else:
-            res = None
-            if (x_candidate, y_candidate) in self.cmp_cache:
-                res = self.cmp_cache[(x_candidate, y_candidate)]
-            if res is None:
-                x_features = self.feature_extractor.extract_features(
-                    x_candidate)
-                y_features = self.feature_extractor.extract_features(
-                    y_candidate)
-                diff = feature_diff(x_features, y_features)
-                X = self.dict_vec.transform(diff)
-                if self.scaler:
-                    X = self.scaler.transform(X)
-                self.model.n_jobs = 1
-                p = self.model.predict(X)
-                c = self.label_encoder.inverse_transform(p)
-                res = c[0]
-            if res == 1:
-                return 1
-            else:
-                return -1
 
     def rank_candidates(self, candidates, features, max_cache_candidates=300):
         """Pre-compute comparisons.
@@ -366,12 +334,14 @@ class AccuModel(MLModel, Ranker):
         """
         if not self.model:
             self.load_model()
-        self.cmp_cache = dict()
         start = time.time()
+        num_candidates = len(candidates)
         pairs = list(itertools.combinations(range(len(candidates)), 2))
-        print(pairs)
         index_a = [x[0] for x in pairs]
         index_b = [x[1] for x in pairs]
+        pair_index = {}
+        for i, p in enumerate(pairs):
+            pair_index[p] = i
         pair_features = construct_pair_features(features,
                                                 np.array(index_a),
                                                 np.array(index_b))
@@ -379,20 +349,27 @@ class AccuModel(MLModel, Ranker):
         logger.debug("Constructed %d pair features in %s ms" % (len(pair_features),
                                                                 duration))
 
-        if len(pairs) > 0:
-            X = pair_features
-            if self.scaler:
-                X = self.scaler.transform(X)
-            self.model.n_jobs = 1
-            start = time.time()
-            p = self.model.predict(X)
-            duration = (time.time() - start) * 1000
-            logger.debug("Predict for %s took %s ms" % (len(pairs), duration))
-            self.model.n_jobs = 1
-            c = self.label_encoder.inverse_transform(p)
-            # Remember the #of wins/losses for each candidate.
-            for (x, y), s in zip(pairs, c):
-                self.cmp_cache[(x, y)] = s
+        X = pair_features
+        self.model.n_jobs = 1
+        start = time.time()
+        p = self.model.predict(X)
+        duration = (time.time() - start) * 1000
+        logger.debug("Predict for %s took %s ms" % (len(pairs), duration))
+        self.model.n_jobs = 1
+        c = self.label_encoder.inverse_transform(p)
+        def compare_pair(i, j):
+            if (i, j) in pair_index:
+               predict = c[pair_index[(i, j)]]
+            else:
+                predict = c[pair_index[(j, i)]]
+            if predict == 1:
+                return 1
+            else:
+                return -1
+        sorted_i = sorted(range(num_candidates),
+                          cmp=compare_pair)
+        return [candidates[i] for i in sorted_i]
+
 
     def rank_query_candidates(self, query_candidates, key=lambda x: x):
         """Rank query candidates by scoring and then sorting them.
@@ -413,18 +390,10 @@ class AccuModel(MLModel, Ranker):
                                                            features)
         logger.info("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
-        start = time.time()
-        candidates = [key(q) for q in query_candidates]
-        self._precompute_cmp(candidates, features)
+        if not query_candidates:
+            return []
         ranked_candidates = self.rank_candidates(query_candidates,
                                                  features)
-        self.cmp_cache = dict()
-        if len(query_candidates) > 0:
-            duration = (time.time() - start) * 1000
-            logger.debug(
-                "Sorting %s candidates took %s ms. %s ms per candidate" %
-                (len(query_candidates), duration,
-                 float(duration) / len(query_candidates)))
         return ranked_candidates
 
     def prune_candidates(self, query_candidates, features):
