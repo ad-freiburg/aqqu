@@ -153,14 +153,25 @@ class MLModel(object):
         pass
 
 
-def extract_features(train_queries):
+def extract_features(train_queries, feature_extractor):
     """Extract features from each candidate.
     Return a matrix of features + a dict vec.
 
     :param train_queries:
     :return:
     """
-    pass
+    features = feature_extractor.feature_extractor.extract_features_multiple(train_queries)
+    logger.info("Extracting features from candidates.")
+    labels = []
+    for query in train_queries:
+        oracle_position = query.oracle_position
+        candidates = [x.query_candidate for x in query.eval_candidates]
+        for i, candidate in enumerate(candidates):
+            if i + 1 == oracle_position:
+                labels.append(1)
+            else:
+                labels.append(0)
+    return labels, features
 
 
 class AccuModel(MLModel, Ranker):
@@ -252,11 +263,12 @@ class AccuModel(MLModel, Ranker):
         labels = []
         # Extract features for each candidate once
         dict_vec = DictVectorizer(sparse=False)
-        features = self.feature_extractor.extract_features_multiple(train_queries)
+        labels, features = extract_features(train_queries)
         features = dict_vec.fit_transform(features)
         # Compute deep/ngram relation-score based on folds and add
         dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec)
         logger.info("Training final relation scorer.")
+        features = np.hstack([features, sub_features])
         rel_model = self.learn_rel_score_model(train_queries)
         deep_rel_model = self.learn_deep_rel_score_model(train_queries)
         self.feature_extractor.relation_score_model = rel_model
