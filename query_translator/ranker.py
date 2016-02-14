@@ -675,7 +675,7 @@ class RelationNgramScorer(MLModel):
         else:
             logger.info("Learning relation scorer with C: %s."
                         % self.regularization_C)
-            relation_scorer = SGDClassifier(loss='log', class_weight='balanced',
+            relation_scorer = SGDClassifier(loss='log', class_weight='auto',
                                             #n_iter=np.ceil(10 ** 6 / len(labels)),
                                             alpha=self.regularization_C,
                                             random_state=999)

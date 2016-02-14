@@ -49,13 +49,19 @@ class DeepCNNAqquRelScorer():
                     break
         vocab = {}
         # +1 for UNK +1 for PAD
-        num_words = len(common_words) + 2
+        num_words = len(common_words) + 4
         logger.info("#words: %d" % num_words)
         vectors = np.zeros(shape=(num_words, vector_size))
         # Vector for UNK, 0 is reserved for PAD
         UNK_ID = num_words - 1
         vocab[DeepCNNAqquRelScorer.UNK] = UNK_ID
         vectors[UNK_ID, :] = np.random.uniform(-0.05, 0.05,
+                                               vector_size)
+        vocab["ENTITY"] = num_words - 2
+        vectors[num_words - 2] = np.random.uniform(-0.05, 0.05,
+                                               vector_size)
+        vocab["STRTS"] = num_words - 3
+        vectors[num_words - 3] = np.random.uniform(-0.05, 0.05,
                                                vector_size)
         vector_index = 1
         for w in gensim_model.vocab:
@@ -67,7 +73,7 @@ class DeepCNNAqquRelScorer():
         logger.info("Done")
         return vector_size, vocab, vectors
 
-    def learn_model(self, train_queries, num_epochs=10):
+    def learn_model(self, train_queries, num_epochs=40):
         train_batches = self.create_train_batches(train_queries)
         self.g = tf.Graph()
         with self.g.as_default():
@@ -240,8 +246,8 @@ class DeepCNNAqquRelScorer():
                     return RankScore(probs[0][0][0])
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
-                         rel_width, filter_sizes=[2, 3, 4], num_filters=200,
-                         n_hidden_nodes_1=200, num_classes=1):
+                         rel_width, filter_sizes=[2, 3, 4], num_filters=100,
+                         n_hidden_nodes_1=100, num_classes=1):
         logger.info("sentence_len: %s"% sentence_len)
         logger.info("embedding_size: %s"% embedding_size)
         logger.info("rel_width: %s"% rel_width)
