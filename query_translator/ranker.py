@@ -15,6 +15,7 @@ import random
 import globals
 import numpy as np
 import data
+import itertools
 from random import Random
 from sklearn import utils
 from sklearn import metrics
@@ -161,7 +162,8 @@ def extract_features(train_queries, feature_extractor):
     :param train_queries:
     :return:
     """
-    features = feature_extractor.extract_features_multiple(train_queries)
+    candidates = [x.query_candidate for q in train_queries for x in q.eval_candidates]
+    features = feature_extractor.extract_features_multiple(candidates)
     logger.info("Extracting features from candidates.")
     labels = []
     for query in train_queries:
@@ -348,7 +350,7 @@ class AccuModel(MLModel, Ranker):
             else:
                 return -1
 
-    def _precompute_cmp(self, candidates, max_cache_candidates=300):
+    def _precompute_cmp(self, candidates, features, max_cache_candidates=300):
         """Pre-compute comparisons.
 
         The main overhead is calling the classification routine. Therefore,
@@ -365,11 +367,19 @@ class AccuModel(MLModel, Ranker):
         pairs = []
         pair_features = []
         features = []
+        start = time.time()
+        cross = itertools.product(range(len(candidates)),
+                                  range(len(candidates)))
+        index_a, index_b = zip(*cross)
+        pair_features = construct_pair_examples(features, index_a, index_b)
+        duration = (time.time() - start) * 1000
+        logger.debug("Constructed %d pair features in %s ms" % (len(pair_features),
+                                                                duration))
+
         if len(candidates) > max_cache_candidates:
             logger.info("Cannot precoumpte for  all of %s candidates."
                         % len(candidates))
             return
-        start = time.time()
         for c in candidates[:max_cache_candidates]:
             f = self.feature_extractor.extract_features(c)
             features.append(f)
@@ -414,7 +424,10 @@ class AccuModel(MLModel, Ranker):
         num_candidates = len(query_candidates)
         logger.debug("Pruning %s candidates" % num_candidates)
         # Extract features from all candidates and create matrix
-        query_candidates = self.prune_candidates(query_candidates, key)
+        candidates = [key(q) for q in query_candidates]
+        features = self.feature_extractor.extract_features_multiple(candidates)
+        query_candidates, features = self.prune_candidates(query_candidates,
+                                                           features)
         logger.debug("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
         start = time.time()
@@ -433,10 +446,10 @@ class AccuModel(MLModel, Ranker):
                  float(duration) / len(query_candidates)))
         return ranked_candidates
 
-    def prune_candidates(self, query_candidates, key):
+    def prune_candidates(self, query_candidates, features):
         remaining = []
         if len(query_candidates) > 0:
-            remaining = self.pruner.prune_candidates(query_candidates, key)
+            remaining = self.pruner.prune_candidates(query_candidates, features)
         return remaining
 
     def learn_submodel_features(self, train_queries, dict_vec, n_folds=2):
@@ -585,21 +598,22 @@ class CandidatePruner(MLModel):
                      self.dict_vec, self.scaler], self.get_model_filename())
         logger.info("Done.")
 
-    def prune_candidates(self, query_candidates, key):
+    def prune_candidates(self, query_candidates, features):
         remaining = []
-        candidates = [key(q) for q in query_candidates]
-        features = []
-        for c in candidates:
-            c_features = self.feature_extractor.extract_features(c)
-            features.append(c_features)
-        X = self.dict_vec.transform(features)
-        X = self.scaler.transform(X)
+        X = self.scaler.transform(features)
         p = self.model.predict(X)
         # c = self.prune_label_encoder.inverse_transform(p)
         for candidate, predict in zip(query_candidates, p):
             if predict == 1:
                 remaining.append(candidate)
-        return remaining
+        # TODO: improve this code
+        new_features = np.zeros(shape=(len(remaining), features.shape[1]))
+        next = 0
+        for i, predict in enumerate(p):
+            if predict == 1:
+                new_features[next, :] = features[i, :]
+                next += 1
+        return remaining, new_features
 
 
 class RelationNgramScorer(MLModel):
@@ -1121,19 +1135,13 @@ def construct_pair_examples(queries, features, dict_vec):
     # Append one matrix to the other
     # Return the matrix + an updated dict_vec
     logger.info("Extracting ranking features from candidates.")
-    labels = []
     # A list of tuples of indices where the element at first index is better.
     compare_indices = get_compare_indices_for_pairs(queries)
     # Create the feature matrix
     num_compare_examples = len(compare_indices)
-    num_features = features.shape[1]
     pos_i = [c[0] for c in compare_indices]
     neg_i = [c[1] for c in compare_indices]
-    correct = features[pos_i, :] - features[neg_i, :]
-    incorrect = features[neg_i, :]
-    correct_examples = np.hstack([correct - incorrect, correct, incorrect])
-    incorrect_examples = np.hstack([incorrect - correct, incorrect, correct])
-    pair_features = np.vstack([correct_examples, incorrect_examples])
+    pair_features = construct_pair_features(features, pos_i, neg_i)
     pair_labels = [1 for _ in range(num_compare_examples)]
     pair_labels += [0 for _ in range(num_compare_examples)]
     # Update the dict_vec
@@ -1147,6 +1155,20 @@ def construct_pair_examples(queries, features, dict_vec):
     pair_dict_vec.vocabulary_ = pair_vocab
     return pair_dict_vec, pair_features, pair_labels
 
+
+def construct_pair_features(features, indexes_a, indexes_b):
+    """Return features for comparing indexes_a to indexes_b
+
+    :param features:
+    :param indexes_a:
+    :param indexes_b:
+    :return:
+    """
+    f_a = features[indexes_a, :]
+    f_b = features[indexes_b, :]
+    correct_examples = np.hstack([f_a - f_b, f_a, f_b])
+    incorrect_examples = np.hstack([f_b - f_a, f_b, f_a])
+    return np.vstack([correct_examples, incorrect_examples])
 
 
 def write_dl_examples(queries, file_name):
