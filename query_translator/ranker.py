@@ -526,9 +526,9 @@ class CandidatePruner(MLModel):
         for name, weight in feature_weights[:n_top]:
             logger.info("%s: %.4f" % (name, weight))
 
-    def learn_model(self, labels, features):
+    def learn_model(self, labels, X):
         logger.info("Learning prune classifier.")
-        logger.info("#of labeled examples: %s" % len(features))
+        logger.info("#of labeled examples: %s" % len(X))
         logger.info("#labels non-zero: %s" % sum(labels))
         num_labels = float(len(labels))
         num_pos_labels = sum(labels)
@@ -537,8 +537,7 @@ class CandidatePruner(MLModel):
         neg_class_weight = num_labels / num_neg_labels
         pos_class_boost = 2.0
         label_encoder = LabelEncoder()
-        logger.info(features[-1])
-        X = self.dict_vec.transform(features)
+        logger.info(X[-1])
         labels = label_encoder.fit_transform(labels)
         self.label_encoder = label_encoder
         self.scaler = StandardScaler()
