@@ -262,13 +262,14 @@ class FeatureExtractor(object):
                 ngram_features[f_name] = 1
         return ngram_features
 
-    def extract_features_multiple(self, candidates):
+    def extract_features_multiple(self, queries):
         """Extract features for multiple candidates at once.
 
         :param candidates:
         :return:
         """
         all_features = []
+        candidates = [x.query_candidate for query in queries for x in query.eval_candidates]
         for c in candidates:
             all_features.append(self.extract_features(c))
         if self.deep_relation_score_model:

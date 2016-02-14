@@ -111,6 +111,7 @@ class DeepCNNAqquRelScorer():
                         logger.info("Starting epoch %d" % (n + 1))
                         for y_batch, x_batch, x_rel_batch in train_batches:
                             train_step(x_batch, x_rel_batch, y_batch)
+                            break
 
     def create_train_batches(self, train_queries, correct_threshold=.5):
         logger.info("Creating train batches.")
@@ -219,32 +220,47 @@ class DeepCNNAqquRelScorer():
         with self.g.as_default():
             with self.g.device("/gpu:0"):
                 with self.sess.as_default():
-                    probs = self.sess.run(
+                    result = self.sess.run(
                         [self.probs],
                         feed_dict)
+                    probs = result[0]
+                    # probs is a matrix: n x c (for n examples and c
+                    # classes)
                     return RankScore(probs[0][0][0])
 
-    def score_multiple(self, candidates):
+    def score_multiple(self, score_candidates, batch_size=100):
         """
         Return a lis tof scores
         :param candidates:
         :return:
         """
         from ranker import RankScore
-        _, words, rel_features = self.create_batch_features([(0, c) for c in candidates])
-        feed_dict = {
-          self.input_s: words,
-          self.input_r: rel_features,
-          self.dropout_keep_prob: 1.0
-        }
-        with self.g.as_default():
-            with self.g.device("/gpu:0"):
-                with self.sess.as_default():
-                    probs = self.sess.run(
-                        [self.probs],
-                        feed_dict)
-                    print(probs.shape)
-                    return RankScore(probs[:][0][0])
+        result = []
+        batch = 0
+        while True:
+            candidates = score_candidates[batch * batch_size:(batch + 1) * batch_size]
+            if not candidates:
+                break
+            _, words, rel_features = self.create_batch_features([(0, c) for c in candidates])
+            feed_dict = {
+              self.input_s: words,
+              self.input_r: rel_features,
+              self.dropout_keep_prob: 1.0
+            }
+            with self.g.as_default():
+                with self.g.device("/gpu:0"):
+                    with self.sess.as_default():
+                        res = self.sess.run(
+                            [self.probs],
+                            feed_dict)
+                        probs = res[0]
+                        print(probs)
+                        # probs is a matrix: n x c (for n examples and c
+                        # classes)
+                        for i in range(probs.shape[0]):
+                            result.append(RankScore(probs[i][0]))
+            batch += 1
+        return result
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
                          rel_width, filter_sizes=[2, 3, 4], num_filters=100,

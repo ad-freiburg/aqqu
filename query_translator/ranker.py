@@ -243,11 +243,12 @@ class AccuModel(MLModel, Ranker):
 
     def learn_prune_model(self, labels, features, dict_vec):
         prune_model = CandidatePruner(self.get_model_name(),
-                                      self.relation_scorer)
+                                      self.relation_scorer,
+                                      dict_vec)
         prune_model.learn_model(labels, features)
         return prune_model
 
-    def learn_model(self, train_queries, n_folds=6):
+    def learn_model(self, train_queries, n_folds=3):
         labels = []
         # Extract features for each candidate once
         dict_vec = DictVectorizer(sparse=False)
@@ -423,7 +424,7 @@ class AccuModel(MLModel, Ranker):
             remaining = self.pruner.prune_candidates(query_candidates, key)
         return remaining
 
-    def learn_submodel_features(self, train_queries, dict_vec, n_folds=6):
+    def learn_submodel_features(self, train_queries, dict_vec, n_folds=2):
         """Learn additional models based on folds that appear as additional
         features in the final ranking model.
 
@@ -437,7 +438,15 @@ class AccuModel(MLModel, Ranker):
                    random_state=999)
         num_fold = 1
         num_features = 2
-        features = np.zeros(shape=(len(train_queries), num_features))
+        # A map form query index to candidate indices
+        qc_indices = {}
+        qc_index = 0
+        for i, q in enumerate(train_queries):
+            num_c = len(q.eval_candidates)
+            c_indices = [qc_index + c for c in range(num_c)]
+            qc_index += num_c
+            qc_indices[i] = c_indices
+        features = np.zeros(shape=(qc_index, num_features))
         for train, test in kf:
             logger.info("Training relation score model on fold %s/%s" % (
                 num_fold, n_folds))
@@ -445,11 +454,18 @@ class AccuModel(MLModel, Ranker):
             train_fold = [train_queries[i] for i in train]
             rel_model = self.learn_rel_score_model(train_fold)
             deep_rel_model = self.learn_deep_rel_score_model(train_fold)
-            rel_scores = rel_model.score_multiple(test_fold)
-            deep_rel_scores = deep_rel_model.score_multiple(test_fold)
-            for i, s in zip(test, range(len(rel_scores))):
-                features[i, 0] = rel_scores[s]
-                features[i, 1] = deep_rel_scores[s]
+            test_candidates = [x.query_candidate for query in test_fold
+                               for x in query.eval_candidates]
+            rel_scores = rel_model.score_multiple(test_candidates)
+            deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
+            print(len(deep_rel_scores))
+            print(len(rel_scores))
+            c_index = 0
+            for i in test:
+                for c in qc_indices[i]:
+                    features[c, 0] = rel_scores[c_index].score
+                    features[c, 1] = deep_rel_scores[c_index].score
+                    c_index += 1
             num_fold += 1
         # TODO: better to create a copy and return changed copy
         append_feature_to_dictvec(dict_vec, 'relation_score')
@@ -728,7 +744,7 @@ class RelationNgramScorer(MLModel):
             self.load_model()
         features = []
         for c in candidates:
-            features += self.feature_extractor.extract_features(c)
+            features.append(self.feature_extractor.extract_features(c))
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
         probs = self.model.predict_proba(X)
