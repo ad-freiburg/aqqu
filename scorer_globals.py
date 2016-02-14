@@ -10,7 +10,7 @@ free917_entities = "evaluation-data/free917_entities.txt"
 
 # The scorers that can be selected.
 scorer_list = [ranker.AccuModel('F917_Ranker',
-                                 "free917train_2of2",
+                                 "free917train",
                                  top_ngram_percentile=2,
                                  rel_regularization_C=0.002),
                ranker.AccuModel('F917_Ranker_entity_oracle',

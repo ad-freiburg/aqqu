@@ -264,7 +264,7 @@ class AccuModel(MLModel, Ranker):
         prune_model.learn_model(labels, features)
         return prune_model
 
-    def learn_model(self, train_queries, n_folds=3):
+    def learn_model(self, train_queries):
         labels = []
         # Extract features for each candidate once
         dict_vec = DictVectorizer(sparse=False)
@@ -346,7 +346,7 @@ class AccuModel(MLModel, Ranker):
                                                 np.array(index_a),
                                                 np.array(index_b))
         duration = (time.time() - start) * 1000
-        logger.debug("Constructed %d pair features in %s ms" % (len(pair_features),
+        logger.info("Constructed %d pair features in %s ms" % (len(pair_features),
                                                                 duration))
 
         X = pair_features
@@ -354,20 +354,23 @@ class AccuModel(MLModel, Ranker):
         start = time.time()
         p = self.model.predict(X)
         duration = (time.time() - start) * 1000
-        logger.debug("Predict for %s took %s ms" % (len(pairs), duration))
+        logger.info("Predict for %s took %s ms" % (len(pairs), duration))
         self.model.n_jobs = 1
         c = self.label_encoder.inverse_transform(p)
+        start = time.time()
         def compare_pair(i, j):
             if (i, j) in pair_index:
                predict = c[pair_index[(i, j)]]
             else:
-                predict = c[pair_index[(j, i)]]
+                predict = math.fabs(1 - c[pair_index[(j, i)]])
             if predict == 1:
-                return 1
-            else:
                 return -1
+            else:
+                return 1
         sorted_i = sorted(range(num_candidates),
                           cmp=compare_pair)
+        duration = (time.time() - start) * 1000
+        logger.info("Sort for %s took %s ms" % (len(pairs), duration))
         return [candidates[i] for i in sorted_i]
 
 
@@ -379,21 +382,30 @@ class AccuModel(MLModel, Ranker):
         """
         if not self.model:
             self.load_model()
+        if not query_candidates:
+            return []
         query_candidates = shuffle_candidates(query_candidates, key)
         num_candidates = len(query_candidates)
         logger.debug("Pruning %s candidates" % num_candidates)
+        start = time.time()
         # Extract features from all candidates and create matrix
         candidates = [key(q) for q in query_candidates]
         features = self.feature_extractor.extract_features_multiple(candidates)
         features = self.dict_vec.transform(features)
+        duration = (time.time() - start) * 1000
+        logger.info("Extracted features in %s ms" % (duration))
         query_candidates, features = self.prune_candidates(query_candidates,
                                                            features)
         logger.info("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
-        if not query_candidates:
-            return []
+        start = time.time()
+        # If no or only one candidate remains return that..
+        if len(query_candidates) < 2:
+            return query_candidates
         ranked_candidates = self.rank_candidates(query_candidates,
                                                  features)
+        duration = (time.time() - start) * 1000
+        logger.debug("Ranked candidates in %s ms" % (duration))
         return ranked_candidates
 
     def prune_candidates(self, query_candidates, features):
@@ -402,7 +414,7 @@ class AccuModel(MLModel, Ranker):
             remaining = self.pruner.prune_candidates(query_candidates, features)
         return remaining
 
-    def learn_submodel_features(self, train_queries, dict_vec, n_folds=2):
+    def learn_submodel_features(self, train_queries, dict_vec, n_folds=6):
         """Learn additional models based on folds that appear as additional
         features in the final ranking model.
 
@@ -550,7 +562,6 @@ class CandidatePruner(MLModel):
 
     def prune_candidates(self, query_candidates, features):
         remaining = []
-        print(features)
         X = self.scaler.transform(features)
         p = self.model.predict(X)
         # c = self.prune_label_encoder.inverse_transform(p)
@@ -1073,6 +1084,7 @@ def get_compare_indices_for_pairs(queries):
                     correct_index = correct_cand_index + candidate_offset
                     incorrect_index = sample_candidate_index + candidate_offset
                     compare_indices.append((correct_index, incorrect_index))
+        candidate_offset += len(candidates)
     return compare_indices
 
 
@@ -1092,7 +1104,9 @@ def construct_pair_examples(queries, features, dict_vec):
     num_compare_examples = len(compare_indices)
     pos_i = [c[0] for c in compare_indices]
     neg_i = [c[1] for c in compare_indices]
-    pair_features = construct_pair_features(features, pos_i, neg_i)
+    c_pair_features = construct_pair_features(features, pos_i, neg_i)
+    i_pair_features = construct_pair_features(features, neg_i, pos_i)
+    pair_features = np.vstack([c_pair_features, i_pair_features])
     pair_labels = [1 for _ in range(num_compare_examples)]
     pair_labels += [0 for _ in range(num_compare_examples)]
     # Update the dict_vec
@@ -1115,14 +1129,10 @@ def construct_pair_features(features, indexes_a, indexes_b):
     :param indexes_b:
     :return:
     """
-    print(indexes_a)
-    print(features)
-    print(indexes_b)
     f_a = features[indexes_a, :]
     f_b = features[indexes_b, :]
-    correct_examples = np.hstack([f_a - f_b, f_a, f_b])
-    incorrect_examples = np.hstack([f_b - f_a, f_b, f_a])
-    return np.vstack([correct_examples, incorrect_examples])
+    examples = np.hstack([f_a - f_b, f_a, f_b])
+    return examples
 
 
 def write_dl_examples(queries, file_name):

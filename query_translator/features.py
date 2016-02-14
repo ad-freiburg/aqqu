@@ -236,12 +236,6 @@ class FeatureExtractor(object):
             })
         if self.n_gram_features:
             features.update(self.extract_ngram_features(candidate))
-        if self.relation_score_model:
-            rank_score = self.relation_score_model.score(candidate)
-            features['relation_score'] = rank_score.score
-        if self.deep_relation_score_model:
-            rank_score = self.deep_relation_score_model.score(candidate)
-            features['deep_relation_score'] = rank_score.score
         return features
 
     def extract_ngram_features(self, candidate):

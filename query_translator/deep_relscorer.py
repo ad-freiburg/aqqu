@@ -76,7 +76,7 @@ class DeepCNNAqquRelScorer():
         logger.info("Done")
         return vector_size, vocab, vectors
 
-    def learn_model(self, train_queries, num_epochs=40):
+    def learn_model(self, train_queries, num_epochs=10):
         train_batches = self.create_train_batches(train_queries)
         self.g = tf.Graph()
         with self.g.as_default():
@@ -109,12 +109,11 @@ class DeepCNNAqquRelScorer():
                             [train_op, global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
-                        print("{}: step {}, loss {}".format(time_str, step, loss))
+                        #print("{}: step {}, loss {}".format(time_str, step, loss))
                     for n in range(num_epochs):
                         logger.info("Starting epoch %d" % (n + 1))
                         for y_batch, x_batch, x_rel_batch in train_batches:
                             train_step(x_batch, x_rel_batch, y_batch)
-                            break
 
     def create_train_batches(self, train_queries, correct_threshold=.5):
         logger.info("Creating train batches.")
