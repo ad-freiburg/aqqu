@@ -9,7 +9,7 @@ import time
 import datetime
 import tensorflow as tf
 from gensim import models
-import features
+import feature_extraction
 
 
 logger = logging.getLogger(__name__)
@@ -44,11 +44,13 @@ class DeepCNNAqquRelScorer():
         common_words = set()
         # Find the most frequent words to keep the embeddings small.
         # TF doesn't work when they are larger than 2GB !?
-        with open("data/google-books-common-words.txt") as f:
+        with open("data/word_frequencies.txt") as f:
             for line in f:
                 cols = line.strip().split()
+                if len(cols) != 2:
+                    continue
                 common_words.add(cols[0].lower())
-                if len(common_words) > 300000:
+                if len(common_words) > 500000:
                     break
         vocab = {}
         # +1 for UNK +1 for PAD
@@ -76,7 +78,11 @@ class DeepCNNAqquRelScorer():
         logger.info("Done")
         return vector_size, vocab, vectors
 
-    def learn_model(self, train_queries, num_epochs=10):
+    def learn_model(self, train_queries, num_epochs=2):
+        default_sess = tf.get_default_session()
+        if default_sess is not None:
+            logger.info("Closing previous default session.")
+            default_sess.close()
         train_batches = self.create_train_batches(train_queries)
         self.g = tf.Graph()
         with self.g.as_default():
@@ -136,10 +142,11 @@ class DeepCNNAqquRelScorer():
         logger.info("Done. %d batches." % len(query_batches))
         return query_batches
 
-    def create_batch_features(self, batch):
+    def create_batch_features(self, batch, max_len=250):
         # Sort so that first candidate is correct - needed for training.
         # Ignores that there may be several correct candidates!
         batch = sorted(batch, key=lambda x: x[0], reverse=True)
+        batch = batch[:max_len]
         num_candidates = len(batch)
         # How much to add left and right.
         pad = max(self.filter_sizes) - 1
@@ -149,7 +156,7 @@ class DeepCNNAqquRelScorer():
                                 dtype=float)
         labels = np.zeros(shape=(num_candidates, 1))
         for i, (label, candidate) in enumerate(batch):
-            text_tokens = features.get_query_text_tokens(candidate)
+            text_tokens = feature_extraction.get_query_text_tokens(candidate)
             text_sequence = []
             # Transform to IDs.
             for t in text_tokens:
@@ -264,7 +271,7 @@ class DeepCNNAqquRelScorer():
         return result
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
-                         rel_width, filter_sizes=[2, 3, 4], num_filters=100,
+                         rel_width, filter_sizes=[2, 3, 4], num_filters=200,
                          n_hidden_nodes_1=100, num_classes=1):
         logger.info("sentence_len: %s"% sentence_len)
         logger.info("embedding_size: %s"% embedding_size)

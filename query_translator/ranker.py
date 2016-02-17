@@ -32,7 +32,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder, \
     Normalizer, MinMaxScaler
 from evaluation import EvaluationQuery, EvaluationCandidate
 from query_translator.oracle import EntityOracle
-from features import FeatureExtractor
+import feature_extraction as f_ext
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
 from sklearn.cross_validation import KFold
@@ -155,29 +155,7 @@ class MLModel(object):
         pass
 
 
-def extract_features(train_queries, feature_extractor):
-    """Extract features from each candidate.
-    Return a matrix of features + a dict vec.
-
-    :param train_queries:
-    :return:
-    """
-    candidates = [x.query_candidate for q in train_queries for x in q.eval_candidates]
-    features = feature_extractor.extract_features_multiple(candidates)
-    logger.info("Extracting features from candidates.")
-    labels = []
-    for query in train_queries:
-        oracle_position = query.oracle_position
-        candidates = [x.query_candidate for x in query.eval_candidates]
-        for i, candidate in enumerate(candidates):
-            if i + 1 == oracle_position:
-                labels.append(1)
-            else:
-                labels.append(0)
-    return labels, features
-
-
-class AccuModel(MLModel, Ranker):
+class AqquModel(MLModel, Ranker):
     """Performs a pair-wise transform to learn a ranking.
 
      It always compares two candidates and makes a classification decision
@@ -208,10 +186,7 @@ class AccuModel(MLModel, Ranker):
         self.kwargs = kwargs
         self.top_ngram_percentile = top_ngram_percentile
         self.rel_regularization_C = rel_regularization_C
-        # Only extract ngram features.
-        self.feature_extractor = FeatureExtractor(True,
-                                                  False,
-                                                  None)
+
 
     def load_model(self):
         model_file = self.get_model_filename()
@@ -225,15 +200,14 @@ class AccuModel(MLModel, Ranker):
                                                   self.rel_regularization_C,
                                                   percentile=self.top_ngram_percentile)
             relation_scorer.load_model()
+            self.relation_scorer = relation_scorer
             deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(),
                                                  "data/GoogleNews-vectors-negative300.gensim")
             deep_relation_scorer.load_model()
-            self.feature_extractor.relation_score_model = relation_scorer
-            self.feature_extractor.deep_relation_score_model = deep_relation_scorer
+            self.deep_relation_scorer = deep_relation_scorer
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
             pruner = CandidatePruner(self.get_model_name(),
-                                     relation_scorer,
                                      dict_vec)
             pruner.load_model()
             self.pruner = pruner
@@ -259,26 +233,22 @@ class AccuModel(MLModel, Ranker):
 
     def learn_prune_model(self, labels, features, dict_vec):
         prune_model = CandidatePruner(self.get_model_name(),
-                                      self.relation_scorer,
                                       dict_vec)
         prune_model.learn_model(labels, features)
         return prune_model
 
     def learn_model(self, train_queries):
-        labels = []
         # Extract features for each candidate once
         dict_vec = DictVectorizer(sparse=False)
-        labels, features = extract_features(train_queries,
-                                            self.feature_extractor)
+        labels, features = construct_train_examples(train_queries,
+                                                    f_ext.extract_features)
         features = dict_vec.fit_transform(features)
         # Compute deep/ngram relation-score based on folds and add
         dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec)
-        logger.info("Training final relation scorer.")
         features = np.hstack([features, sub_features])
+        logger.info("Training final relation scorer.")
         rel_model = self.learn_rel_score_model(train_queries)
         deep_rel_model = self.learn_deep_rel_score_model(train_queries)
-        self.feature_extractor.relation_score_model = rel_model
-        self.feature_extractor.deep_relation_score_model = deep_rel_model
         self.relation_scorer = rel_model
         self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
@@ -288,9 +258,10 @@ class AccuModel(MLModel, Ranker):
 
     def learn_ranking_model(self, queries, features, dict_vec):
         # Construct pair examples from whole, pass sparse matrix + train_queries
-        pair_dict_vec, pair_features, pair_labels = construct_pair_examples(queries,
-                                                                            features,
-                                                                            dict_vec)
+        pair_dict_vec, pair_features, pair_labels = construct_train_pair_examples(
+            queries,
+            features,
+            dict_vec)
         logger.info("Training tree classifier for ranking.")
         logger.info("#of labeled examples: %s" % len(pair_features))
         logger.info("#labels non-zero: %s" % sum(pair_labels))
@@ -321,7 +292,7 @@ class AccuModel(MLModel, Ranker):
         logger.info("Done.")
 
 
-    def rank_candidates(self, candidates, features, max_cache_candidates=300):
+    def rank_candidates(self, candidates, features):
         """Pre-compute comparisons.
 
         The main overhead is calling the classification routine. Therefore,
@@ -390,7 +361,9 @@ class AccuModel(MLModel, Ranker):
         start = time.time()
         # Extract features from all candidates and create matrix
         candidates = [key(q) for q in query_candidates]
-        features = self.feature_extractor.extract_features_multiple(candidates)
+        features = f_ext.extract_features(candidates,
+                                                   rel_score_model=self.relation_scorer,
+                                                   deep_rel_score_model=self.deep_relation_scorer)
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
@@ -414,7 +387,7 @@ class AccuModel(MLModel, Ranker):
             remaining = self.pruner.prune_candidates(query_candidates, features)
         return remaining
 
-    def learn_submodel_features(self, train_queries, dict_vec, n_folds=6):
+    def learn_submodel_features(self, train_queries, dict_vec, n_folds=2):
         """Learn additional models based on folds that appear as additional
         features in the final ranking model.
 
@@ -424,6 +397,10 @@ class AccuModel(MLModel, Ranker):
         :param dict_vec:
         :return:
         """
+        # TODO: could also make learning the "sub-features" the job of the submodels
+        # -> have a submodel class. It would be responsible for feature extraction
+        # and folding, which would again improve training time if features are
+        # extracted only once.
         kf = KFold(len(train_queries), n_folds=n_folds, shuffle=True,
                    random_state=999)
         num_fold = 1
@@ -442,6 +419,8 @@ class AccuModel(MLModel, Ranker):
                 num_fold, n_folds))
             test_fold = [train_queries[i] for i in test]
             train_fold = [train_queries[i] for i in train]
+            write_dl_examples(train_fold,"train", num_fold)
+            write_dl_examples(test_fold, "test", num_fold)
             rel_model = self.learn_rel_score_model(train_fold)
             deep_rel_model = self.learn_deep_rel_score_model(train_fold)
             test_candidates = [x.query_candidate for query in test_fold
@@ -460,16 +439,23 @@ class AccuModel(MLModel, Ranker):
         append_feature_to_dictvec(dict_vec, 'deep_relation_score')
         return dict_vec, features
 
+
 def append_feature_to_dictvec(dict_vec, feature_name):
+    """Append a new feature to the dict vectorizer.
+
+    :param dict_vec:
+    :param feature_name:
+    :return:
+    """
     max_index = max(dict_vec.vocabulary_.values())
     dict_vec.vocabulary_[feature_name] = max_index + 1
+
 
 class CandidatePruner(MLModel):
     """Learns a recall-optimized pruning model."""
 
     def __init__(self,
                  name,
-                 rel_score_model,
                  dict_vec):
         name += self.get_pruner_suffix()
         MLModel.__init__(self, name, None)
@@ -480,10 +466,6 @@ class CandidatePruner(MLModel):
         self.scaler = None
         # The index of the correct label.
         self.correct_index = -1
-        self.feature_extractor = FeatureExtractor(True,
-                                                  False,
-                                                  relation_score_model=rel_score_model,
-                                                  entity_features=True)
 
     def get_pruner_suffix(self):
         return "_Pruner"
@@ -542,10 +524,9 @@ class CandidatePruner(MLModel):
     def load_model(self):
         model_file = self.get_model_filename()
         try:
-            [model, label_enc, dict_vec, scaler] \
+            [model, label_enc, scaler] \
                 = joblib.load(model_file)
             self.model = model
-            self.dict_vec = dict_vec
             self.scaler = scaler
             self.label_encoder = label_enc
             self.correct_index = label_enc.transform([1])[0]
@@ -557,7 +538,7 @@ class CandidatePruner(MLModel):
     def store_model(self):
         logger.info("Writing model to %s." % self.get_model_filename())
         joblib.dump([self.model, self.label_encoder,
-                     self.dict_vec, self.scaler], self.get_model_filename())
+                     self.scaler], self.get_model_filename())
         logger.info("Done.")
 
     def prune_candidates(self, query_candidates, features):
@@ -596,9 +577,6 @@ class RelationNgramScorer(MLModel):
         self.scaler = None
         # The index of the correct label.
         self.correct_index = -1
-        self.feature_extractor = FeatureExtractor(False,
-                                                  True,
-                                                  entity_features=False)
 
     def get_relscorer_suffix(self):
         return "_RelScore"
@@ -620,33 +598,28 @@ class RelationNgramScorer(MLModel):
 
     def test_model(self, test_queries):
         logger.info("Scoring on test fold")
-        features, labels = construct_examples(test_queries,
-                                              self.feature_extractor,
-                                              use_score=True)
+        features, labels = construct_train_examples(test_queries,
+                                              f_ext.extract_ngram_features)
         labels = self.label_encoder.transform(labels)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
         labels_predict = self.model.predict(X)
         logger.info(classification_report(labels, labels_predict))
 
-    def write_examples(self, queries, name, fold_num):
-        name = "dl_examples_%s_fold_%s.txt" % (name, str(fold_num))
-        logger.info("Writing examples to %s" % name)
-        features, labels = construct_examples(queries,
-                                              self.feature_extractor)
-        write_dl_examples(queries, name)
-
     def learn_model(self, train_queries):
         if self.top_percentile:
             logger.info("Collecting frequent n-gram features...")
             n_grams_dict = get_top_chi2_candidate_ngrams(train_queries,
-                                                         self.feature_extractor,
+                                                         f_ext.extract_ngram_features,
                                                          percentile=self.top_percentile)
             logger.info("Collected %s n-gram features" % len(n_grams_dict))
-            self.feature_extractor.ngram_dict = n_grams_dict
-        features, labels = construct_examples(train_queries,
-                                              self.feature_extractor,
-                                              use_score=True)
+
+        def ngram_features(cs):
+            return f_ext.extract_ngram_features(cs,
+                                                         ngram_dict=n_grams_dict)
+
+        labels, features = construct_train_examples(train_queries,
+                                                    ngram_features)
         logger.info("#of labeled examples: %s" % len(features))
         logger.info("#labels non-zero: %s" % sum(labels))
         label_encoder = LabelEncoder()
@@ -663,6 +636,7 @@ class RelationNgramScorer(MLModel):
             logger.info("Performing grid search.")
             relation_scorer = SGDClassifier(loss='log', class_weight='auto',
                                             #n_iter=np.ceil(10 ** 6 / len(labels)),
+                                            n_iter=10,
                                             random_state=999)
             cv_params = [{"alpha": [10.0, 5.0, 2.0, 1.5, 1.0, 0.5,
                                     0.1, 0.01, 0.001, 0.0001]}]
@@ -681,6 +655,7 @@ class RelationNgramScorer(MLModel):
                         % self.regularization_C)
             relation_scorer = SGDClassifier(loss='log', class_weight='auto',
                                             #n_iter=np.ceil(10 ** 6 / len(labels)),
+                                            n_iter=10,
                                             alpha=self.regularization_C,
                                             random_state=999)
             relation_scorer.fit(X, labels)
@@ -714,7 +689,7 @@ class RelationNgramScorer(MLModel):
     def score(self, candidate):
         if not self.model:
             self.load_model()
-        features = self.feature_extractor.extract_features(candidate)
+        features = f_ext.ngram_features(candidate)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
         prob = self.model.predict_proba(X)
@@ -730,9 +705,7 @@ class RelationNgramScorer(MLModel):
         """
         if not self.model:
             self.load_model()
-        features = []
-        for c in candidates:
-            features.append(self.feature_extractor.extract_features(c))
+        features = f_ext.extract_ngram_features(candidates)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
         probs = self.model.predict_proba(X)
@@ -1040,11 +1013,11 @@ class LiteralRanker(Ranker):
             return cmp(x_key, y_key)
 
 
-def get_top_chi2_candidate_ngrams(queries, f_extractor, percentile):
+def get_top_chi2_candidate_ngrams(queries, f_extract, percentile):
     """Get top ngrams features according to chi2.
     """
     ngrams_dict = dict()
-    features, labels = construct_examples(queries, f_extractor)
+    labels, features = construct_train_examples(queries, f_extract)
     label_encoder = LabelEncoder()
     labels = label_encoder.fit_transform(labels)
     vec = DictVectorizer(sparse=True)
@@ -1058,7 +1031,7 @@ def get_top_chi2_candidate_ngrams(queries, f_extractor, percentile):
     return ngrams_dict
 
 
-def get_compare_indices_for_pairs(queries):
+def get_compare_indices_for_pairs(queries, correct_threshold):
     compare_indices = []
     candidate_offset = 0
     for query in queries:
@@ -1069,7 +1042,7 @@ def get_compare_indices_for_pairs(queries):
         correct_cands_index = set()
         candidates = [x.query_candidate for x in query.eval_candidates]
         for i, _ in enumerate(candidates):
-            if i + 1 == oracle_position:
+            if i + 1 == oracle_position or query.eval_candidates[i].evaluation_result.f1 >= correct_threshold:
                 correct_cands_index.add(i)
         if correct_cands_index:
             n_candidates = len(candidates)
@@ -1088,7 +1061,7 @@ def get_compare_indices_for_pairs(queries):
     return compare_indices
 
 
-def construct_pair_examples(queries, features, dict_vec):
+def construct_train_pair_examples(queries, features, dict_vec, correct_threshold=1.0):
     """Construct training examples from candidates using pair-wise transform.
 
     :type queries list[EvaluationQuery]
@@ -1099,7 +1072,7 @@ def construct_pair_examples(queries, features, dict_vec):
     # Return the matrix + an updated dict_vec
     logger.info("Extracting ranking features from candidates.")
     # A list of tuples of indices where the element at first index is better.
-    compare_indices = get_compare_indices_for_pairs(queries)
+    compare_indices = get_compare_indices_for_pairs(queries, correct_threshold)
     # Create the feature matrix
     num_compare_examples = len(compare_indices)
     pos_i = [c[0] for c in compare_indices]
@@ -1135,14 +1108,37 @@ def construct_pair_features(features, indexes_a, indexes_b):
     return examples
 
 
-def write_dl_examples(queries, file_name):
-    from features import get_query_text_tokens
+def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
+    """Extract features from each candidate.
+    Return labels, a matrix of features.
+
+    :param train_queries:
+    :return:
+    """
+    candidates = [x.query_candidate for q in train_queries for x in q.eval_candidates]
+    features = f_extract(candidates)
+    logger.info("Extracting features from candidates.")
+    labels = []
+    for query in train_queries:
+        oracle_position = query.oracle_position
+        candidates = [x.query_candidate for x in query.eval_candidates]
+        for i, candidate in enumerate(candidates):
+            if i + 1 == oracle_position or query.eval_candidates[i].evaluation_result.f1 >= score_threshold:
+                labels.append(1)
+            else:
+                labels.append(0)
+    return labels, features
+
+
+def write_dl_examples(queries, name, fold_num):
+    from feature_extraction import get_query_text_tokens
+    file_name = "dl_examples_%s_fold_%s.txt" % (name, str(fold_num))
+    logger.info("Writing examples to %s" % name)
     rev_rels = data.read_reverse_relations("data/reverse-relations")
     med_rels = data.read_mediator_relations("data/mediator-relations")
     no_rev_rels = set()
     with open(file_name, "w") as f:
         for query in queries:
-            oracle_position = query.oracle_position
             candidates = [x.query_candidate for x in query.eval_candidates]
             for i, candidate in enumerate(candidates):
                 relations = candidate.get_relation_names()
@@ -1163,41 +1159,11 @@ def write_dl_examples(queries, file_name):
                     continue
                 rel = "+".join(sorted(correct_directions))
                 f1 = query.eval_candidates[i].evaluation_result.f1
-                text = " ".join(get_query_text_tokens(candidate))
+                text = " ".join(get_query_text_tokens(candidate, include_mid=True))
                 f.write("%d\t%d\t%.2f\t%s\t%s\t%s\n" % (query.id, i,
                                                         f1, query.utterance,
                                                         text, rel))
 
-
-
-def construct_examples(queries, f_extractor, use_score=False):
-    """Construct training examples from candidates.
-
-    Construct a list of examples from the given evaluated queries.
-    Returns a list of features and a list of corresponding labels
-    :type queries list[EvaluationQuery]
-    :return:
-    """
-    logger.info("Extracting features from candidates.")
-    labels = []
-    features = []
-    for query in queries:
-        oracle_position = query.oracle_position
-        candidates = [x.query_candidate for x in query.eval_candidates]
-        for i, candidate in enumerate(candidates):
-            candidate_features = f_extractor.extract_features(candidate)
-            features.append(candidate_features)
-            if use_score:
-                if query.eval_candidates[i].evaluation_result.f1 > 0.9:
-                    labels.append(1)
-                else:
-                    labels.append(0)
-            else:
-                if i + 1 == oracle_position:
-                    labels.append(1)
-                else:
-                    labels.append(0)
-    return features, labels
 
 
 def construct_ngram_examples(queries, f_extractor):
