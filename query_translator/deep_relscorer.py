@@ -28,7 +28,7 @@ class DeepCNNAqquRelScorer():
          self.embeddings] = self.extract_vectors(embedding_file)
         self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
         # This is the maximum number of tokens in a query we consider.
-        self.max_query_len = 40
+        self.max_query_len = 30
         self.filter_sizes = [2, 3, 4]
         self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
         self.rel_width_len = 6 * self.embedding_size
@@ -78,11 +78,32 @@ class DeepCNNAqquRelScorer():
         logger.info("Done")
         return vector_size, vocab, vectors
 
-    def learn_model(self, train_queries, num_epochs=2):
+    def evaluate_dev(self, qids, f1s, probs):
+        assert(len(qids) == len(f1s) == len(probs))
+        queries = {}
+        for q, f, p in zip(qids, f1s, probs):
+            if q not in queries:
+                queries[q] = []
+            queries[q].append((p, f))
+        all_f1 = 0.0
+        all_oracle_f1 = 0.0
+        for q, scores in queries.items():
+            scores = sorted(scores, key=lambda x: x[0], reverse=True)
+            oracle_scores = sorted(scores, key=lambda x: x[1], reverse=True)
+            f1 = scores[0][1]
+            oracle_f1 = oracle_scores[0][1]
+            all_f1 += f1
+            all_oracle_f1 += oracle_f1
+        num_queries = len(queries)
+        logger.info("Evaluating %d queries." %num_queries)
+        return all_f1 / num_queries, all_oracle_f1 / num_queries
+
+    def learn_model(self, train_queries, dev_queries, num_epochs=35):
         default_sess = tf.get_default_session()
         if default_sess is not None:
             logger.info("Closing previous default session.")
             default_sess.close()
+        dev_features, dev_qids, dev_f1 = self.create_test_batches(dev_queries)
         train_batches = self.create_train_batches(train_queries)
         self.g = tf.Graph()
         with self.g.as_default():
@@ -90,62 +111,115 @@ class DeepCNNAqquRelScorer():
                                   self.embedding_size, self.rel_width_len)
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True)
-            sess = tf.Session(config=session_conf)
-            self.sess = sess
+            self.sess = tf.Session(config=session_conf)
             with self.g.device("/gpu:0"):
-                with sess.as_default():
+                with self.sess.as_default():
                     optimizer = tf.train.AdamOptimizer()
                     grads_and_vars = optimizer.compute_gradients(self.loss)
                     global_step = tf.Variable(0, name="global_step", trainable=False)
                     train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
-                    sess.run(tf.initialize_all_variables())
+                    self.sess.run(tf.initialize_all_variables())
                     self.saver = tf.train.Saver()
+
+                    def run_dev_batches(batch_size=200):
+                        n_batch = 0
+                        x, x_rel = dev_features
+                        num_rows = x.shape[0]
+                        probs = []
+                        while n_batch * batch_size < num_rows:
+                            x_b = x[n_batch * batch_size:(n_batch + 1) * batch_size, :]
+                            x_rel_b = x_rel[n_batch * batch_size:(n_batch + 1) * batch_size, :]
+                            feed_dict = {
+                              self.input_s: x_b,
+                              self.input_r: x_rel_b,
+                              self.dropout_keep_prob: 1.0
+                            }
+                            loss, p = self.sess.run(
+                                [self.loss, self.probs],
+                                feed_dict)
+                            n_batch += 1
+                            probs += [p[i, 0] for i in range(p.shape[0])]
+                        avg_f1, oracle_avg_f1 = self.evaluate_dev(dev_qids, dev_f1, probs)
+                        logger.info("Dev avg_f1: %.2f oracle_avg_f1: %.2f" % (
+                        100 * avg_f1, 100 * oracle_avg_f1))
 
                     def train_step(x_batch, x_rel_batch, y_batch):
                         """
                         A single training step
                         """
+                        if x_batch.shape[0] > 400:
+                            rows = [0] + random.sample(range(1, x_batch.shape[0]), 400)
+                            x_batch = x_batch[rows, :]
+                            x_rel_batch = x_rel_batch[rows, :]
+                            y_batch = y_batch[rows, :]
                         feed_dict = {
                           self.input_s: x_batch,
                           self.input_r: x_rel_batch,
                           self.input_y: y_batch,
                           self.dropout_keep_prob: 0.5
                         }
-                        _, step, loss, probs = sess.run(
+                        _, step, loss, probs = self.sess.run(
                             [train_op, global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
-                        #print("{}: step {}, loss {}".format(time_str, step, loss))
+                        print("{}: step {}, loss {}".format(time_str, step, loss))
                     for n in range(num_epochs):
                         logger.info("Starting epoch %d" % (n + 1))
-                        for y_batch, x_batch, x_rel_batch in train_batches:
+                        for y_batch, (x_batch, x_rel_batch) in train_batches:
                             train_step(x_batch, x_rel_batch, y_batch)
+                        run_dev_batches()
 
-    def create_train_batches(self, train_queries, correct_threshold=.5):
+    def create_train_batches(self, train_queries, correct_threshold=1.0):
         logger.info("Creating train batches.")
         query_batches = []
+        total_num_candidates = 0
+        total_num_queries = 0
         for query in train_queries:
             batch = []
             oracle_position = query.oracle_position
             candidates = [x.query_candidate for x in query.eval_candidates]
             has_correct_candidate = False
             for i, candidate in enumerate(candidates):
-                if query.eval_candidates[i].evaluation_result.f1 >= correct_threshold \
-                        or i + 1 == oracle_position:
+                if query.eval_candidates[i].evaluation_result.f1 >= correct_threshold:
+                    #    or i + 1 == oracle_position:
                     batch.append((1, candidate))
                     has_correct_candidate = True
                 else:
                     batch.append((0, candidate))
             if has_correct_candidate and len(batch) > 1:
-                batch_features = self.create_batch_features(batch)
-                query_batches.append(batch_features)
-        logger.info("Done. %d batches." % len(query_batches))
+                # Sort so that first candidate is correct - needed for training.
+                # Ignores that there may be several correct candidates!
+                batch = sorted(batch, key=lambda x: x[0], reverse=True)
+                batch_candidates = [b[1] for b in batch]
+                batch_labels = [b[0] for b in batch]
+                num_candidates = len(batch)
+                total_num_candidates += num_candidates
+                total_num_queries += 1
+                labels = np.array(batch_labels).reshape((num_candidates, 1))
+                batch_features = self.create_batch_features(batch_candidates)
+                query_batches.append((labels, batch_features))
+        logger.info("Done. %d batches/queries, %d candidates." % (total_num_queries,
+                                                                  total_num_candidates))
         return query_batches
 
-    def create_batch_features(self, batch, max_len=250):
-        # Sort so that first candidate is correct - needed for training.
-        # Ignores that there may be several correct candidates!
-        batch = sorted(batch, key=lambda x: x[0], reverse=True)
+    def create_test_batches(self, test_queries):
+        logger.info("Creating test batches.")
+        candidate_qids = []
+        candidate_f1 = []
+        all_candidates = []
+        for query in test_queries:
+            candidates = [x.query_candidate for x in query.eval_candidates]
+            all_candidates += candidates
+            for i, candidate in enumerate(candidates):
+                candidate_f1.append(query.eval_candidates[i].evaluation_result.f1)
+                candidate_qids.append(query.id)
+        candidate_features = self.create_batch_features(all_candidates,
+                                                        max_len=999999)
+        logger.info("Done. %d candidates, %d queries." % (len(all_candidates),
+                                                          len(test_queries)))
+        return candidate_features, candidate_qids, candidate_f1
+
+    def create_batch_features(self, batch, max_len=3000):
         batch = batch[:max_len]
         num_candidates = len(batch)
         # How much to add left and right.
@@ -154,8 +228,7 @@ class DeepCNNAqquRelScorer():
                          dtype=int)
         rel_features = np.zeros(shape=(num_candidates, 6 * self.embedding_size),
                                 dtype=float)
-        labels = np.zeros(shape=(num_candidates, 1))
-        for i, (label, candidate) in enumerate(batch):
+        for i, candidate in enumerate(batch):
             text_tokens = feature_extraction.get_query_text_tokens(candidate)
             text_sequence = []
             # Transform to IDs.
@@ -182,8 +255,7 @@ class DeepCNNAqquRelScorer():
                     start = (j * 3 + k) * self.embedding_size
                     end = (j * 3 + k + 1) * self.embedding_size
                     rel_features[i, start:end] = np.average(rel_vectors)
-            labels[i] = label
-        return labels, words, rel_features
+        return words, rel_features
 
     def store_model(self):
         # Store UNK, as well as name of embeddings_source?
@@ -217,10 +289,9 @@ class DeepCNNAqquRelScorer():
                 self.sess = sess
                 saver.restore(sess, ckpt.model_checkpoint_path)
 
-
     def score(self, candidate):
         from ranker import RankScore
-        _, words, rel_features = self.create_batch_features([(0, candidate)])
+        words, rel_features = self.create_batch_features([candidate])
         feed_dict = {
           self.input_s: words,
           self.input_r: rel_features,
@@ -250,7 +321,7 @@ class DeepCNNAqquRelScorer():
             candidates = score_candidates[batch * batch_size:(batch + 1) * batch_size]
             if not candidates:
                 break
-            _, words, rel_features = self.create_batch_features([(0, c) for c in candidates])
+            words, rel_features = self.create_batch_features(candidates)
             feed_dict = {
               self.input_s: words,
               self.input_r: rel_features,

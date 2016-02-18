@@ -202,7 +202,7 @@ class AqquModel(MLModel, Ranker):
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
             deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(),
-                                                 "data/GoogleNews-vectors-negative300.gensim")
+                                                 "/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5")
             deep_relation_scorer.load_model()
             self.deep_relation_scorer = deep_relation_scorer
             self.dict_vec = dict_vec
@@ -225,10 +225,10 @@ class AqquModel(MLModel, Ranker):
         rel_model.learn_model(queries)
         return rel_model
 
-    def learn_deep_rel_score_model(self, queries):
+    def learn_deep_rel_score_model(self, queries, test_queries):
         rel_model = DeepCNNAqquRelScorer(self.get_model_name(),
-                                         "data/GoogleNews-vectors-negative300.gensim")
-        rel_model.learn_model(queries)
+                                         "/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5")
+        rel_model.learn_model(queries, test_queries)
         return rel_model
 
     def learn_prune_model(self, labels, features, dict_vec):
@@ -387,7 +387,7 @@ class AqquModel(MLModel, Ranker):
             remaining = self.pruner.prune_candidates(query_candidates, features)
         return remaining
 
-    def learn_submodel_features(self, train_queries, dict_vec, n_folds=2):
+    def learn_submodel_features(self, train_queries, dict_vec, n_folds=6):
         """Learn additional models based on folds that appear as additional
         features in the final ranking model.
 
@@ -419,10 +419,11 @@ class AqquModel(MLModel, Ranker):
                 num_fold, n_folds))
             test_fold = [train_queries[i] for i in test]
             train_fold = [train_queries[i] for i in train]
-            write_dl_examples(train_fold,"train", num_fold)
-            write_dl_examples(test_fold, "test", num_fold)
+            #write_dl_examples(train_fold,"train", num_fold)
+            #write_dl_examples(test_fold, "test", num_fold)
             rel_model = self.learn_rel_score_model(train_fold)
-            deep_rel_model = self.learn_deep_rel_score_model(train_fold)
+            deep_rel_model = self.learn_deep_rel_score_model(train_fold,
+                                                             test_fold)
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
             rel_scores = rel_model.score_multiple(test_candidates)
