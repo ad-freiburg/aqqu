@@ -74,7 +74,7 @@ def get_query_text_tokens(candidate, include_mid=False):
                 else:
                     query_text_tokens.append('ENTITY')
         else:
-            query_text_tokens.append(t.lemma)
+            query_text_tokens.append(t.token)
     return query_text_tokens
 
 

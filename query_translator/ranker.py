@@ -201,8 +201,10 @@ class AqquModel(MLModel, Ranker):
                                                   percentile=self.top_ngram_percentile)
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
-            deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(),
-                                                 "/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5")
+            deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
+                                                 #"/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5.pruned")
+                                                 #"/home/haussmae/imdb_cnn/vectors/GoogleNews-vectors-negative300")
+
             deep_relation_scorer.load_model()
             self.deep_relation_scorer = deep_relation_scorer
             self.dict_vec = dict_vec
@@ -227,7 +229,8 @@ class AqquModel(MLModel, Ranker):
 
     def learn_deep_rel_score_model(self, queries, test_queries):
         rel_model = DeepCNNAqquRelScorer(self.get_model_name(),
-                                         "/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5")
+                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5.pruned")
+                                         "/home/haussmae/imdb_cnn/vectors/GoogleNews-vectors-negative300")
         rel_model.learn_model(queries, test_queries)
         return rel_model
 
@@ -248,7 +251,7 @@ class AqquModel(MLModel, Ranker):
         features = np.hstack([features, sub_features])
         logger.info("Training final relation scorer.")
         rel_model = self.learn_rel_score_model(train_queries)
-        deep_rel_model = self.learn_deep_rel_score_model(train_queries)
+        deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
         self.relation_scorer = rel_model
         self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
