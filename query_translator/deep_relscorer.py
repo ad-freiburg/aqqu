@@ -34,7 +34,7 @@ class DeepCNNAqquRelScorer():
             self.rel_width_len = 6 * self.embedding_size
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
-        self.filter_sizes = [2, 3, 4]
+        self.filter_sizes = (2, 4, 6)
         self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
 
     def extract_vectors(self, gensim_model_fname):
@@ -128,7 +128,7 @@ class DeepCNNAqquRelScorer():
         logger.info("Evaluating %d queries." % num_queries)
         return all_f1 / num_queries, all_oracle_f1 / num_queries
 
-    def learn_model(self, train_queries, dev_queries, num_epochs=30):
+    def learn_model(self, train_queries, dev_queries, num_epochs=35):
         self.extend_vocab_for_relwords(train_queries)
         default_sess = tf.get_default_session()
         if default_sess is not None:
@@ -141,7 +141,8 @@ class DeepCNNAqquRelScorer():
         dev_scores = []
         with self.g.as_default():
             self.build_deep_model(self.sentence_len, self.embeddings,
-                                  self.embedding_size, self.rel_width_len)
+                                  self.embedding_size, self.rel_width_len,
+                                  filter_sizes=self.filter_sizes)
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True)
             self.sess = tf.Session(config=session_conf)
@@ -357,7 +358,8 @@ class DeepCNNAqquRelScorer():
             self.g = tf.Graph()
             with self.g.as_default():
                 self.build_deep_model(self.sentence_len, self.embeddings,
-                                      self.embedding_size, self.rel_width_len)
+                                      self.embedding_size, self.rel_width_len,
+                                      filter_sizes=self.filter_sizes)
                 saver = tf.train.Saver()
                 session_conf = tf.ConfigProto(
                     allow_soft_placement=True)
@@ -419,8 +421,8 @@ class DeepCNNAqquRelScorer():
         return result
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
-                         rel_width, filter_sizes=[2, 3, 4], num_filters=200,
-                         n_hidden_nodes_1=200, n_hidden_nodes_2=100, num_classes=1):
+                         rel_width, filter_sizes=(2, 3, 4), num_filters=200,
+                         n_hidden_nodes_1=400, n_hidden_nodes_2=200, num_classes=1):
         logger.info("sentence_len: %s"% sentence_len)
         logger.info("embedding_size: %s"% embedding_size)
         logger.info("rel_width: %s"% rel_width)
@@ -485,19 +487,19 @@ class DeepCNNAqquRelScorer():
             self.h_1 = tf.nn.xw_plus_b(self.rh_pool, W, b, name="h_1")
             self.a_1 = tf.nn.relu(self.h_1)
 
-  #      with tf.name_scope("dense2"):
-  #          W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
-  #                                              stddev=0.1), name="W")
-  #          b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]), name="b")
-  #          self.h_2 = tf.nn.xw_plus_b(self.a_1, W, b, name="h_2")
-  #           self.a_2 = tf.nn.relu(self.h_2)
+        # with tf.name_scope("dense2"):
+        #     W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
+        #                                         stddev=0.1), name="W")
+        #     b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]), name="b")
+        #     self.h_2 = tf.nn.xw_plus_b(self.a_1, W, b, name="h_2")
+        #     self.a_2 = tf.nn.relu(self.h_2)
 
         # Final (unnormalized) scores and predictions
         with tf.name_scope("output"):
             W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, num_classes],
                                                 stddev=0.1), name="W")
             b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
-            W = tf.clip_by_norm(W, 3)
+            #W = tf.clip_by_norm(W, 3)
             self.scores = tf.nn.xw_plus_b(self.a_1, W, b, name="scores")
             self.probs = tf.nn.sigmoid(self.scores)
 

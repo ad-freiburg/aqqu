@@ -38,6 +38,8 @@ from sklearn.pipeline import FeatureUnion
 from sklearn.cross_validation import KFold
 from sklearn.metrics import classification_report
 from deep_relscorer import DeepCNNAqquRelScorer
+import xgboost as xgb
+from sklearn import utils
 
 RANDOM_SHUFFLE = 0.3
 
@@ -197,16 +199,12 @@ class AqquModel(MLModel, Ranker):
             self.model = model
             self.scaler = scaler
             relation_scorer = RelationNgramScorer(self.get_model_name(),
-                                                  self.rel_regularization_C,
-                                                  percentile=self.top_ngram_percentile)
+                                                  self.rel_regularization_C)
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
-            deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
-                                                 #"/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5.pruned")
-                                                 #"/home/haussmae/imdb_cnn/vectors/GoogleNews-vectors-negative300")
-
-            deep_relation_scorer.load_model()
-            self.deep_relation_scorer = deep_relation_scorer
+            #deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
+            #deep_relation_scorer.load_model()
+            #self.deep_relation_scorer = deep_relation_scorer
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
             pruner = CandidatePruner(self.get_model_name(),
@@ -214,16 +212,15 @@ class AqquModel(MLModel, Ranker):
             pruner.load_model()
             self.pruner = pruner
             self.label_encoder = label_enc
-            self.correct_index = label_enc.transform([1])[0]
             logger.info("Loaded scorer model from %s" % model_file)
         except IOError:
             logger.warn("Model file %s could not be loaded." % model_file)
             raise
 
-    def learn_rel_score_model(self, queries):
+    def learn_rel_score_model(self, queries, ngrams_dict=None):
         rel_model = RelationNgramScorer(self.get_model_name(),
                                         self.rel_regularization_C,
-                                        percentile=self.top_ngram_percentile)
+                                        ngrams_dict=ngrams_dict)
         rel_model.learn_model(queries)
         return rel_model
 
@@ -246,14 +243,23 @@ class AqquModel(MLModel, Ranker):
         labels, features = construct_train_examples(train_queries,
                                                     f_ext.extract_features)
         features = dict_vec.fit_transform(features)
+        n_grams_dict = None
+        if self.top_ngram_percentile:
+            logger.info("Collecting frequent n-gram features...")
+            n_grams_dict = get_top_chi2_candidate_ngrams(train_queries,
+                                                         f_ext.extract_ngram_features,
+                                                         percentile=self.top_ngram_percentile)
+            logger.info("Collected %s n-gram features" % len(n_grams_dict))
+
         # Compute deep/ngram relation-score based on folds and add
-        dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec)
+        dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
+                                                              ngrams_dict=n_grams_dict)
         features = np.hstack([features, sub_features])
         logger.info("Training final relation scorer.")
-        rel_model = self.learn_rel_score_model(train_queries)
-        deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
+        rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
         self.relation_scorer = rel_model
-        self.deep_relation_scorer = deep_rel_model
+        #deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
+        #self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
         # Pass sparse matrix + dict_vec
         self.pruner = self.learn_prune_model(labels, features, dict_vec)
@@ -269,20 +275,130 @@ class AqquModel(MLModel, Ranker):
         logger.info("#of labeled examples: %s" % len(pair_features))
         logger.info("#labels non-zero: %s" % sum(pair_labels))
         label_encoder = LabelEncoder()
-        logger.info(pair_features.shape)
         pair_labels = label_encoder.fit_transform(pair_labels)
         X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
-        decision_tree = RandomForestClassifier(class_weight='auto',
+        decision_tree = RandomForestClassifier(class_weight='balanced',
                                                random_state=999,
                                                n_jobs=6,
-                                               n_estimators=90)
-        logger.info("Training random forest...")
+                                               n_estimators=100)
         decision_tree.fit(X, labels)
         logger.info("Done.")
         self.model = decision_tree
         self.pair_dict_vec = pair_dict_vec
         self.label_encoder = label_encoder
-        self.correct_index = label_encoder.transform([1])[0]
+
+    def learn_ranking_model_new(self, queries, features, dict_vec,
+                                dev_ratio=0.3):
+        random.seed(123)
+        np.random.seed(123)
+        indices = []
+        for q in queries:
+            start = sum([len(l) for l in indices])
+            indices.append(list(range(start,
+                                      start + len(q.eval_candidates))))
+        indices, queries = utils.shuffle(indices, queries)
+        features = features[np.array([i for l in indices for i in l])]
+        def f1_to_relevance(f1):
+            if f1 > 0.8:
+                return 2
+            elif f1 > 0.5:
+                return 1
+            elif f1 > 0.1:
+                return 0
+            else:
+                return 0
+        relevance_scores = []
+        for i, q in enumerate(queries):
+            candidates = [x.query_candidate for x in q.eval_candidates]
+            for j, c in enumerate(candidates):
+                f1 = q.eval_candidates[j].evaluation_result.f1
+                relevance_scores.append(f1_to_relevance(f1))
+        groups = [len(l) for l in indices]
+        num_train = int(len(queries) * (1 - dev_ratio))
+        train_indices = np.array([i for l in indices[:num_train] for i in l])
+        dev_indices = np.array([i for l in indices[num_train:] for i in l])
+        relevance_scores = np.array(relevance_scores)
+        X_train = features[train_indices]
+        labels_train = relevance_scores[train_indices]
+        X_dev = features[dev_indices]
+        labels_dev = relevance_scores[dev_indices]
+        dtrain = xgb.DMatrix(X_train, label=labels_train)
+        dtrain.set_group(groups[:num_train])
+        ddev = xgb.DMatrix(X_dev, label=labels_dev)
+        ddev.set_group(groups[num_train:])
+        metric = "ndcg@3"
+
+        # Perform grid search for best parameters.
+        # F917 params:
+        # 'colsample_bytree': 0.7,
+        # 'eval_metric': 'ndcg@3',
+        # 'min_child_weight': 0.1,
+        # 'subsample': 1.0,
+        # 'eta': 0.3,
+        # 'objective': 'rank:pairwise',
+        # 'max_depth': 2,
+        # 'gamma': 0
+        # 'lambda': 1
+        #  num_rounds:91
+
+        # WQ params (ngram):
+        # 'colsample_bytree': 0.5 (0.7),
+        # 'eval_metric': 'ndcg@3',
+        # 'min_child_weight': 1.0 (2.0),
+        # 'subsample': 1.0 (0.7),
+        # 'eta': 0.1,
+        # 'objective': 'rank:pairwise',
+        # 'max_depth': 8,
+        # 'gamma': 1.0
+        #  num_rounds:239 (200)
+
+        param_grid = list(grid_search.ParameterGrid({
+            "objective": ["rank:pairwise"],
+            "eval_metric": [metric],
+            "eta": [0.1, 0.3],
+            #"eta": [0.1],
+            "min_child_weight": [1.0, 2.0],
+            #"min_child_weight": [1.0],
+            "gamma": [0.0, 1.0, 5.0],
+            #"gamma": [1.0],
+            #"subsample": [1.0, 0.7],
+            "subsample": [1.0],
+            "colsample_bytree": [1.0, 0.7, 0.5],
+            #"colsample_bytree": [0.5],
+            "max_depth": [6, 8, 10],
+            "silent": [1]}))
+        best_score = 0.0
+        best_params = None
+        num_rounds = 0
+        for i, params in enumerate(param_grid):
+            logger.info("Testing parameters %d/%d" % (i + 1, len(param_grid)))
+            eval_results = {}
+            model = xgb.train(params, dtrain, 500, evals=[(ddev, "dev")],
+                              evals_result=eval_results,
+                              early_stopping_rounds=20,
+                              verbose_eval=True)
+            #last_score = eval_results["dev"][metric][-1]
+            last_score = model.best_score
+            if last_score > best_score:
+                best_score = last_score
+                best_params = params
+                num_rounds = model.best_iteration
+        logger.info(
+            "Best score, %s, best parameters: %s, num_rounds:%d" % (best_score,
+                                                                    best_params,
+                                                                    num_rounds))
+        # Train final model.
+        dtrain = xgb.DMatrix(features, label=relevance_scores)
+        dtrain.set_group(groups)
+        xgb_decision_tree = xgb.train(best_params, dtrain, num_rounds)
+        # decision_tree = clf.best_estimator_
+        #print(decision_tree.feature_importances_)
+        logger.info("Done.")
+        label_encoder = LabelEncoder()
+        self.label_encoder = label_encoder
+        self.model = xgb_decision_tree
+        self.pair_dict_vec = dict_vec
+
 
     def store_model(self):
         logger.info("Writing model to %s." % self.get_model_filename())
@@ -290,7 +406,7 @@ class AqquModel(MLModel, Ranker):
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
         self.relation_scorer.store_model()
-        self.deep_relation_scorer.store_model()
+        #self.deep_relation_scorer.store_model()
         self.pruner.store_model()
         logger.info("Done.")
 
@@ -347,6 +463,12 @@ class AqquModel(MLModel, Ranker):
         logger.info("Sort for %s took %s ms" % (len(pairs), duration))
         return [candidates[i] for i in sorted_i]
 
+    def rank_candidates_new(self, candidates, features):
+        dtest = xgb.DMatrix(features)
+        dtest.set_group([len(candidates)])
+        rk = zip(candidates, self.model.predict(dtest))# , ntree_limit=self.label_encoder))
+        s_rk = sorted(rk, key=lambda x: x[1], reverse=True)
+        return [x[0] for x in s_rk]
 
     def rank_query_candidates(self, query_candidates, key=lambda x: x):
         """Rank query candidates by scoring and then sorting them.
@@ -365,13 +487,13 @@ class AqquModel(MLModel, Ranker):
         # Extract features from all candidates and create matrix
         candidates = [key(q) for q in query_candidates]
         features = f_ext.extract_features(candidates,
-                                                   rel_score_model=self.relation_scorer,
-                                                   deep_rel_score_model=self.deep_relation_scorer)
+                                          rel_score_model=self.relation_scorer,
+                                          deep_rel_score_model=self.deep_relation_scorer)
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
         query_candidates, features = self.prune_candidates(query_candidates,
-                                                           features)
+                                                              features)
         logger.info("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
         start = time.time()
@@ -390,7 +512,8 @@ class AqquModel(MLModel, Ranker):
             remaining = self.pruner.prune_candidates(query_candidates, features)
         return remaining
 
-    def learn_submodel_features(self, train_queries, dict_vec, n_folds=6):
+    def learn_submodel_features(self, train_queries, dict_vec, n_folds=6,
+                                ngrams_dict=None):
         """Learn additional models based on folds that appear as additional
         features in the final ranking model.
 
@@ -424,18 +547,19 @@ class AqquModel(MLModel, Ranker):
             train_fold = [train_queries[i] for i in train]
             #write_dl_examples(train_fold,"train", num_fold)
             #write_dl_examples(test_fold, "test", num_fold)
-            rel_model = self.learn_rel_score_model(train_fold)
-            deep_rel_model = self.learn_deep_rel_score_model(train_fold,
-                                                             test_fold)
+            rel_model = self.learn_rel_score_model(train_fold,
+                                                   ngrams_dict=ngrams_dict)
+            #deep_rel_model = self.learn_deep_rel_score_model(train_fold,
+            #                                                 test_fold)
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
             rel_scores = rel_model.score_multiple(test_candidates)
-            deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
+            #deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
             c_index = 0
             for i in test:
                 for c in qc_indices[i]:
                     features[c, 0] = rel_scores[c_index].score
-                    features[c, 1] = deep_rel_scores[c_index].score
+                    #features[c, 1] = deep_rel_scores[c_index].score
                     c_index += 1
             num_fold += 1
         # TODO: better to create a copy and return changed copy
@@ -496,7 +620,12 @@ class CandidatePruner(MLModel):
         num_neg_labels = num_labels - num_pos_labels
         pos_class_weight = num_labels / num_pos_labels
         neg_class_weight = num_labels / num_neg_labels
-        pos_class_boost = 2.0
+        total_weight = pos_class_weight + neg_class_weight
+        pos_class_weight /= total_weight
+        neg_class_weight /= total_weight
+        # with old ranking 1.0 works best, followed by 1.2
+        # with mew ranking 1.5 works a lot better
+        pos_class_boost = 1.5
         label_encoder = LabelEncoder()
         logger.info(X[-1])
         labels = label_encoder.fit_transform(labels)
@@ -507,13 +636,18 @@ class CandidatePruner(MLModel):
         class_weights = {1: pos_class_weight * pos_class_boost,
                          0: neg_class_weight}
         logger.info(class_weights)
-        logreg_cv = LogisticRegressionCV(Cs=20,
+        # We want to maximize precision on negative labels
+        p_scorer = metrics.make_scorer(metrics.fbeta_score,
+                                       pos_label=-1, beta=0.5)
+        logreg_cv = LogisticRegressionCV(Cs=10,
                                          class_weight=class_weights,
                                          cv=6,
-                                         solver='lbfgs',
+                                         solver='sag',
                                          n_jobs=6,
+                                         scoring=p_scorer,
                                          # max_iter=40,
-                                         verbose=True)
+                                         verbose=False,
+                                         random_state=999)
         logreg_cv.fit(X, labels)
         self.model = logreg_cv
         pred = self.model.predict(X)
@@ -569,13 +703,13 @@ class RelationNgramScorer(MLModel):
     def __init__(self,
                  name,
                  regularization_C,
-                 percentile=None):
+                 ngrams_dict=None):
         name += self.get_relscorer_suffix()
         MLModel.__init__(self, name, None)
         # Note: The model is lazily when needed.
         self.model = None
         self.regularization_C = regularization_C
-        self.top_percentile = percentile
+        self.ngrams_dict = ngrams_dict
         self.label_encoder = None
         self.dict_vec = None
         self.scaler = None
@@ -611,45 +745,48 @@ class RelationNgramScorer(MLModel):
         logger.info(classification_report(labels, labels_predict))
 
     def learn_model(self, train_queries):
-        if self.top_percentile:
-            logger.info("Collecting frequent n-gram features...")
-            n_grams_dict = get_top_chi2_candidate_ngrams(train_queries,
-                                                         f_ext.extract_ngram_features,
-                                                         percentile=self.top_percentile)
-            logger.info("Collected %s n-gram features" % len(n_grams_dict))
-
         def ngram_features(cs):
             return f_ext.extract_ngram_features(cs,
-                                                         ngram_dict=n_grams_dict)
+                                                ngram_dict=self.ngrams_dict)
 
         labels, features = construct_train_examples(train_queries,
                                                     ngram_features)
         logger.info("#of labeled examples: %s" % len(features))
         logger.info("#labels non-zero: %s" % sum(labels))
+        num_labels = float(len(labels))
+        num_pos_labels = sum(labels)
+        num_neg_labels = num_labels - num_pos_labels
+        pos_class_weight = num_labels / num_pos_labels
+        neg_class_weight = num_labels / num_neg_labels
+        total_weight = pos_class_weight + neg_class_weight
+        pos_class_weight /= total_weight
+        neg_class_weight /= total_weight
+        pos_class_boost = 1.0
         label_encoder = LabelEncoder()
         logger.info(features[-1])
         labels = label_encoder.fit_transform(labels)
         vec = DictVectorizer(sparse=True)
         scaler = StandardScaler(with_mean=False)
         X = vec.fit_transform(features)
-        X = scaler.fit_transform(X)
+        X = scaler.fit_transform(X) 
         X, labels = utils.shuffle(X, labels, random_state=999)
         logger.info("#Features: %s" % len(vec.vocabulary_))
+        class_weights = {1: pos_class_weight * pos_class_boost,
+                         0: neg_class_weight} 
+        logger.info("Weights: %s" % str(class_weights))
         # Perform grid search or use provided C.
         if self.regularization_C is None:
             logger.info("Performing grid search.")
-            relation_scorer = SGDClassifier(loss='log', class_weight='auto',
-                                            #n_iter=np.ceil(10 ** 6 / len(labels)),
-                                            n_iter=10,
-                                            random_state=999)
-            cv_params = [{"alpha": [10.0, 5.0, 2.0, 1.5, 1.0, 0.5,
-                                    0.1, 0.01, 0.001, 0.0001]}]
+            cv_params = [{"C": [0.1, 0.01, 0.001, 0.0001, 0.00001]}]
+            relation_scorer = LogisticRegression(class_weight=class_weights,
+                                                 solver='sag')
             grid_search_cv = grid_search.GridSearchCV(relation_scorer,
                                                       cv_params,
-                                                      n_jobs=8,
+                                                      n_jobs=4,
                                                       verbose=1,
-                                                      cv=8,
-                                                      refit=True)
+                                                      cv=4,
+                                                      refit=True,
+                                                      scoring='roc_auc')
             grid_search_cv.fit(X, labels)
             logger.info("Best score: %.5f" % grid_search_cv.best_score_)
             logger.info("Best params: %s" % grid_search_cv.best_params_)
@@ -657,11 +794,13 @@ class RelationNgramScorer(MLModel):
         else:
             logger.info("Learning relation scorer with C: %s."
                         % self.regularization_C)
-            relation_scorer = SGDClassifier(loss='log', class_weight='auto',
-                                            #n_iter=np.ceil(10 ** 6 / len(labels)),
-                                            n_iter=10,
-                                            alpha=self.regularization_C,
-                                            random_state=999)
+            # class_weight='balanced' gives 49.15
+            # class_weight='auto' gives 49.07
+            # class_weight=class_weights gives 49.25 (with 1.0)
+            relation_scorer = LogisticRegression(C=self.regularization_C,
+                                                 class_weight=class_weights,
+                                                 n_jobs=-1,
+                                                 solver='sag')
             relation_scorer.fit(X, labels)
             logger.info("Done.")
             self.model = relation_scorer

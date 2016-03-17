@@ -84,7 +84,9 @@ def evaluate_scorer(test_queries, scorer_obj):
     :param num_processes:
     :return:
     """
-    for query in test_queries:
+    total_queries = len(test_queries)
+    for i, query in enumerate(test_queries):
+        logger.info("Evaluating query %d/%d." % (i + 1, total_queries))
         query.eval_candidates = scorer_obj.rank_query_candidates(
             query.eval_candidates,
             key=lambda x: x.query_candidate)
