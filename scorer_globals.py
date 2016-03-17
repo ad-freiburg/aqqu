@@ -16,6 +16,7 @@ scorer_list = [ranker.AqquModel('F917_Ranker',
                ranker.AqquModel('F917_Ranker_entity_oracle',
                                  "free917train",
                                  entity_oracle_file=free917_entities,
+                                 # These have not been adjusted yet.
                                  top_ngram_percentile=2,
                                  rel_regularization_C=1.0),
                ranker.AqquModel('WQ_Ranker',

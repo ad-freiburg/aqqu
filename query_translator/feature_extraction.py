@@ -231,16 +231,30 @@ def ngram_features(candidate, ngram_dict):
     :return:
     """
     ngram_features = dict()
-    relations = '_'.join(sorted(candidate.get_relation_names()))
+
+    def add_feature(f_name):
+        if ngram_dict is None or f_name in ngram_dict:
+            ngram_features[f_name] = 1
+
+    relations = sorted(candidate.get_relation_names())
+    all_rels = '_'.join(relations)
     n_grams = get_n_grams_features(candidate)
     for ng in n_grams:
         # Ignore ngrams that only consist of stopfwords.
         if set(ng).issubset(N_GRAM_STOPWORDS):
             continue
-        f_name = 'rel:%s+word:%s' % (relations, '_'.join(ng))
-        if ngram_dict is None or f_name in ngram_dict:
-            ngram_features[f_name] = 1
+        f_name = 'rel:%s+word:%s' % (all_rels, '_'.join(ng))
+        add_feature(f_name)
     return ngram_features
+
+
+def split_relation(relation):
+    """Split a relation into individual tokens
+
+    :param relation:
+    :return:
+    """
+    return relation.split('.')
 
 
 def extract_ngram_features(candidates, ngram_dict=None):

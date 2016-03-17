@@ -768,7 +768,7 @@ class RelationNgramScorer(MLModel):
         vec = DictVectorizer(sparse=True)
         scaler = StandardScaler(with_mean=False)
         X = vec.fit_transform(features)
-        X = scaler.fit_transform(X) 
+        X = scaler.fit_transform(X)
         X, labels = utils.shuffle(X, labels, random_state=999)
         logger.info("#Features: %s" % len(vec.vocabulary_))
         class_weights = {1: pos_class_weight * pos_class_boost,
@@ -777,7 +777,8 @@ class RelationNgramScorer(MLModel):
         # Perform grid search or use provided C.
         if self.regularization_C is None:
             logger.info("Performing grid search.")
-            cv_params = [{"C": [0.1, 0.01, 0.001, 0.0001, 0.00001]}]
+            # Smaller -> stronger.
+            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001]}]
             relation_scorer = LogisticRegression(class_weight=class_weights,
                                                  solver='sag')
             grid_search_cv = grid_search.GridSearchCV(relation_scorer,
@@ -800,7 +801,8 @@ class RelationNgramScorer(MLModel):
             relation_scorer = LogisticRegression(C=self.regularization_C,
                                                  class_weight=class_weights,
                                                  n_jobs=-1,
-                                                 solver='sag')
+                                                 solver='sag',
+                                                 random_state=999)
             relation_scorer.fit(X, labels)
             logger.info("Done.")
             self.model = relation_scorer
