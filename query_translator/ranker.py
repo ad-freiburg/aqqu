@@ -198,10 +198,10 @@ class AqquModel(MLModel, Ranker):
                 = joblib.load(model_file)
             self.model = model
             self.scaler = scaler
-            relation_scorer = RelationNgramScorer(self.get_model_name(),
-                                                  self.rel_regularization_C)
-            relation_scorer.load_model()
-            self.relation_scorer = relation_scorer
+            #relation_scorer = RelationNgramScorer(self.get_model_name(),
+            #                                      self.rel_regularization_C)
+            #relation_scorer.load_model()
+            #self.relation_scorer = relation_scorer
             #deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
             #deep_relation_scorer.load_model()
             #self.deep_relation_scorer = deep_relation_scorer
@@ -252,18 +252,18 @@ class AqquModel(MLModel, Ranker):
             logger.info("Collected %s n-gram features" % len(n_grams_dict))
 
         # Compute deep/ngram relation-score based on folds and add
-        dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
-                                                              ngrams_dict=n_grams_dict)
-        features = np.hstack([features, sub_features])
+        #dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
+        #                                                      ngrams_dict=n_grams_dict)
+        #features = np.hstack([features, sub_features])
         logger.info("Training final relation scorer.")
-        rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
-        self.relation_scorer = rel_model
+        #rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
+        #self.relation_scorer = rel_model
         #deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
         #self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
         # Pass sparse matrix + dict_vec
         self.pruner = self.learn_prune_model(labels, features, dict_vec)
-        self.learn_ranking_model(train_queries, features, dict_vec)
+        self.learn_ranking_model_new(train_queries, features, dict_vec)
 
     def learn_ranking_model(self, queries, features, dict_vec):
         # Construct pair examples from whole, pass sparse matrix + train_queries
@@ -288,7 +288,7 @@ class AqquModel(MLModel, Ranker):
         self.label_encoder = label_encoder
 
     def learn_ranking_model_new(self, queries, features, dict_vec,
-                                dev_ratio=0.3):
+                                dev_ratio=0.2):
         random.seed(123)
         np.random.seed(123)
         indices = []
@@ -328,6 +328,9 @@ class AqquModel(MLModel, Ranker):
         ddev.set_group(groups[num_train:])
         metric = "ndcg@3"
 
+        logger.info("#train queries: %d" % len(labels_train))
+        logger.info("#dev queries: %d" % len(labels_dev))
+
         # Perform grid search for best parameters.
         # F917 params:
         # 'colsample_bytree': 0.7,
@@ -351,38 +354,45 @@ class AqquModel(MLModel, Ranker):
         # 'max_depth': 8,
         # 'gamma': 1.0
         #  num_rounds:239 (200)
-
+        num_pos = float(sum(relevance_scores))
+        num_neg = len(relevance_scores) - num_pos
         param_grid = list(grid_search.ParameterGrid({
-            "objective": ["rank:pairwise"],
+            "objective": ["rank:ndcg"],
             "eval_metric": [metric],
             "eta": [0.1, 0.3],
-            #"eta": [0.1],
+            #"num_parallel_tree": [5],
+            #"eta": [0.1, 0.3, 0.5, 0.8],
             "min_child_weight": [1.0, 2.0],
-            #"min_child_weight": [1.0],
-            "gamma": [0.0, 1.0, 5.0],
+            "gamma": [0.0, 0.5, 1.0],
             #"gamma": [1.0],
-            #"subsample": [1.0, 0.7],
-            "subsample": [1.0],
-            "colsample_bytree": [1.0, 0.7, 0.5],
-            #"colsample_bytree": [0.5],
-            "max_depth": [6, 8, 10],
+            "num_boost_round": [150],
+            #"subsample": [1.0, 0.75, 0.5],
+            "colsample_bytree": [1.0, 0.75],
+            #"colsample_bytree": [0.7],
+            "lambda": [10.0, 100.0],
+            "max_depth": [8],
             "silent": [1]}))
         best_score = 0.0
         best_params = None
         num_rounds = 0
         for i, params in enumerate(param_grid):
-            logger.info("Testing parameters %d/%d" % (i + 1, len(param_grid)))
+            logger.info("Testing parameters %d/%d: %s" % (i + 1,
+                                                          len(param_grid),
+                                                          str(params)))
             eval_results = {}
-            model = xgb.train(params, dtrain, 500, evals=[(ddev, "dev")],
+            model = xgb.train(params, dtrain, params["num_boost_round"],
+                              evals=[(dtrain, "train"), (ddev, "dev")],
                               evals_result=eval_results,
-                              early_stopping_rounds=20,
-                              verbose_eval=True)
-            #last_score = eval_results["dev"][metric][-1]
-            last_score = model.best_score
+                              #early_stopping_rounds=20,
+                              verbose_eval=False)
+            last_score = eval_results["dev"][metric][-1]
+            logger.info("%s: %s" % (metric, last_score))
+            #last_score = model.best_score
             if last_score > best_score:
                 best_score = last_score
                 best_params = params
-                num_rounds = model.best_iteration
+                #num_rounds = model.best_iteration
+                num_rounds = params["num_boost_round"]
         logger.info(
             "Best score, %s, best parameters: %s, num_rounds:%d" % (best_score,
                                                                     best_params,
@@ -405,7 +415,7 @@ class AqquModel(MLModel, Ranker):
         joblib.dump([self.model, self.label_encoder,
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
-        self.relation_scorer.store_model()
+        #self.relation_scorer.store_model()
         #self.deep_relation_scorer.store_model()
         self.pruner.store_model()
         logger.info("Done.")
@@ -500,7 +510,7 @@ class AqquModel(MLModel, Ranker):
         # If no or only one candidate remains return that..
         if len(query_candidates) < 2:
             return query_candidates
-        ranked_candidates = self.rank_candidates(query_candidates,
+        ranked_candidates = self.rank_candidates_new(query_candidates,
                                                  features)
         duration = (time.time() - start) * 1000
         logger.debug("Ranked candidates in %s ms" % (duration))
