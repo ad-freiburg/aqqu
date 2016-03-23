@@ -131,7 +131,7 @@ def simple_features(candidate,
         if em.entity.score > 0:
             em_pop_scores.append(math.log(em.entity.score))
         else:
-            em_pop_scores.append(-1)
+            em_pop_scores.append(0)
     token_name_match_score = defaultdict(float)
     token_weak_match_score = defaultdict(float)
     token_word_match_score = defaultdict(float)
@@ -159,12 +159,12 @@ def simple_features(candidate,
     n_derivation_relation_tokens = len(token_derivation_match_score)
     n_context_relation_tokens = len(token_word_match_score)
     n_weak_relation_tokens = len(token_weak_match_score)
-    sum_weak_relation_tokens = sum(token_weak_match_score.values())
-    sum_context_relation_tokens = sum(token_word_match_score.values())
-    avg_em_surface_score = sum(em_surface_scores) / len(em_surface_scores)
-    sum_em_surface_score = sum(em_surface_scores)
-    avg_em_popularity = sum(em_pop_scores) / len(em_pop_scores)
-    sum_em_popularity = sum(em_pop_scores)
+    sum_weak_relation_tokens = round(sum(token_weak_match_score.values()), 2)
+    sum_context_relation_tokens = round(sum(token_word_match_score.values()), 2)
+    avg_em_surface_score = round(sum(em_surface_scores) / len(em_surface_scores), 2)
+    sum_em_surface_score = round(sum(em_surface_scores), 2)
+    avg_em_popularity = round(sum(em_pop_scores) / len(em_pop_scores), 2)
+    sum_em_popularity = round(sum(em_pop_scores), 2)
     cardinality = int(math.log(cardinality)) if cardinality > 0 \
         else cardinality
 

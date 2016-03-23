@@ -34,7 +34,7 @@ class DeepCNNAqquRelScorer():
             self.rel_width_len = 6 * self.embedding_size
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
-        self.filter_sizes = (2, 4, 6)
+        self.filter_sizes = (2, 3, 4)
         self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
 
     def extract_vectors(self, gensim_model_fname):

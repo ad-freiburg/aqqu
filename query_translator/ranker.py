@@ -198,10 +198,10 @@ class AqquModel(MLModel, Ranker):
                 = joblib.load(model_file)
             self.model = model
             self.scaler = scaler
-            #relation_scorer = RelationNgramScorer(self.get_model_name(),
-            #                                      self.rel_regularization_C)
-            #relation_scorer.load_model()
-            #self.relation_scorer = relation_scorer
+            relation_scorer = RelationNgramScorer(self.get_model_name(),
+                                                  self.rel_regularization_C)
+            relation_scorer.load_model()
+            self.relation_scorer = relation_scorer
             #deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
             #deep_relation_scorer.load_model()
             #self.deep_relation_scorer = deep_relation_scorer
@@ -240,8 +240,10 @@ class AqquModel(MLModel, Ranker):
     def learn_model(self, train_queries):
         # Extract features for each candidate once
         dict_vec = DictVectorizer(sparse=False)
+
         labels, features = construct_train_examples(train_queries,
-                                                    f_ext.extract_features)
+                                                    f_ext.extract_features,
+                                                    score_threshold=.8)
         features = dict_vec.fit_transform(features)
         n_grams_dict = None
         if self.top_ngram_percentile:
@@ -252,12 +254,12 @@ class AqquModel(MLModel, Ranker):
             logger.info("Collected %s n-gram features" % len(n_grams_dict))
 
         # Compute deep/ngram relation-score based on folds and add
-        #dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
-        #                                                      ngrams_dict=n_grams_dict)
-        #features = np.hstack([features, sub_features])
+        dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
+                                                              ngrams_dict=n_grams_dict)
+        features = np.hstack([features, sub_features])
         logger.info("Training final relation scorer.")
-        #rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
-        #self.relation_scorer = rel_model
+        rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
+        self.relation_scorer = rel_model
         #deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
         #self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
@@ -277,59 +279,59 @@ class AqquModel(MLModel, Ranker):
         label_encoder = LabelEncoder()
         pair_labels = label_encoder.fit_transform(pair_labels)
         X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
-        decision_tree = RandomForestClassifier(class_weight='balanced',
-                                               random_state=999,
-                                               n_jobs=6,
-                                               n_estimators=100)
+        decision_tree = RandomForestClassifier(
+            random_state=999,
+            n_jobs=6,
+            n_estimators=200)
         decision_tree.fit(X, labels)
+        importances = decision_tree.feature_importances_
+        indices = np.argsort(importances)[::-1]
+        for f in range(X.shape[1]):
+            print("%d. feature %s (%f)" % (f + 1,
+                                           pair_dict_vec.feature_names_[indices[f]],
+                                           importances[indices[f]]))
         logger.info("Done.")
         self.model = decision_tree
         self.pair_dict_vec = pair_dict_vec
         self.label_encoder = label_encoder
 
-    def learn_ranking_model_new(self, queries, features, dict_vec,
-                                dev_ratio=0.2):
+    def learn_ranking_model_new_pair(self, queries, features, dict_vec,
+                                     dev_ratio=0.2):
         random.seed(123)
         np.random.seed(123)
+        pair_dict_vec, pair_features, pair_labels = construct_train_pair_examples(
+            queries,
+            features,
+            dict_vec)
+
+        logger.info("Training tree classifier for ranking.")
+        logger.info("#of labeled examples: %s" % len(pair_features))
+        logger.info("#labels non-zero: %s" % sum(pair_labels))
+        label_encoder = LabelEncoder()
+        pair_labels = label_encoder.fit_transform(pair_labels)
+        X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
+
         indices = []
         for q in queries:
             start = sum([len(l) for l in indices])
             indices.append(list(range(start,
                                       start + len(q.eval_candidates))))
         indices, queries = utils.shuffle(indices, queries)
-        features = features[np.array([i for l in indices for i in l])]
-        def f1_to_relevance(f1):
-            if f1 > 0.8:
-                return 2
-            elif f1 > 0.5:
-                return 1
-            elif f1 > 0.1:
-                return 0
-            else:
-                return 0
-        relevance_scores = []
-        for i, q in enumerate(queries):
-            candidates = [x.query_candidate for x in q.eval_candidates]
-            for j, c in enumerate(candidates):
-                f1 = q.eval_candidates[j].evaluation_result.f1
-                relevance_scores.append(f1_to_relevance(f1))
-        groups = [len(l) for l in indices]
         num_train = int(len(queries) * (1 - dev_ratio))
+        logger.info("#train: %d" % num_train)
         train_indices = np.array([i for l in indices[:num_train] for i in l])
         dev_indices = np.array([i for l in indices[num_train:] for i in l])
-        relevance_scores = np.array(relevance_scores)
-        X_train = features[train_indices]
-        labels_train = relevance_scores[train_indices]
-        X_dev = features[dev_indices]
-        labels_dev = relevance_scores[dev_indices]
-        dtrain = xgb.DMatrix(X_train, label=labels_train)
-        dtrain.set_group(groups[:num_train])
-        ddev = xgb.DMatrix(X_dev, label=labels_dev)
-        ddev.set_group(groups[num_train:])
-        metric = "ndcg@3"
-
-        logger.info("#train queries: %d" % len(labels_train))
-        logger.info("#dev queries: %d" % len(labels_dev))
+        _, pair_features_train, pair_labels_train = construct_train_pair_examples(
+            queries[:num_train],
+            features[train_indices],
+            dict_vec)
+        _, pair_features_test, pair_labels_test = construct_train_pair_examples(
+            queries[num_train:],
+            features[dev_indices],
+            dict_vec)
+        dtrain = xgb.DMatrix(pair_features_train, label=pair_labels_train)
+        ddev = xgb.DMatrix(pair_features_test, label=pair_labels_test)
+        metric = "error"
 
         # Perform grid search for best parameters.
         # F917 params:
@@ -354,23 +356,23 @@ class AqquModel(MLModel, Ranker):
         # 'max_depth': 8,
         # 'gamma': 1.0
         #  num_rounds:239 (200)
-        num_pos = float(sum(relevance_scores))
-        num_neg = len(relevance_scores) - num_pos
         param_grid = list(grid_search.ParameterGrid({
-            "objective": ["rank:ndcg"],
+            "objective": ["binary:logistic"],
             "eval_metric": [metric],
-            "eta": [0.1, 0.3],
-            #"num_parallel_tree": [5],
+            "eta": [0.3],
+            #"booster": ["gblinear"],
+            "num_parallel_tree": [200],
             #"eta": [0.1, 0.3, 0.5, 0.8],
-            "min_child_weight": [1.0, 2.0],
-            "gamma": [0.0, 0.5, 1.0],
-            #"gamma": [1.0],
-            "num_boost_round": [150],
-            #"subsample": [1.0, 0.75, 0.5],
-            "colsample_bytree": [1.0, 0.75],
-            #"colsample_bytree": [0.7],
-            "lambda": [10.0, 100.0],
-            "max_depth": [8],
+            #"min_child_weight": [1.0, 2.0],
+            "gamma": [0.0],
+            #"gamma": [0.0, 0.5, 1.0],
+            "num_boost_round": [1],
+            "subsample": [0.5],
+            #"colsample_bytree": [1.0, 0.5],
+            "colsample_bytree": [0.7],
+            #"lambda": [1.0, 10.0, 100.0],
+            #"lambda": [0.0, 1.0, 10.0],
+            "max_depth": [6],
             "silent": [1]}))
         best_score = 0.0
         best_params = None
@@ -384,8 +386,8 @@ class AqquModel(MLModel, Ranker):
                               evals=[(dtrain, "train"), (ddev, "dev")],
                               evals_result=eval_results,
                               #early_stopping_rounds=20,
-                              verbose_eval=False)
-            last_score = eval_results["dev"][metric][-1]
+                              verbose_eval=True)
+            last_score = 1 - float(eval_results["dev"][metric][-1])
             logger.info("%s: %s" % (metric, last_score))
             #last_score = model.best_score
             if last_score > best_score:
@@ -393,14 +395,159 @@ class AqquModel(MLModel, Ranker):
                 best_params = params
                 #num_rounds = model.best_iteration
                 num_rounds = params["num_boost_round"]
+                best_model = model
+        logger.info(
+            "Best score, %s, best parameters: %s, num_rounds:%d" % (best_score,
+                                                                    best_params,
+                                                                    num_rounds))
+        decision_tree = RandomForestClassifier(class_weight='balanced',
+                                               random_state=999,
+                                               n_jobs=6,
+                                               n_estimators=100)
+        #decision_tree.fit(pair_features_train, pair_labels_train)
+        #print(decision_tree.score(pair_features_test, pair_labels_test))
+        logger.info("Training final ranking model with best parameters.")
+        #decision_tree = xgb.XGBClassifier(objective=best_params["objective"],
+        #                                  learning_rate=best_params["eta"],
+        #                                  n_estimators=best_params["num_boost_round"],
+        #                                  max_depth=best_params["max_depth"],
+        #                                  reg_alpha=best_params["lambda"])
+        #decision_tree.fit(X, labels)
+        dalltrain = xgb.DMatrix(X, label=labels)
+        xgb_decision_tree = xgb.train(best_params, dalltrain, num_rounds)
+        #print(xgb.cv(best_params, dalltrain, num_rounds, 3))
+        logger.info("Done.")
+        self.model = xgb_decision_tree
+        fscores = self.model.get_fscore()
+        fimp = []
+        for name, score in fscores.iteritems():
+            index = int(name[1:])
+            fimp.append((score, pair_dict_vec.feature_names_[index]))
+        print(sorted(fimp, reverse=True))
+        print(X[0])
+        self.pair_dict_vec = pair_dict_vec
+        self.label_encoder = label_encoder
+
+
+    def learn_ranking_model_new(self, queries, features, dict_vec,
+                                dev_ratio=0.2):
+        random.seed(123)
+        np.random.seed(123)
+        def f1_to_relevance(f1):
+            if f1 > 0.8:
+                return 2
+            elif f1 > 0.6:
+                return 1
+            elif f1 > 0.4:
+                return 0
+            elif f1 > 0.1:
+                return 0
+            else:
+                return 0
+
+        indices = []
+        relevance_scores = []
+        for q in queries:
+            start = sum([len(l) for l in indices])
+            indices.append(list(range(start,
+                                      start + len(q.eval_candidates))))
+            candidates = [x.query_candidate for x in q.eval_candidates]
+            for j, c in enumerate(candidates):
+                f1 = q.eval_candidates[j].evaluation_result.f1
+                relevance_scores.append(f1_to_relevance(f1))
+        relevance_scores = np.array(relevance_scores)
+        all_groups = [len(l) for l in indices]
+
+        indices, queries = utils.shuffle(indices, queries)
+        #re_features = features[np.array([i for l in indices for i in l])]
+        #re_relevance_scores = relevance_scores[np.array([i for l in indices for i in l])]
+        groups = [len(l) for l in indices]
+        num_train = int(len(queries) * (1 - dev_ratio))
+        train_indices = np.array([i for l in indices[:num_train] for i in l])
+        dev_indices = np.array([i for l in indices[num_train:] for i in l])
+        X_train = features[train_indices]
+        labels_train = relevance_scores[train_indices]
+        X_dev = features[dev_indices]
+        labels_dev = relevance_scores[dev_indices]
+        dtrain = xgb.DMatrix(X_train, label=labels_train)
+        dtrain.set_group(groups[:num_train])
+        ddev = xgb.DMatrix(X_dev, label=labels_dev)
+        ddev.set_group(groups[num_train:])
+        metric = "ndcg@1-"
+
+        logger.info("#train queries: %d" % sum(labels_train))
+        logger.info("#dev queries: %d" % sum(labels_dev))
+
+        # Perform grid search for best parameters.
+        #     "objective": ["rank:ndcg"],
+        #     "eval_metric": [metric],
+        #     "eta": [0.3],
+        #     "min_child_weight": [0.1],
+        #     "gamma": [0.5],
+        #     "num_boost_round": [100],
+        #     "subsample": [1.0],
+        #     "colsample_bytree": [1.0,],
+        #     "lambda": [10.0],
+        #     "max_depth": [8],
+
+        # WQ params (ngram):
+        # 'colsample_bytree': 0.5 (0.7),
+        # 'eval_metric': 'ndcg@3',
+        # 'min_child_weight': 1.0 (2.0),
+        # 'subsample': 1.0 (0.7),
+        # 'eta': 0.1,
+        # 'objective': 'rank:pairwise',
+        # 'max_depth': 8,
+        # 'gamma': 1.0
+        #  num_rounds:239 (200)
+        param_grid = list(grid_search.ParameterGrid({
+            "objective": ["rank:map"],
+            "eval_metric": [metric],
+            "eta": [0.1, 0.2, 0.3],
+            #"num_parallel_tree": [5],
+            #"eta": [0.1, 0.3, 0.5, 0.8],
+            "min_child_weight": [2.0],
+            #"gamma": [0.0, 0.5, 1.0],
+            "gamma": [1.0],
+            "num_boost_round": [200],
+            "subsample": [.75],
+            "colsample_bytree": [.75],
+            #"colsample_bytree": [0.7],
+            #"lambda": [1.0, 10.0, 100.0],
+            "lambda": [10.0],
+            "max_depth": [10],
+            "silent": [1]}))
+        best_score = 0.0
+        best_params = None
+        num_rounds = 400
+        for i, params in enumerate(param_grid):
+            logger.info("Testing parameters %d/%d: %s" % (i + 1,
+                                                          len(param_grid),
+                                                          str(params)))
+            eval_results = {}
+            model = xgb.train(params, dtrain, params["num_boost_round"],
+                              evals=[(dtrain, "train"), (ddev, "dev")],
+                              evals_result=eval_results,
+                              #early_stopping_rounds=20,
+                              verbose_eval=True)
+            last_score = eval_results["dev"][metric][-1]
+            logger.info("%s: %s" % (metric, last_score))
+            #last_score = model.best_score
+            if last_score > best_score:
+                best_score = last_score
+                best_params = params
+                #num_rounds = model.best_iteration + 20
+                num_rounds = params["num_boost_round"]
         logger.info(
             "Best score, %s, best parameters: %s, num_rounds:%d" % (best_score,
                                                                     best_params,
                                                                     num_rounds))
         # Train final model.
-        dtrain = xgb.DMatrix(features, label=relevance_scores)
-        dtrain.set_group(groups)
-        xgb_decision_tree = xgb.train(best_params, dtrain, num_rounds)
+        dtrain_all = xgb.DMatrix(features, label=relevance_scores)
+        dtrain_all.set_group(all_groups)
+        xgb_decision_tree = xgb.train(best_params, dtrain_all, num_rounds,
+                                      evals=[(dtrain, "train"), (ddev, "dev")],
+                                      verbose_eval=True)
         # decision_tree = clf.best_estimator_
         #print(decision_tree.feature_importances_)
         logger.info("Done.")
@@ -415,7 +562,7 @@ class AqquModel(MLModel, Ranker):
         joblib.dump([self.model, self.label_encoder,
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
-        #self.relation_scorer.store_model()
+        self.relation_scorer.store_model()
         #self.deep_relation_scorer.store_model()
         self.pruner.store_model()
         logger.info("Done.")
@@ -436,7 +583,7 @@ class AqquModel(MLModel, Ranker):
             self.load_model()
         start = time.time()
         num_candidates = len(candidates)
-        pairs = list(itertools.combinations(range(len(candidates)), 2))
+        pairs = list(itertools.combinations(range(num_candidates), 2))
         index_a = [x[0] for x in pairs]
         index_b = [x[1] for x in pairs]
         pair_index = {}
@@ -452,16 +599,20 @@ class AqquModel(MLModel, Ranker):
         X = pair_features
         self.model.n_jobs = 1
         start = time.time()
+        #dtest = xgb.DMatrix(X)
         p = self.model.predict(X)
+        #p = np.round(p)
         duration = (time.time() - start) * 1000
         logger.info("Predict for %s took %s ms" % (len(pairs), duration))
-        self.model.n_jobs = 1
+        #c = p
         c = self.label_encoder.inverse_transform(p)
         start = time.time()
         def compare_pair(i, j):
             if (i, j) in pair_index:
                predict = c[pair_index[(i, j)]]
             else:
+                # We only compare i against j, to compare the other direction,
+                # j against i, use 1 - p(i, j)
                 predict = math.fabs(1 - c[pair_index[(j, i)]])
             if predict == 1:
                 return -1
@@ -511,7 +662,7 @@ class AqquModel(MLModel, Ranker):
         if len(query_candidates) < 2:
             return query_candidates
         ranked_candidates = self.rank_candidates_new(query_candidates,
-                                                 features)
+                                                     features)
         duration = (time.time() - start) * 1000
         logger.debug("Ranked candidates in %s ms" % (duration))
         return ranked_candidates
@@ -587,6 +738,7 @@ def append_feature_to_dictvec(dict_vec, feature_name):
     """
     max_index = max(dict_vec.vocabulary_.values())
     dict_vec.vocabulary_[feature_name] = max_index + 1
+    dict_vec.feature_names_.append(feature_name)
 
 
 class CandidatePruner(MLModel):
@@ -816,11 +968,12 @@ class RelationNgramScorer(MLModel):
             relation_scorer.fit(X, labels)
             logger.info("Done.")
             self.model = relation_scorer
+
         self.dict_vec = vec
         self.scaler = scaler
         self.label_encoder = label_encoder
         self.correct_index = label_encoder.transform([1])[0]
-        self.print_model()
+        #self.print_model()
 
     def print_model(self, n_top=20):
         dict_vec = self.dict_vec
@@ -849,7 +1002,7 @@ class RelationNgramScorer(MLModel):
         X = self.scaler.transform(X)
         prob = self.model.predict_proba(X)
         # Prob is an array of n_examples, n_classes
-        score = prob[0][self.correct_index]
+        score = round(prob[0][self.correct_index], 3)
         return RankScore(score)
 
     def score_multiple(self, candidates):
@@ -866,7 +1019,7 @@ class RelationNgramScorer(MLModel):
         probs = self.model.predict_proba(X)
         # Prob is an array of n_examples, n_classes
         scores = probs[:, self.correct_index]
-        return [RankScore(score) for score in scores]
+        return [RankScore(round(score, 3)) for score in scores]
 
 
 class SimpleScoreRanker(Ranker):
@@ -1216,7 +1369,8 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
     return compare_indices
 
 
-def construct_train_pair_examples(queries, features, dict_vec, correct_threshold=1.0):
+def construct_train_pair_examples(queries, features, dict_vec,
+                                  correct_threshold=.9):
     """Construct training examples from candidates using pair-wise transform.
 
     :type queries list[EvaluationQuery]
