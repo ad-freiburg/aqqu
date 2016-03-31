@@ -384,7 +384,7 @@ class DeepCNNAqquRelScorer():
                     probs = result[0]
                     # probs is a matrix: n x c (for n examples and c
                     # classes)
-                    return RankScore(probs[0][0])
+                    return RankScore(round(probs[0][0], 3))
 
     def score_multiple(self, score_candidates, batch_size=100):
         """
@@ -415,14 +415,14 @@ class DeepCNNAqquRelScorer():
                         # probs is a matrix: n x c (for n examples and c
                         # classes)
                         for i in range(probs.shape[0]):
-                            result.append(RankScore(probs[i][0]))
+                            result.append(RankScore(round(probs[i][0], 3)))
             batch += 1
         assert(len(result) == len(score_candidates))
         return result
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
                          rel_width, filter_sizes=(2, 3, 4), num_filters=200,
-                         n_hidden_nodes_1=400, n_hidden_nodes_2=200, num_classes=1):
+                         n_hidden_nodes_1=100, n_hidden_nodes_2=100, num_classes=1):
         logger.info("sentence_len: %s"% sentence_len)
         logger.info("embedding_size: %s"% embedding_size)
         logger.info("rel_width: %s"% rel_width)
@@ -487,20 +487,20 @@ class DeepCNNAqquRelScorer():
             self.h_1 = tf.nn.xw_plus_b(self.rh_pool, W, b, name="h_1")
             self.a_1 = tf.nn.relu(self.h_1)
 
-        # with tf.name_scope("dense2"):
-        #     W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
-        #                                         stddev=0.1), name="W")
-        #     b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]), name="b")
-        #     self.h_2 = tf.nn.xw_plus_b(self.a_1, W, b, name="h_2")
-        #     self.a_2 = tf.nn.relu(self.h_2)
+        with tf.name_scope("dense2"):
+            W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
+                                                stddev=0.1), name="W")
+            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_2]), name="b")
+            self.h_2 = tf.nn.xw_plus_b(self.a_1, W, b, name="h_2")
+            self.a_2 = tf.nn.relu(self.h_2)
 
         # Final (unnormalized) scores and predictions
         with tf.name_scope("output"):
-            W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, num_classes],
+            W = tf.Variable(tf.truncated_normal([n_hidden_nodes_2, num_classes],
                                                 stddev=0.1), name="W")
             b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
             #W = tf.clip_by_norm(W, 3)
-            self.scores = tf.nn.xw_plus_b(self.a_1, W, b, name="scores")
+            self.scores = tf.nn.xw_plus_b(self.a_2, W, b, name="scores")
             self.probs = tf.nn.sigmoid(self.scores)
 
         correct_score = self.scores[0, :]

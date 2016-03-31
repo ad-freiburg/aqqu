@@ -200,7 +200,8 @@ def train(scorer_name, cached):
     train_dataset = scorer_obj.train_dataset
     train_queries = get_evaluated_queries(train_dataset,
                                           cached,
-                                          scorer_obj.get_parameters())
+                                          scorer_obj.get_parameters(),
+                                          n_top=2000)
     logger.info("Loaded %s queries for training." % len(train_queries))
     logger.info("Training model.")
     scorer_obj.learn_model(train_queries)

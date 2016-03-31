@@ -202,9 +202,9 @@ class AqquModel(MLModel, Ranker):
                                                   self.rel_regularization_C)
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
-            #deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
-            #deep_relation_scorer.load_model()
-            #self.deep_relation_scorer = deep_relation_scorer
+            deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
+            deep_relation_scorer.load_model()
+            self.deep_relation_scorer = deep_relation_scorer
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
             pruner = CandidatePruner(self.get_model_name(),
@@ -260,12 +260,12 @@ class AqquModel(MLModel, Ranker):
         logger.info("Training final relation scorer.")
         rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
         self.relation_scorer = rel_model
-        #deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
-        #self.deep_relation_scorer = deep_rel_model
+        deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
+        self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
         # Pass sparse matrix + dict_vec
         self.pruner = self.learn_prune_model(labels, features, dict_vec)
-        self.learn_ranking_model_new(train_queries, features, dict_vec)
+        self.learn_ranking_model(train_queries, features, dict_vec)
 
     def learn_ranking_model(self, queries, features, dict_vec):
         # Construct pair examples from whole, pass sparse matrix + train_queries
@@ -281,8 +281,8 @@ class AqquModel(MLModel, Ranker):
         X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
         decision_tree = RandomForestClassifier(
             random_state=999,
-            n_jobs=6,
-            n_estimators=200)
+            n_jobs=4,
+            n_estimators=100)
         decision_tree.fit(X, labels)
         importances = decision_tree.feature_importances_
         indices = np.argsort(importances)[::-1]
@@ -563,7 +563,7 @@ class AqquModel(MLModel, Ranker):
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
         self.relation_scorer.store_model()
-        #self.deep_relation_scorer.store_model()
+        self.deep_relation_scorer.store_model()
         self.pruner.store_model()
         logger.info("Done.")
 
@@ -654,14 +654,14 @@ class AqquModel(MLModel, Ranker):
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
         query_candidates, features = self.prune_candidates(query_candidates,
-                                                              features)
+                                                           features)
         logger.info("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
         start = time.time()
         # If no or only one candidate remains return that..
         if len(query_candidates) < 2:
             return query_candidates
-        ranked_candidates = self.rank_candidates_new(query_candidates,
+        ranked_candidates = self.rank_candidates(query_candidates,
                                                      features)
         duration = (time.time() - start) * 1000
         logger.debug("Ranked candidates in %s ms" % (duration))
@@ -710,17 +710,17 @@ class AqquModel(MLModel, Ranker):
             #write_dl_examples(test_fold, "test", num_fold)
             rel_model = self.learn_rel_score_model(train_fold,
                                                    ngrams_dict=ngrams_dict)
-            #deep_rel_model = self.learn_deep_rel_score_model(train_fold,
-            #                                                 test_fold)
+            deep_rel_model = self.learn_deep_rel_score_model(train_fold,
+                                                             test_fold)
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
             rel_scores = rel_model.score_multiple(test_candidates)
-            #deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
+            deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
             c_index = 0
             for i in test:
                 for c in qc_indices[i]:
                     features[c, 0] = rel_scores[c_index].score
-                    #features[c, 1] = deep_rel_scores[c_index].score
+                    features[c, 1] = deep_rel_scores[c_index].score
                     c_index += 1
             num_fold += 1
         # TODO: better to create a copy and return changed copy
@@ -800,8 +800,8 @@ class CandidatePruner(MLModel):
         logger.info(class_weights)
         # We want to maximize precision on negative labels
         p_scorer = metrics.make_scorer(metrics.fbeta_score,
-                                       pos_label=-1, beta=0.5)
-        logreg_cv = LogisticRegressionCV(Cs=10,
+                                       pos_label=1, beta=0.5)
+        logreg_cv = LogisticRegressionCV(Cs=[10000, 1000],
                                          class_weight=class_weights,
                                          cv=6,
                                          solver='sag',
@@ -813,6 +813,7 @@ class CandidatePruner(MLModel):
         logreg_cv.fit(X, labels)
         self.model = logreg_cv
         pred = self.model.predict(X)
+        logger.info(logreg_cv.C_)
         logger.info("F-1 score on train: %.4f" % metrics.f1_score(labels, pred,
                                                                   pos_label=1))
         logger.info("Classification report:\n"
@@ -1358,6 +1359,8 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
             if sample_size < 200:
                 sample_size = min(200, n_candidates)
             sample_candidates_index = random.sample(range(n_candidates), sample_size)
+            #sample_size = min(100, n_candidates)
+            #sample_candidates_index = range(n_candidates)
             for sample_candidate_index in sample_candidates_index:
                 for correct_cand_index in correct_cands_index:
                     if sample_candidate_index in correct_cands_index:
