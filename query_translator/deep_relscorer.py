@@ -11,7 +11,7 @@ import datetime
 import tensorflow as tf
 from gensim import models
 import feature_extraction
-
+from sklearn.preprocessing import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +27,14 @@ class DeepCNNAqquRelScorer():
 
     def __init__(self, name, embedding_file):
         self.name = name + "_DeepRelScorer"
+        self.n_rels = 3
+        self.n_parts_per_rel = 3
+        self.n_rel_parts = self.n_rels * self.n_parts_per_rel
         if embedding_file is not None:
             [self.embedding_size, self.vocab,
              self.embeddings] = self.extract_vectors(embedding_file)
             self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
-            self.rel_width_len = 6 * self.embedding_size
+            self.rel_width_len = self.n_rel_parts * self.embedding_size
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
         self.filter_sizes = (2, 3, 4)
@@ -41,6 +44,7 @@ class DeepCNNAqquRelScorer():
         """Extract vectors from gensim model and add UNK/PAD vectors.
         """
         logger.info("Preparing embeddings matrix")
+        np.random.seed(123)
         global gensim_model
         if gensim_model is None:
             gensim_model = models.Word2Vec.load(gensim_model_fname)
@@ -48,17 +52,17 @@ class DeepCNNAqquRelScorer():
         common_words = set()
         # Find the most frequent words to keep the embeddings small.
         # TF doesn't work when they are larger than 2GB !?
-        with open("data/word_frequencies.txt") as f:
-            for line in f:
-                cols = line.strip().split()
-                if len(cols) != 2:
-                    continue
-                common_words.add(cols[0].lower())
-                if len(common_words) > 500000:
-                    break
+        #with open("data/word_frequencies.txt") as f:
+        #    for line in f:
+        #        cols = line.strip().split()
+        #        if len(cols) != 2:
+        #            continue
+        #        common_words.add(cols[0].lower())
+        #        if len(common_words) > 500000:
+        #            break
         vocab = {}
         # +1 for UNK +1 for PAD, + 1 for ENTITY, + 1 for STRTS
-        num_words = len(common_words) + 4
+        num_words = len(gensim_model.vocab) + 3
         logger.info("#words: %d" % num_words)
         vectors = np.zeros(shape=(num_words, vector_size), dtype=np.float32)
         # Vector for UNK, 0 is reserved for PAD
@@ -70,30 +74,33 @@ class DeepCNNAqquRelScorer():
         vocab[DeepCNNAqquRelScorer.UNK] = UNK_ID
         vectors[UNK_ID] = np.random.uniform(-0.05, 0.05,
                                             vector_size)
-        ENTITY_ID = 2
-        vocab["ENTITY"] = ENTITY_ID
-        vectors[ENTITY_ID] = np.random.uniform(-0.05, 0.05,
-                                               vector_size)
-        STRTS_ID = 3
-        vocab["STRTS"] = STRTS_ID
+        #ENTITY_ID = 2
+        #vocab["<entity>"] = ENTITY_ID
+        #vectors[ENTITY_ID] = np.random.uniform(-0.05, 0.05,
+        #                                       vector_size)
+        STRTS_ID = 2
+        vocab["<start>"] = STRTS_ID
         vectors[STRTS_ID] = np.random.uniform(-0.05, 0.05,
                                               vector_size)
         for w in gensim_model.vocab:
-            if w not in common_words:
-                continue
+            #if w not in common_words:
+            #    continue
             vector_index = len(vocab)
             vocab[w] = vector_index
             vectors[vector_index, :] = gensim_model[w]
         logger.info("Done. Final vocabulary size: %d" % (len(vocab)))
+        #vectors = normalize(vectors, norm='l2', axis=1)
         return vector_size, vocab, vectors
 
     def extend_vocab_for_relwords(self, train_queries):
+        np.random.seed(234)
         logger.info("Extending vocabulary with words of relations.")
         new_vectors = []
+        new_words = []
         for query in train_queries:
             candidates = [x.query_candidate for x in query.eval_candidates]
             for candidate in candidates:
-                relations = candidate.get_relation_names()
+                relations = candidate.get_unsorted_relation_names()
                 rel_words = self.split_relation_into_words(relations)
                 for ws in rel_words:
                     for w in ws:
@@ -103,12 +110,16 @@ class DeepCNNAqquRelScorer():
                             new_vectors.append(vector)
                             next_id = len(self.vocab)
                             self.vocab[w] = next_id
+                            new_words.append(w)
         self.embeddings = np.vstack((self.embeddings, np.array(new_vectors)))
         self.embeddings = self.embeddings.astype(np.float32)
+        #self.embeddings = normalize(self.embeddings, norm='l2', axis=1)
+        logger.info("Added the following words: %s" % str(new_words))
         logger.info("Final final vocabulary size: %d." % len(self.vocab))
 
     def evaluate_dev(self, qids, f1s, probs):
-        qids, f1s, probs = sklearn.utils.shuffle(qids, f1s, probs)
+        qids, f1s, probs = sklearn.utils.shuffle(qids, f1s, probs,
+                                                 random_state=999)
         assert(len(qids) == len(f1s) == len(probs))
         queries = {}
         for q, f, p in zip(qids, f1s, probs):
@@ -128,8 +139,10 @@ class DeepCNNAqquRelScorer():
         logger.info("Evaluating %d queries." % num_queries)
         return all_f1 / num_queries, all_oracle_f1 / num_queries
 
-    def learn_model(self, train_queries, dev_queries, num_epochs=35):
+    def learn_model(self, train_queries, dev_queries, num_epochs=50):
+        random.seed(123)
         self.extend_vocab_for_relwords(train_queries)
+        np.random.seed(123)
         default_sess = tf.get_default_session()
         if default_sess is not None:
             logger.info("Closing previous default session.")
@@ -137,48 +150,69 @@ class DeepCNNAqquRelScorer():
         if dev_queries is not None:
             dev_features, dev_qids, dev_f1 = self.create_test_batches(dev_queries)
         train_batches = self.create_train_batches(train_queries)
+        labels = [l for y_b, _ in train_batches for l in y_b]
+        n = float(len(labels))
+        n_pos = float(sum(labels))
+        n_neg = n - n_pos
+        w_pos = n_pos / n
+        w_neg = 1 - w_pos
+        class_weights = [n / n_neg, n / n_pos]
         self.g = tf.Graph()
         dev_scores = []
         with self.g.as_default():
+            tf.set_random_seed(42)
             self.build_deep_model(self.sentence_len, self.embeddings,
                                   self.embedding_size, self.rel_width_len,
                                   filter_sizes=self.filter_sizes)
             session_conf = tf.ConfigProto(
-                allow_soft_placement=True)
+                allow_soft_placement=True,
+                log_device_placement=False)
             self.sess = tf.Session(config=session_conf)
             with self.g.device("/gpu:0"):
                 with self.sess.as_default():
+                    tf.set_random_seed(42)
                     optimizer = tf.train.AdamOptimizer()
-                    grads_and_vars = optimizer.compute_gradients(self.loss)
+                    #optimizer = tf.train.AdagradOptimizer(0.01)
+                    #grads_and_vars = optimizer.compute_gradients(self.loss)
                     global_step = tf.Variable(0, name="global_step", trainable=False)
-                    train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
+                    #train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
+                    train_op = optimizer.minimize(self.loss)
                     self.sess.run(tf.initialize_all_variables())
                     self.saver = tf.train.Saver()
+                    tf.set_random_seed(42)
 
                     def run_dev_batches(batch_size=100):
                         n_batch = 0
                         x, x_rel = dev_features
                         num_rows = x.shape[0]
                         probs = []
+                        total_loss = 0.0
                         while n_batch * batch_size < num_rows:
                             x_b = x[n_batch * batch_size:(n_batch + 1) * batch_size, :]
                             x_rel_b = x_rel[n_batch * batch_size:(n_batch + 1) * batch_size, :]
+                            labels = [1 for _ in range(x_b.shape[0])]
+                            weight_y = [class_weights[l] for l in labels]
                             feed_dict = {
                               self.input_s: x_b,
                               self.input_r: x_rel_b,
+                              self.input_y: np.array(labels).reshape((x_b.shape[0], 1)),
+                              self.weight_y: np.array(weight_y).reshape((x_b.shape[0], 1)),
                               self.dropout_keep_prob: 1.0
                             }
                             loss, p = self.sess.run(
                                 [self.loss, self.probs],
                                 feed_dict)
+                            total_loss += loss
                             n_batch += 1
                             probs += [p[i, 0] for i in range(p.shape[0])]
                         avg_f1, oracle_avg_f1 = self.evaluate_dev(dev_qids, dev_f1, probs)
                         dev_scores.append(avg_f1)
+                        #logger.info("Dev loss: %.2f" % total_loss)
                         logger.info("Dev avg_f1: %.2f oracle_avg_f1: %.2f" % (
                         100 * avg_f1, 100 * oracle_avg_f1))
 
-                    def train_step(x_batch, x_rel_batch, y_batch, n_epoch):
+                    def train_step(x_batch, x_rel_batch, y_batch, n_epoch,
+                                   n_batch):
                         """
                         A single training step
                         """
@@ -188,24 +222,33 @@ class DeepCNNAqquRelScorer():
                         #    x_batch = x_batch[rows, :]
                         #    x_rel_batch = x_rel_batch[rows, :]
                         #    y_batch = y_batch[rows, :]
+                        weight_y = [class_weights[l] for l in y_batch]
                         feed_dict = {
                           self.input_s: x_batch,
                           self.input_r: x_rel_batch,
                           self.input_y: y_batch,
-                          self.dropout_keep_prob: 0.5
+                          self.weight_y: np.array(weight_y).reshape(
+                                (x_batch.shape[0], 1)),
+                            self.dropout_keep_prob: 1.0
                         }
                         _, step, loss, probs = self.sess.run(
                             [train_op, global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
-                        if step % 200 == 0:
-                            print("{}: step {}, epoch {}, loss {}".format(time_str, step, n_epoch, loss))
+                        if n_batch % 200 == 0:
+                            print("{}: step {}, epoch {}, loss {}".format(time_str, n_batch, n_epoch, loss))
+                        return loss
+
                     for n in range(num_epochs):
+                        total_train_loss = 0.0
                         # Need to shuffle the batches in each epoch.
                         logger.info("Starting epoch %d" % (n + 1))
                         random.shuffle(train_batches)
+                        batch = 0
                         for y_batch, (x_batch, x_rel_batch) in train_batches:
-                            train_step(x_batch, x_rel_batch, y_batch, n + 1)
+                            total_train_loss += train_step(x_batch, x_rel_batch, y_batch, n + 1, batch)
+                            batch += 1
+                        #logger.info("Total train loss: %.2f" % total_train_loss)
                         if dev_queries is not None:
                             run_dev_batches()
                     if dev_scores:
@@ -213,7 +256,7 @@ class DeepCNNAqquRelScorer():
                         logger.info(" ".join(["%d:%f" % (i + 1, f)
                                               for i, f in enumerate(dev_scores)]))
 
-    def create_train_batches(self, train_queries, correct_threshold=.9):
+    def create_train_batches(self, train_queries, correct_threshold=.5):
         total_num_candidates = len([x.query_candidate for query in train_queries
                                     for x in query.eval_candidates])
         logger.info("Creating train batches from %d queries and %d candidates."
@@ -225,23 +268,33 @@ class DeepCNNAqquRelScorer():
             batch = []
             oracle_position = query.oracle_position
             candidates = [x.query_candidate for x in query.eval_candidates]
-            has_correct_candidate = False
+            correct_candidates = []
             for i, candidate in enumerate(candidates):
                 f1 = query.eval_candidates[i].evaluation_result.f1
-                if f1 >= correct_threshold and not has_correct_candidate:
+                if f1 >= correct_threshold:
                     #    or i + 1 == oracle_position:
-                    batch.append((1, f1, candidate))
-                    has_correct_candidate = True
+                    correct_candidates.append((f1, 1, candidate))
                 else:
-                    batch.append((0, f1, candidate))
+                    batch.append((f1, 0, candidate))
+            # Avoid noisy examples.
+            correct_candidates = sorted(correct_candidates, reverse=True)
+            # If there are more than two correct candidates and the margin
+            # between 1st and 2nd in F1 is small ignore this question.
+            #if len(correct_candidates) > 4 \
+            #        and correct_candidates[0][0] - correct_candidates[1][0] < 0.1:
+            #    continue
             # Need at least two examples per batch
-            if has_correct_candidate and len(batch) > 1:
+            if len(correct_candidates) > 0 and len(batch) > 1:
                 # Sort so that first candidate is correct - needed for training.
                 # Ignores that there may be several correct candidates!
                 #batch = sorted(batch, key=lambda x: x[0], reverse=True)
+                batch = batch[:1]
+                correct_candidates = correct_candidates[:1]
+
+                batch = correct_candidates + batch
                 batch = sorted(batch, reverse=True)
                 batch_candidates = [b[2] for b in batch]
-                batch_labels = [b[0] for b in batch]
+                batch_labels = [b[1] for b in batch]
                 num_candidates = len(batch)
                 total_num_candidates += num_candidates
                 total_num_queries += 1
@@ -277,7 +330,8 @@ class DeepCNNAqquRelScorer():
         pad = max(self.filter_sizes) - 1
         words = np.zeros(shape=(num_candidates, self.max_query_len + 2 * pad),
                          dtype=int)
-        rel_features = np.zeros(shape=(num_candidates, 6 * self.embedding_size),
+        rel_features = np.zeros(shape=(num_candidates,
+                                       self.n_rel_parts * self.embedding_size),
                                 dtype=float)
         oov_words = set()
         for i, candidate in enumerate(batch):
@@ -320,11 +374,12 @@ class DeepCNNAqquRelScorer():
         :param relation_name:
         :return:
          """
-        words = [[], [], [], [], [], []]
+        words = [[] for _ in range(self.n_rel_parts)]
+        #words = [[], [], []]
         for k, rel in enumerate(relations):
             parts = rel.strip().split('.')
-            for i, p in enumerate(parts[-3:]):
-                words[k * i] += p.split('_')
+            for i, p in enumerate(parts[-self.n_parts_per_rel:]):
+                words[k * self.n_parts_per_rel + i] += p.split('_')
         return words
 
     def store_model(self):
@@ -350,7 +405,7 @@ class DeepCNNAqquRelScorer():
         logger.info("Loading model vocab from %s" % vocab_filename)
         [self.embeddings, self.vocab, self.embedding_size] = joblib.load(vocab_filename)
         self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
-        self.rel_width_len = 6 * self.embedding_size
+        self.rel_width_len = self.n_rel_parts * self.embedding_size
         logger.info("Loading model from %s." % filename)
         ckpt = tf.train.get_checkpoint_state(filename)
         if ckpt and ckpt.model_checkpoint_path:
@@ -384,7 +439,7 @@ class DeepCNNAqquRelScorer():
                     probs = result[0]
                     # probs is a matrix: n x c (for n examples and c
                     # classes)
-                    return RankScore(round(probs[0][0], 3))
+                    return RankScore(round(probs[0][0], 4))
 
     def score_multiple(self, score_candidates, batch_size=100):
         """
@@ -415,14 +470,17 @@ class DeepCNNAqquRelScorer():
                         # probs is a matrix: n x c (for n examples and c
                         # classes)
                         for i in range(probs.shape[0]):
-                            result.append(RankScore(round(probs[i][0], 3)))
+                            result.append(RankScore(round(probs[i][0], 4)))
             batch += 1
         assert(len(result) == len(score_candidates))
         return result
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
                          rel_width, filter_sizes=(2, 3, 4), num_filters=200,
-                         n_hidden_nodes_1=100, n_hidden_nodes_2=100, num_classes=1):
+                         n_hidden_nodes_1=200,
+                         n_hidden_nodes_2=200,
+                         n_hidden_nodes_3=50,
+                         num_classes=1):
         logger.info("sentence_len: %s"% sentence_len)
         logger.info("embedding_size: %s"% embedding_size)
         logger.info("rel_width: %s"% rel_width)
@@ -430,6 +488,7 @@ class DeepCNNAqquRelScorer():
         self.input_s = tf.placeholder(tf.int32, [None, sentence_len], name="input_s")
         self.input_r = tf.placeholder(tf.float32, [None, rel_width], name="input_r")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
+        self.weight_y = tf.placeholder(tf.float32, [None, num_classes], name="weight_y")
         self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
         self.margin = tf.constant(1.0)
 
@@ -447,7 +506,8 @@ class DeepCNNAqquRelScorer():
             with tf.name_scope("conv-maxpool-%s" % filter_size):
                 # Convolution Layer
                 filter_shape = [filter_size, embedding_size, 1, num_filters]
-                W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1),
+                W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
+                                                    seed=123),
                                 name="W")
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]), name="b")
                 conv = tf.nn.conv2d(
@@ -467,6 +527,27 @@ class DeepCNNAqquRelScorer():
                     name="pool")
                 pooled_outputs.append(pooled)
 
+        #pooled_distances = []
+        #with tf.name_scope("cosdistance"):
+        #    for i in range(0, rel_width, embedding_size):
+        #        rel_part = tf.reshape(self.input_r[:, i:i + embedding_size],
+        #                              [-1, embedding_size, 1])
+        #        product = tf.batch_matmul(self.embedded_chars, rel_part)
+        #        product = tf.reshape(product, [-1, sentence_len, 1, 1])
+        #        pooled = tf.nn.max_pool(
+        #            product,
+        #            ksize=[1, sentence_len, 1, 1],
+        #            strides=[1, 1, 1, 1],
+        #            padding='VALID',
+        #            name="pool")
+        #        pooled_distances.append(pooled)
+
+        #num_rel_parts = rel_width / embedding_size
+        #num_distances_total = num_rel_parts
+        #pool_concat = tf.concat(3, pooled_distances)
+        #pooled_distances_flat = tf.reshape(tf.concat(3, pooled_distances),
+        #                                   [-1, num_distances_total])
+
         # Combine all the pooled features
         num_filters_total = num_filters * len(filter_sizes)
         self.h_pool = tf.concat(3, pooled_outputs)
@@ -474,34 +555,70 @@ class DeepCNNAqquRelScorer():
 
         # Add dropout
         with tf.name_scope("dropout"):
-            self.h_drop = tf.nn.dropout(self.h_pool_flat, self.dropout_keep_prob)
+            self.h_drop = tf.nn.dropout(self.h_pool_flat, self.dropout_keep_prob,
+                                        seed=1332)
 
-        self.rh_pool = tf.concat(1, [self.h_drop, self.input_r])
 
-        pooled_width = num_filters_total + rel_width
+        #self.rh_pool = tf.concat(1, [self.h_drop, self.input_r])
 
-        with tf.name_scope("dense"):
+        pooled_width = num_filters_total
+
+        with tf.name_scope("dense_q"):
             W = tf.Variable(tf.truncated_normal([pooled_width, n_hidden_nodes_1],
-                                                stddev=0.1), name="W")
+                                                stddev=0.1, seed=234), name="W")
+            self.W_1 = W
             b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]), name="b")
-            self.h_1 = tf.nn.xw_plus_b(self.rh_pool, W, b, name="h_1")
-            self.a_1 = tf.nn.relu(self.h_1)
+            self.h_1 = tf.nn.xw_plus_b(self.h_drop, W, b, name="h_1")
+            self.a_1 = tf.nn.sigmoid(self.h_1)
 
-        with tf.name_scope("dense2"):
-            W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
-                                                stddev=0.1), name="W")
-            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_2]), name="b")
-            self.h_2 = tf.nn.xw_plus_b(self.a_1, W, b, name="h_2")
-            self.a_2 = tf.nn.relu(self.h_2)
+        with tf.name_scope("dense_r"):
+            W = tf.Variable(
+                tf.truncated_normal([rel_width, n_hidden_nodes_1],
+                                    stddev=0.1, seed=234), name="W")
+            self.W_2 = W
+            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
+                            name="b")
+            self.h_2 = tf.nn.xw_plus_b(self.input_r, W, b, name="h_2")
+            self.a_2 = tf.nn.sigmoid(self.h_2)
+
+        #with tf.name_scope("dense2"):
+        #    W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
+        #                                        stddev=0.1), name="W")
+        #    b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_2]), name="b")
+        #    self.h_2 = tf.nn.xw_plus_b(self.a_1, W, b, name="h_2")
+        #    self.a_2 = tf.nn.relu(self.h_2)
+
+
+        #with tf.name_scope("dense3"):
+        #    W = tf.Variable(tf.truncated_normal([n_hidden_nodes_2, n_hidden_nodes_3],
+        #                                        stddev=0.1), name="W")
+        #    b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_3]), name="b")
+        #    self.h_3 = tf.nn.xw_plus_b(self.a_2, W, b, name="h_3")
+        #    self.a_3 = tf.nn.relu(self.h_3)
 
         # Final (unnormalized) scores and predictions
-        with tf.name_scope("output"):
-            W = tf.Variable(tf.truncated_normal([n_hidden_nodes_2, num_classes],
-                                                stddev=0.1), name="W")
-            b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
-            #W = tf.clip_by_norm(W, 3)
-            self.scores = tf.nn.xw_plus_b(self.a_2, W, b, name="scores")
-            self.probs = tf.nn.sigmoid(self.scores)
+
+
+        #with tf.name_scope("output"):
+        #    W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, num_classes],
+        #                                        stddev=0.1, seed=234), name="W")
+        #    self.W_o = W
+        #    b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
+        #    #W = tf.clip_by_norm(W, 3)
+        #    self.scores = tf.nn.xw_plus_b(self.a_1, W, b, name="scores")
+        #    self.probs = tf.nn.sigmoid(self.scores)
+
+
+        norm_a_1 = tf.sqrt(tf.reduce_sum(tf.square(self.a_1), 1, keep_dims=True))
+        norm_a_2 = tf.sqrt(tf.reduce_sum(tf.square(self.a_2), 1, keep_dims=True))
+        #a_1 = self.a_1 / n
+        #a_2 = self.a_2 /norm_a_1
+        a_1 = tf.nn.l2_normalize(self.a_1, 1)
+        a_2 = tf.nn.l2_normalize(self.a_2, 1)
+        scores = tf.mul(a_1, a_2)
+        scores = tf.reduce_sum(scores, 1, keep_dims=True)
+        self.scores = scores
+        self.probs = self.scores
 
         correct_score = self.scores[0, :]
         wrong_scores = self.scores[1:, :]
@@ -526,11 +643,19 @@ class DeepCNNAqquRelScorer():
             #    loss += 1/j
             #return loss
 
-        rank = get_rank(correct_score, wrong_scores)
-        r_loss = rank_loss(rank)
+        #rank = get_rank(correct_score, wrong_scores)
+        #r_loss = rank_loss(rank)
+
+        #self.weighted_logits = tf.mul(self.scores, self.weight_y)
 
         # CalculateMean cross-entropy loss
         with tf.name_scope("loss"):
-            losses = tf.maximum(0.0, self.margin + wrong_scores - correct_score)
-            self.loss = tf.reduce_sum(r_loss * losses / rank)
+            losses = tf.reduce_sum(wrong_scores) - tf.reduce_sum(correct_score)
+            #losses = tf.maximum(0.0, self.margin + wrong_scores - correct_score)
+            #losses = tf.nn.sigmoid_cross_entropy_with_logits(self.scores,
+            #                                                 self.input_y)
+            #self.loss = tf.reduce_sum(r_loss * losses / rank)
             #self.loss = tf.reduce_mean(losses)
+                        #0.1 * tf.nn.l2_loss(self.W_o)
+            #self.loss = tf.reduce_mean(tf.mul(losses, self.weight_y))
+            self.loss = losses

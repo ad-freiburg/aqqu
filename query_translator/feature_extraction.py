@@ -55,7 +55,7 @@ def get_query_text_tokens(candidate, include_mid=False):
     for em in candidate.matched_entities:
         for t in em.entity.tokens:
             entity_tokens[t] = em
-    query_text_tokens = ['STRTS']
+    query_text_tokens = ['<start>']
     # Replace entity tokens with "ENTITY"
     for t in candidate.query.query_tokens:
         if t in entity_tokens:
@@ -69,10 +69,10 @@ def get_query_text_tokens(candidate, include_mid=False):
                 # Don't replace if the previous token is an entity token.
                 # This conflates multiple tokens for the same entity
                 # but also multiple entities
-                if len(query_text_tokens) > 0 and query_text_tokens[-1] == 'ENTITY':
+                if len(query_text_tokens) > 0 and query_text_tokens[-1] == '<entity>':
                     continue
                 else:
-                    query_text_tokens.append('ENTITY')
+                    query_text_tokens.append('<entity>')
         else:
             query_text_tokens.append(t.token)
     return query_text_tokens
@@ -265,8 +265,9 @@ def extract_ngram_features(candidates, ngram_dict=None):
 
 
 def extract_features(candidates,
-                             rel_score_model=None,
-                             deep_rel_score_model=None):
+                     rel_score_model=None,
+                     deep_rel_score_model=None,
+                     ds_deep_rel_score_model=None):
     """Extract features for multiple candidates at once.
 
     :param candidates:
@@ -275,6 +276,10 @@ def extract_features(candidates,
     all_features = []
     for c in candidates:
         all_features.append(simple_features(c))
+    if ds_deep_rel_score_model:
+        ds_deep_rel_scores = ds_deep_rel_score_model.score_multiple(candidates)
+        for i, f in enumerate(all_features):
+            f['ds_deep_relation_scores'] = ds_deep_rel_scores[i].score
     if deep_rel_score_model:
         deep_rel_scores = deep_rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):

@@ -18,6 +18,7 @@ import data
 import itertools
 from random import Random
 from sklearn import utils
+from functools import partial
 from sklearn import metrics
 from sklearn.feature_selection import SelectKBest, chi2, SelectPercentile
 from sklearn.externals import joblib
@@ -31,6 +32,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import StandardScaler, LabelEncoder, \
     Normalizer, MinMaxScaler
 from evaluation import EvaluationQuery, EvaluationCandidate
+from query_translator.ds_relscorer import DeepCNNAqquDSScorer
 from query_translator.oracle import EntityOracle
 import feature_extraction as f_ext
 from sklearn.feature_extraction.text import CountVectorizer
@@ -171,6 +173,8 @@ class AqquModel(MLModel, Ranker):
                  train_dataset,
                  top_ngram_percentile=5,
                  rel_regularization_C=None,
+                 load_ds_model=False,
+                 learn_deep_rel_model=True,
                  **kwargs):
         MLModel.__init__(self, name, train_dataset)
         Ranker.__init__(self, name, **kwargs)
@@ -183,6 +187,9 @@ class AqquModel(MLModel, Ranker):
         self.cmp_cache = dict()
         self.relation_scorer = None
         self.deep_relation_scorer = None
+        self.ds_deep_relation_scorer = None
+        self.load_ds_model = load_ds_model
+        self.learn_deep_rel_model = learn_deep_rel_model
         self.pruner = None
         self.scaler = None
         self.kwargs = kwargs
@@ -202,9 +209,11 @@ class AqquModel(MLModel, Ranker):
                                                   self.rel_regularization_C)
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
-            deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
-            deep_relation_scorer.load_model()
-            self.deep_relation_scorer = deep_relation_scorer
+            if self.learn_deep_rel_model:
+                deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
+                deep_relation_scorer.load_model()
+                self.deep_relation_scorer = deep_relation_scorer
+            self.load_ds_aqqu_model()
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
             pruner = CandidatePruner(self.get_model_name(),
@@ -217,6 +226,13 @@ class AqquModel(MLModel, Ranker):
             logger.warn("Model file %s could not be loaded." % model_file)
             raise
 
+    def load_ds_aqqu_model(self):
+        if self.load_ds_model:
+            ds_deep_relation_scorer = DeepCNNAqquDSScorer(None)
+            ds_deep_relation_scorer.load_model()
+            self.ds_deep_relation_scorer = ds_deep_relation_scorer
+
+
     def learn_rel_score_model(self, queries, ngrams_dict=None):
         rel_model = RelationNgramScorer(self.get_model_name(),
                                         self.rel_regularization_C,
@@ -227,7 +243,11 @@ class AqquModel(MLModel, Ranker):
     def learn_deep_rel_score_model(self, queries, test_queries):
         rel_model = DeepCNNAqquRelScorer(self.get_model_name(),
                                          #"/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5.pruned")
-                                         "/home/haussmae/imdb_cnn/vectors/GoogleNews-vectors-negative300")
+                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences_full.txt.gz_model_128_hs1_neg20_win5")
+                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences_medium.txt_model_128_hs1_neg20_win5")
+                                         "/home/haussmae/qa-completion/data/vectors/entity_sentences_medium.txt_model_128_hs1_sg1_neg20_win5")
+                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences_medium.txt_model_256_hs1_neg20_win5")
+                                         #"/home/haussmae/imdb_cnn/vectors/GoogleNews-vectors-negative300")
         rel_model.learn_model(queries, test_queries)
         return rel_model
 
@@ -238,11 +258,13 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
-        # Extract features for each candidate once
-        dict_vec = DictVectorizer(sparse=False)
 
+        self.load_ds_aqqu_model()
+        f_extract = partial(f_ext.extract_features, ds_deep_rel_score_model=self.ds_deep_relation_scorer)
+        dict_vec = DictVectorizer(sparse=False)
+        # Extract features for each candidate onc
         labels, features = construct_train_examples(train_queries,
-                                                    f_ext.extract_features,
+                                                    f_extract,
                                                     score_threshold=.8)
         features = dict_vec.fit_transform(features)
         n_grams_dict = None
@@ -260,8 +282,9 @@ class AqquModel(MLModel, Ranker):
         logger.info("Training final relation scorer.")
         rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
         self.relation_scorer = rel_model
-        deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
-        self.deep_relation_scorer = deep_rel_model
+        if self.learn_deep_rel_model:
+            deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
+            self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
         # Pass sparse matrix + dict_vec
         self.pruner = self.learn_prune_model(labels, features, dict_vec)
@@ -563,7 +586,8 @@ class AqquModel(MLModel, Ranker):
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
         self.relation_scorer.store_model()
-        self.deep_relation_scorer.store_model()
+        if self.learn_deep_rel_model:
+            self.deep_relation_scorer.store_model()
         self.pruner.store_model()
         logger.info("Done.")
 
@@ -649,7 +673,8 @@ class AqquModel(MLModel, Ranker):
         candidates = [key(q) for q in query_candidates]
         features = f_ext.extract_features(candidates,
                                           rel_score_model=self.relation_scorer,
-                                          deep_rel_score_model=self.deep_relation_scorer)
+                                          deep_rel_score_model=self.deep_relation_scorer,
+                                          ds_deep_rel_score_model=self.ds_deep_relation_scorer)
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
@@ -708,19 +733,24 @@ class AqquModel(MLModel, Ranker):
             train_fold = [train_queries[i] for i in train]
             #write_dl_examples(train_fold,"train", num_fold)
             #write_dl_examples(test_fold, "test", num_fold)
-            rel_model = self.learn_rel_score_model(train_fold,
-                                                   ngrams_dict=ngrams_dict)
-            deep_rel_model = self.learn_deep_rel_score_model(train_fold,
-                                                             test_fold)
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
+
+
+            rel_model = self.learn_rel_score_model(train_fold,
+                                                   ngrams_dict=ngrams_dict)
             rel_scores = rel_model.score_multiple(test_candidates)
-            deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
+            deep_rel_scores = []
+            if self.learn_deep_rel_model:
+                deep_rel_model = self.learn_deep_rel_score_model(train_fold,
+                                                                 test_fold)
+                deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
             c_index = 0
             for i in test:
                 for c in qc_indices[i]:
                     features[c, 0] = rel_scores[c_index].score
-                    features[c, 1] = deep_rel_scores[c_index].score
+                    if self.learn_deep_rel_model:
+                        features[c, 1] = deep_rel_scores[c_index].score
                     c_index += 1
             num_fold += 1
         # TODO: better to create a copy and return changed copy
@@ -801,9 +831,9 @@ class CandidatePruner(MLModel):
         # We want to maximize precision on negative labels
         p_scorer = metrics.make_scorer(metrics.fbeta_score,
                                        pos_label=1, beta=0.5)
-        logreg_cv = LogisticRegressionCV(Cs=[10000, 1000],
+        logreg_cv = LogisticRegressionCV(Cs=[1000],
                                          class_weight=class_weights,
-                                         cv=6,
+                                         cv=3,
                                          solver='sag',
                                          n_jobs=6,
                                          scoring=p_scorer,
