@@ -305,7 +305,7 @@ class AqquModel(MLModel, Ranker):
         decision_tree = RandomForestClassifier(
             random_state=999,
             n_jobs=4,
-            n_estimators=100)
+            n_estimators=200)
         decision_tree.fit(X, labels)
         importances = decision_tree.feature_importances_
         indices = np.argsort(importances)[::-1]

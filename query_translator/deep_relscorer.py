@@ -27,7 +27,7 @@ class DeepCNNAqquRelScorer():
 
     def __init__(self, name, embedding_file):
         self.name = name + "_DeepRelScorer"
-        self.n_rels = 1
+        self.n_rels = 3
         self.n_parts_per_rel = 1
         self.n_rel_parts = self.n_rels * self.n_parts_per_rel
         if embedding_file is not None:
@@ -102,14 +102,15 @@ class DeepCNNAqquRelScorer():
             for candidate in candidates:
                 relations = candidate.get_unsorted_relation_names()
                 rel_words = self.split_relation_into_words(relations)
-                for w in rel_words:
-                    if w not in self.vocab:
-                        vector = np.random.uniform(-0.05, 0.05,
-                                                   self.embedding_size)
-                        new_vectors.append(vector)
-                        next_id = len(self.vocab)
-                        self.vocab[w] = next_id
-                        new_words.append(w)
+                for ws in rel_words:
+                    for w in ws:
+                        if w not in self.vocab:
+                            vector = np.random.uniform(-0.05, 0.05,
+                                                       self.embedding_size)
+                            new_vectors.append(vector)
+                            next_id = len(self.vocab)
+                            self.vocab[w] = next_id
+                            new_words.append(w)
         self.embeddings = np.vstack((self.embeddings, np.array(new_vectors)))
         self.embeddings = self.embeddings.astype(np.float32)
         #self.embeddings = normalize(self.embeddings, norm='l2', axis=1)
@@ -168,15 +169,19 @@ class DeepCNNAqquRelScorer():
             self.build_deep_model(self.sentence_len, self.embeddings,
                                   self.embedding_size, self.rel_width_len,
                                   filter_sizes=self.filter_sizes)
+            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True,
-                log_device_placement=False)
+                log_device_placement=False,
+                device_count={'GPU':1},
+            gpu_options=gpu_options)
             self.sess = tf.Session(config=session_conf)
             with self.g.device("/gpu:0"):
                 with self.sess.as_default():
                     tf.set_random_seed(42)
                     optimizer = tf.train.AdamOptimizer()
-                    #optimizer = tf.train.AdagradOptimizer(0.01)
+                    #optimizer = tf.train.AdagradOptimizer(0.1)
+                    #optimizer = tf.train.RMSPropOptimizer(0.01)
                     #grads_and_vars = optimizer.compute_gradients(self.loss)
                     global_step = tf.Variable(0, name="global_step", trainable=False)
                     #train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
@@ -244,7 +249,7 @@ class DeepCNNAqquRelScorer():
                         # Need to shuffle the batches in each epoch.
                         logger.info("Starting epoch %d" % (n + 1))
 
-                        n_labels, n_wf, n_rf = self.random_sample(len(train_pos_labels), train_neg_labels, train_neg_word_features, train_neg_rel_features)
+                        n_labels, n_wf, n_rf = self.random_sample(1.0 * len(train_pos_labels), train_neg_labels, train_neg_word_features, train_neg_rel_features)
                         train_labels = np.vstack([n_labels, train_pos_labels])
                         train_word_features = np.vstack([n_wf, train_pos_word_features])
                         train_rel_featuers = np.vstack([n_rf, train_pos_rel_features])
@@ -365,13 +370,19 @@ class DeepCNNAqquRelScorer():
                 words[i, pad + j] = t
             relations = candidate.get_relation_names()
             rel_words = self.split_relation_into_words(relations)
-            p = []
-            for w in rel_words:
-                if w in self.vocab:
-                    p.append(self.embeddings[self.vocab[w]])
-                else:
-                    p.append(self.embeddings[self.UNK_ID])
-            rel_features[i] = np.average(np.array(p), axis=0)
+            rel_parts = []
+            for ws in rel_words:
+                p = []
+                for w in ws:
+                    if w in self.vocab:
+                        p.append(self.embeddings[self.vocab[w]])
+                    else:
+                        oov_words.add(w)
+                        #p.append(self.embeddings[self.UNK_ID])
+                if not p:
+                    p.append(np.zeros(shape=(self.embedding_size,)))
+                rel_parts.append(np.average(np.array(p), axis=0))
+            rel_features[i] = np.hstack(rel_parts)
         if oov_words:
             logger.debug("OOV words in batch: %s" % str(oov_words))
         return words, rel_features
@@ -383,14 +394,14 @@ class DeepCNNAqquRelScorer():
         :param relation_name:
         :return:
          """
-        #words = [[] for _ in range(self.n_rel_parts)]
-        words = []
+        words = [[] for _ in range(self.n_rel_parts)]
+        #words = []
         #words = [[], [], []]
         for k, rel in enumerate(relations):
             parts = rel.strip().split('.')
-            for i, p in enumerate(parts[-1:]):
-                words += p.split('_')
-        return set(words)
+            for i, p in enumerate(parts[-self.n_parts_per_rel:]):
+                words[k * self.n_parts_per_rel + i] += p.split('_')
+        return words
 
     def store_model(self):
         # Store UNK, as well as name of embeddings_source?
@@ -486,9 +497,9 @@ class DeepCNNAqquRelScorer():
         return result
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
-                         rel_width, filter_sizes=(2, 3, 4), num_filters=200,
-                         n_hidden_nodes_1=400,
-                         n_hidden_nodes_2=200,
+                         rel_width, filter_sizes=(2, 3, 4), num_filters=300,
+                         n_hidden_nodes_1=300,
+                         n_hidden_nodes_r=300,
                          n_hidden_nodes_3=50,
                          num_classes=1):
         logger.info("sentence_len: %s"% sentence_len)
@@ -565,7 +576,10 @@ class DeepCNNAqquRelScorer():
 
         # Add dropout
         with tf.name_scope("dropout"):
-            self.h_drop = tf.nn.dropout(self.h_pool_flat, self.dropout_keep_prob,
+            self.h_drop = tf.nn.dropout(self.h_pool_flat,
+                                        self.dropout_keep_prob,
+                                        seed=1332)
+            self.r_drop = tf.nn.dropout(self.input_r, self.dropout_keep_prob,
                                         seed=1332)
 
 
@@ -581,14 +595,25 @@ class DeepCNNAqquRelScorer():
             self.h_1 = tf.nn.xw_plus_b(self.h_drop, W, b, name="h_1")
             self.a_1 = tf.nn.elu(self.h_1)
 
+
+        with tf.name_scope("dense_r_input"):
+            W = tf.Variable(
+                tf.truncated_normal([rel_width, n_hidden_nodes_r],
+                                    stddev=0.1, seed=234), name="W")
+            self.W_3 = W
+            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_r]),
+                            name="b")
+            self.h_3 = tf.nn.xw_plus_b(self.r_drop, W, b, name="h_3")
+            self.a_3 = tf.nn.elu(self.h_3)
+
         with tf.name_scope("dense_r"):
             W = tf.Variable(
-                tf.truncated_normal([rel_width, n_hidden_nodes_1],
+                tf.truncated_normal([n_hidden_nodes_r, n_hidden_nodes_1],
                                     stddev=0.1, seed=234), name="W")
             self.W_2 = W
             b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
                             name="b")
-            self.h_2 = tf.nn.xw_plus_b(self.input_r, W, b, name="h_2")
+            self.h_2 = tf.nn.xw_plus_b(self.a_3, W, b, name="h_2")
             self.a_2 = tf.nn.elu(self.h_2)
 
         #with tf.name_scope("dense2"):
@@ -627,7 +652,7 @@ class DeepCNNAqquRelScorer():
         a_2 = tf.nn.l2_normalize(self.a_2, 1)
         scores = tf.mul(a_1, a_2)
         self.scores = tf.reduce_sum(scores, 1, keep_dims=True)
-        #self.scores = tf.exp(- tf.reduce_sum(tf.abs(self.a_1 - self.a_2), 1, keep_dims=True))
+        #self.scores = tf.exp(- tf.reduce_sum(tf.abs(a_1 - a_2), 1, keep_dims=True))
         #self.scores = scores
         self.probs = self.scores
 
@@ -672,4 +697,4 @@ class DeepCNNAqquRelScorer():
             #self.loss = tf.reduce_mean(losses)
                         #0.1 * tf.nn.l2_loss(self.W_o)
             #self.loss = tf.reduce_mean(tf.mul(losses, self.weight_y))
-            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores)) #+ 0.01 * tf.nn.l2_loss(self.W_1) + 0.01 * tf.nn.l2_loss(self.W_2)
+            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores)) #+ 0.01 * tf.nn.l2_loss(self.W_3) #+ 0.01 * tf.nn.l2_loss(self.W_2)
