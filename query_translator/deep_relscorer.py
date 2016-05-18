@@ -28,7 +28,7 @@ class DeepCNNAqquRelScorer():
     def __init__(self, name, embedding_file):
         self.name = name + "_DeepRelScorer"
         self.n_rels = 3
-        self.n_parts_per_rel = 1
+        self.n_parts_per_rel = 3
         self.n_rel_parts = self.n_rels * self.n_parts_per_rel
         if embedding_file is not None:
             [self.embedding_size, self.vocab,
@@ -37,7 +37,7 @@ class DeepCNNAqquRelScorer():
             self.rel_width_len = self.n_rel_parts * self.embedding_size
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
-        self.filter_sizes = (2, 3, 4)
+        self.filter_sizes = (1, 2, 3)
         self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
 
     def extract_vectors(self, gensim_model_fname):
@@ -151,7 +151,7 @@ class DeepCNNAqquRelScorer():
         return labels[indices], word_features[indices], rel_features[indices]
 
 
-    def learn_model(self, train_queries, dev_queries, num_epochs=40):
+    def learn_model(self, train_queries, dev_queries, num_epochs=30):
         random.seed(123)
         self.extend_vocab_for_relwords(train_queries)
         np.random.seed(123)
@@ -161,8 +161,7 @@ class DeepCNNAqquRelScorer():
             default_sess.close()
         if dev_queries is not None:
             dev_features, dev_qids, dev_f1 = self.create_test_batches(dev_queries)
-            devt_features, devt_qids, devt_f1 = self.create_test_batches(
-                train_queries)
+            #devt_features, devt_qids, devt_f1 = self.create_test_batches( train_queries)
         pos_labels, pos_features, neg_labels, neg_features = self.create_train_examples(train_queries)
         train_pos_word_features = np.array(pos_features[0])
         train_pos_rel_features = np.array(pos_features[1])
@@ -271,7 +270,7 @@ class DeepCNNAqquRelScorer():
                             train_step(batch, n + 1, batch_num)
                         if (n + 1) % 10 == 0 and dev_queries is not None:
                             run_dev_batches(dev_features, dev_qids, dev_f1, dev_train="Dev")
-                            run_dev_batches(devt_features, devt_qids, devt_f1, dev_train="Train")
+                            #run_dev_batches(devt_features, devt_qids, devt_f1, dev_train="Train")
                     if dev_scores:
                         logger.info("Dev avg_f1 history:")
                         logger.info(" ".join(["%d:%f" % (i + 1, f)
@@ -515,8 +514,8 @@ class DeepCNNAqquRelScorer():
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
                          rel_width, filter_sizes=(2, 3, 4), num_filters=300,
-                         n_hidden_nodes_1=300,
-                         n_hidden_nodes_r=300,
+                         n_hidden_nodes_1=200,
+                         n_hidden_nodes_r=200,
                          n_hidden_nodes_3=50,
                          num_classes=1):
         logger.info("sentence_len: %s"% sentence_len)
@@ -610,7 +609,7 @@ class DeepCNNAqquRelScorer():
             self.W_1 = W
             b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]), name="b")
             self.h_1 = tf.nn.xw_plus_b(self.h_drop, W, b, name="h_1")
-            self.a_1 = tf.nn.tanh(self.h_1)
+            self.a_1 = tf.nn.elu(self.h_1)
 
 
         with tf.name_scope("dense_r_input"):
@@ -631,7 +630,7 @@ class DeepCNNAqquRelScorer():
             b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
                             name="b")
             self.h_2 = tf.nn.xw_plus_b(self.a_3, W, b, name="h_2")
-            self.a_2 = tf.nn.tanh(self.h_2)
+            self.a_2 = tf.nn.elu(self.h_2)
 
         #with tf.name_scope("dense2"):
         #    W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
@@ -714,4 +713,4 @@ class DeepCNNAqquRelScorer():
             #self.loss = tf.reduce_mean(losses)
                         #0.1 * tf.nn.l2_loss(self.W_o)
             #self.loss = tf.reduce_mean(tf.mul(losses, self.weight_y))
-            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores)) #+ 0.01 * tf.nn.l2_loss(self.W_1) + 0.01 * tf.nn.l2_loss(self.W_2) + 0.01 * tf.nn.l2_loss(self.W_3)
+            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores))# + 0.00001 * tf.nn.l2_loss(self.W_1) + 0.00001 * tf.nn.l2_loss(self.W_2)
