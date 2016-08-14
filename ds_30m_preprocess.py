@@ -48,7 +48,8 @@ def transform_30m(input_file, output_file, name_mid):
                     name = name_mid[subj_mid]
                     if name in question:
                         # Replace the entity in the question with <entity>
-                        question = question.replace(name, "<entity>")
+                        question = question.replace(name, subj_mid.replace('.',
+                                                                           '_'))
                         relation = get_relation_name(cols[1])
                         out.write("%s\t%s\n" % (question, relation))
                     else:
