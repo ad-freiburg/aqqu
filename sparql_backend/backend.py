@@ -270,7 +270,7 @@ def main():
     '''
     print sparql.query(query)
     query = '''
-        SELECT ?name where {
+        SELECT ?name WHERE {
         ?x <http://rdf.freebase.com/ns/type.object.name> ?name.
         FILTER (lang(?name) != "en")
         } LIMIT 100

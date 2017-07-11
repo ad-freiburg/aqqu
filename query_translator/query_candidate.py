@@ -599,15 +599,15 @@ class QueryCandidate:
             limit *= 100
             # Note: this does not add "distinct" to the inner clause,
             # which is wrong but what sempre did as well.
-            query = "%s SELECT count(%s) where " \
-                    "{\n SELECT %s where {\n %s \n} LIMIT %s" \
+            query = "%s SELECT count(%s) WHERE " \
+                    "{\n SELECT %s WHERE {\n %s \n} LIMIT %s" \
                     "}" % (query_prefix,
                            query_vars[0],
                            query_vars_str,
                            triples_string, limit)
         # Just prepend the prefix
         else:
-            query = "%s SELECT %s %s where {\n %s \n} LIMIT %s" % (query_prefix,
+            query = "%s SELECT %s %s WHERE {\n %s \n} LIMIT %s" % (query_prefix,
                                                                    distinct_str,
                                                                    query_vars_str,
                                                                    triples_string,
@@ -649,7 +649,7 @@ class QueryCandidate:
         query_vars = ' '.join("%s" % var.get_sparql_name() for
                               var in query_vars)
         distinct_str = 'DISTINCT' if distinct else ''
-        query = "%s SELECT %s %s where {\n %s \n} LIMIT %s" % (query_prefix,
+        query = "%s SELECT %s %s WHERE {\n %s \n} LIMIT %s" % (query_prefix,
                                                                distinct_str,
                                                                query_vars,
                                                                triples_string,
