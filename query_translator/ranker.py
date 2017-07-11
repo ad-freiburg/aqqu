@@ -21,7 +21,7 @@ from sklearn.externals import joblib
 from sklearn.metrics import classification_report
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, \
     AdaBoostRegressor, RandomForestRegressor, ExtraTreesClassifier
-from sklearn import pipeline, grid_search
+from sklearn import pipeline
 from sklearn.linear_model import SGDClassifier, SGDRegressor, \
     LogisticRegressionCV, LogisticRegression
 from sklearn.feature_extraction import DictVectorizer
@@ -32,7 +32,7 @@ from query_translator.oracle import EntityOracle
 from features import FeatureExtractor
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
-from sklearn.cross_validation import KFold
+from sklearn.model_selection import KFold, GridSearchCV
 
 RANDOM_SHUFFLE = 0.3
 
@@ -233,18 +233,18 @@ class AccuModel(MLModel, Ranker):
         # train the treepair classifier on the collected test-folds
         # train the relation classifier on the all relation-features
 
-        kf = KFold(len(train_queries), n_folds=n_folds, shuffle=True,
+        kf = KFold(n_splits=n_folds, shuffle=True,
                    random_state=999)
         num_fold = 1
         pair_features = []
         pair_labels = []
         features = []
         labels = []
-        for train, test in kf:
+        for train_indices, test_indices in kf.split(train_queries):
             logger.info("Training relation score model on fold %s/%s" % (
                 num_fold, n_folds))
-            test_fold = [train_queries[i] for i in test]
-            train_fold = [train_queries[i] for i in train]
+            test_fold = [train_queries[i] for i in test_indices]
+            train_fold = [train_queries[i] for i in train_indices]
             rel_model = self.learn_rel_score_model(train_fold)
             self.feature_extractor.relation_score_model = rel_model
             logger.info("Applying relation score model.")
@@ -277,7 +277,7 @@ class AccuModel(MLModel, Ranker):
         vec = DictVectorizer(sparse=False)
         X = vec.fit_transform(features)
         X, labels = utils.shuffle(X, labels, random_state=999)
-        decision_tree = RandomForestClassifier(class_weight='auto',
+        decision_tree = RandomForestClassifier(class_weight='balanced',
                                                random_state=999,
                                                n_jobs=6,
                                                n_estimators=90)
@@ -601,13 +601,13 @@ class RelationNgramScorer(MLModel):
         # Perform grid search or use provided C.
         if self.regularization_C is None:
             logger.info("Performing grid search.")
-            relation_scorer = SGDClassifier(loss='log', class_weight='auto',
+            relation_scorer = SGDClassifier(loss='log', class_weight='balanced',
                                             n_iter=np.ceil(
                                                 10 ** 6 / len(labels)),
                                             random_state=999)
             cv_params = [{"alpha": [10.0, 5.0, 2.0, 1.5, 1.0, 0.5,
                                     0.1, 0.01, 0.001, 0.0001]}]
-            grid_search_cv = grid_search.GridSearchCV(relation_scorer,
+            grid_search_cv = GridSearchCV(relation_scorer,
                                                       cv_params,
                                                       n_jobs=8,
                                                       verbose=1,
@@ -620,7 +620,7 @@ class RelationNgramScorer(MLModel):
         else:
             logger.info("Learning relation scorer with C: %s."
                         % self.regularization_C)
-            relation_scorer = SGDClassifier(loss='log', class_weight='auto',
+            relation_scorer = SGDClassifier(loss='log', class_weight='balanced',
                                             n_iter=np.ceil(
                                                 10 ** 6 / len(labels)),
                                             alpha=self.regularization_C,

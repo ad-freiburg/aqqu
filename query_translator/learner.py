@@ -26,7 +26,7 @@ import gc
 import multiprocessing as mp
 from collections import defaultdict
 import translator
-from sklearn.cross_validation import KFold
+from sklearn.model_selection import KFold
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s '
                            ': %(module)s : %(message)s',
@@ -260,7 +260,7 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
     fold_size = len(queries) / n_folds
     logger.info("Splitting into %s folds with %s queries each." % (n_folds,
                                                                    fold_size))
-    kf = KFold(len(queries), n_folds=n_folds, shuffle=True,
+    kf = KFold(n_splits=n_folds, shuffle=True,
                random_state=999)
     result = defaultdict(int)
     n_runs = 1
@@ -268,11 +268,11 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
         logger.info("Run %s of %s" % (n_runs, avg_runs))
         n_runs += 1
         num_fold = 1
-        for train, test in kf:
+        for train_indices, test_indices in kf.split(queries):
             gc.collect()
             logger.info("Evaluating fold %s/%s" % (num_fold, n_folds))
-            test_fold = [queries[i] for i in test]
-            train_fold = [queries[i] for i in train]
+            test_fold = [queries[i] for i in test_indices]
+            train_fold = [queries[i] for i in train_indices]
             scorer_obj.learn_model(train_fold)
             num_fold += 1
             res, test_queries = evaluate_scorer_parallel(test_fold,
