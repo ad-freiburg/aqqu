@@ -1,6 +1,6 @@
 Cython==0.22
-gensim==0.10.3
 numpy==1.9.2
+gensim==0.10.3
 python-dateutil==2.4.1
 scipy==0.15.1
 urllib3==1.10.2

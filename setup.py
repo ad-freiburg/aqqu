@@ -1,6 +1,7 @@
 __author__ = 'haussmae'
 from distutils.core import setup
 from distutils.extension import Extension
+import numpy
 
 USE_CYTHON = True
 
@@ -18,6 +19,7 @@ if USE_CYTHON:
 
 
 setup(
-    ext_modules=extensions
+    ext_modules=extensions,
+    include_dirs=[numpy.get_include()]
 )
 
