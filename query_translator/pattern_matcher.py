@@ -3,14 +3,15 @@ Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-import query_candidate as qc
+from itertools import chain
+from . import query_candidate as qc
 import logging
 from entity_linker.mediator_index_fast import MediatorIndexFast
 from entity_linker.entity_linker import Value, DateValue
 import time
-import data
-from answer_type import AnswerType
-from alignment import WordembeddingSynonyms, WordDerivations
+from . import data
+from .answer_type import AnswerType
+from .alignment import WordembeddingSynonyms, WordDerivations
 import globals
 import math
 
@@ -112,7 +113,7 @@ def cosine_similarity(counts_a, counts_b):
     :param counts_b:
     :return:
     """
-    u = set(counts_a.keys() + counts_b.keys())
+    u = set(chain(counts_a.keys(), counts_b.keys()))
     norm_a = math.sqrt(sum([t ** 2 for t in counts_a.values()]))
     norm_b = math.sqrt(sum([t ** 2 for t in counts_b.values()]))
     norm = norm_a * norm_b
@@ -141,7 +142,7 @@ def kl_divergence(counts_a, counts_b, smooth=True,
     total_b = float(sum(counts_b.values()))
     p_a = dict()
     p_b = dict()
-    u = set(counts_a.keys() + counts_b.keys())
+    u = set(chain(counts_a.keys(), counts_b.keys()))
     # Laplace smoothing for both.
     if smooth:
         d = float(len(u))
@@ -178,7 +179,7 @@ def filter_type_distribution(dist, min_count=1,
     :return:
     """
     new_dist = dict()
-    for key, count in sorted(dist.iteritems(), key=lambda (_, c): c,
+    for key, count in sorted(iter(dist.items()), key=lambda __c1: __c1[1],
                              reverse=True):
         if key.startswith('base') or key.startswith('user'):
             continue
@@ -215,7 +216,7 @@ def filter_important_types(relation_target_types, relation_counts,
             # Only return the types when at least a fraction of n_min_frac
             # targets has that type.
             important_relation_target_types[relation] = []
-            for type_n, count in relation_target_types[relation].iteritems():
+            for type_n, count in relation_target_types[relation].items():
                 # Ignore base types for non-base relations
                 if not relation.startswith('base'):
                     if type_n.startswith('base'):
@@ -227,7 +228,7 @@ def filter_important_types(relation_target_types, relation_counts,
             important_relation_target_types[relation] = []
             # Just use the first 10 types as backoff strategy.
             type_names_counts = sorted(relation_target_types[relation].items(),
-                                       key=lambda (_, c): c, reverse=True)
+                                       key=lambda __c: __c[1], reverse=True)
             for type_n, count in type_names_counts[:10]:
                 # Ignore base types for non-base relations
                 if not relation.startswith('base'):
@@ -394,7 +395,7 @@ class QueryCandidateExtender:
         # where rel_a is the direction <?x rel_a mediator>
         # and rel_b is <mediator rel_b ?y>
         self.mediated_rel_words = dict()
-        for (rel_a, rel_b), words in mediated_rel_words.iteritems():
+        for (rel_a, rel_b), words in mediated_rel_words.items():
             # Both relations are expressed in the direction with the mediator as subject.
             if rel_a in self.reverse_relations:
                 reverse_rel_a = self.reverse_relations[rel_a]

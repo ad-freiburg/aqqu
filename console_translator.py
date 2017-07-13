@@ -14,7 +14,7 @@ from query_translator.translator import QueryTranslator
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
                            ": %(module)s : %(message)s",
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +32,7 @@ def main():
     globals.read_configuration(args.config)
     if args.ranker_name not in scorer_globals.scorers_dict:
         logger.error("%s is not a valid ranker" % args.ranker_name)
-        logger.error("Valid rankers are: %s " % (" ".join(scorer_globals.scorers_dict.keys())))
+        logger.error("Valid rankers are: %s " % (" ".join(list(scorer_globals.scorers_dict.keys()))))
     logger.info("Using ranker %s" % args.ranker_name)
     ranker = scorer_globals.scorers_dict[args.ranker_name]
     translator = QueryTranslator.init_from_config()

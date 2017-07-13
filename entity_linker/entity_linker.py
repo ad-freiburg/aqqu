@@ -8,8 +8,8 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import logging
 import re
 import time
-from surface_index_memory import EntitySurfaceIndexMemory
-from util import normalize_entity_name, remove_number_suffix,\
+from .surface_index_memory import EntitySurfaceIndexMemory
+from .util import normalize_entity_name, remove_number_suffix,\
     remove_prefixes_from_name, remove_suffixes_from_name
 import globals
 
@@ -283,8 +283,9 @@ class EntityLinker:
                 if not self.is_entity_occurrence(tokens, start, end):
                     continue
                 entity_str = ' '.join([t.token for t in entity_tokens])
-                logger.debug(u"Checking if '{0}' is an entity.".format(entity_str))
+                logger.debug("Checking if '{0}' is an entity.".format(entity_str))
                 entities = self.surface_index.get_entities_for_surface(entity_str)
+                logger.debug("Found {0} raw entities".format(len(entities)))
                 # No suggestions.
                 if len(entities) == 0:
                     continue
@@ -327,7 +328,7 @@ class EntityLinker:
             if e.entity not in entity_map:
                 entity_map[e.entity] = []
             entity_map[e.entity].append(e)
-        for entity, identifications in entity_map.iteritems():
+        for entity, identifications in entity_map.items():
             if len(identifications) > 1:
                 # A list of (token_set, score) for each identification.
                 token_sets = [(set(i.tokens), i.surface_score)
@@ -356,7 +357,7 @@ class EntityLinker:
                     token_map[tokens] = []
             token_map[tokens].append(e)
         remove_entities = set()
-        for tokens, entities in token_map.iteritems():
+        for tokens, entities in token_map.items():
             if len(entities) > max_threshold:
                 sorted_entities = sorted(entities, key=lambda x: x.surface_score, reverse=True)
                 # Ignore the entity if it is not in the top candidates, except, when

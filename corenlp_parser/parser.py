@@ -6,10 +6,11 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import re
-from json import loads
+import codecs
+import json
 import logging
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 import time
 from collections import defaultdict
 import globals
@@ -48,12 +49,12 @@ class CoreNLPParser(object):
         representations.
         :return:
         """
-        logger.debug(u"Parsing '{0}'.".format(query))
+        logger.debug("Parsing '{0}'.".format(query))
         t0 = time.time()
         value = {"text": query.encode('utf-8')}
-        data = urllib.urlencode(value)
-        req = urllib2.Request(self.host, data)
-        response = urllib2.urlopen(req).read()
+        data = urllib.parse.urlencode(value).encode('utf-8')
+        req = urllib.request.Request(self.host, data)
+        response = urllib.request.urlopen(req)
         parse_result = parse_json_result(response,
                                          include_json=include_json,
                                          parse_trees=parse_trees)
@@ -106,7 +107,9 @@ def extract_parses_from_json(result, tokens, parse_trees=False):
 def parse_json_result(json_response, include_json=False,
                       parse_trees=False):
     """Create the ParseResult from the returned JSON."""
-    result = loads(json_response, encoding='utf-8')
+    # json.load() needs the file in text mode
+    reader = codecs.getreader('utf-8')
+    result = json.load(reader(json_response))
     # ujson is faster!
     # result = ujson.loads(json_response)
     tokens = extract_tokens_from_json(result)
@@ -198,8 +201,7 @@ class ConstituentParse(object):
         """
         t0 = time.time()
         parse_str = self.parse_string
-        parse_tokens = filter(lambda x: x != '' and x != ' ',
-                              re.split(r'([ \)])', parse_str))
+        parse_tokens = [x for x in re.split(r'([ \)])', parse_str) if x != '' and x != ' ']
         root = ConstituentNode(parse_tokens[0][1:])
         nodes = []
         parent_nodes = [root]
@@ -256,8 +258,8 @@ class ConstituentNode(object):
         self.end_position = 0
 
     def print_indent(self, indent=' '):
-        print indent + self.tag + '(%s, %s)' % (self.start_position,
-                                                self.end_position)
+        print(indent + self.tag + '(%s, %s)' % (self.start_position,
+                                                self.end_position))
         for c in self.children:
             c.print_indent(indent=indent + ' ')
 
@@ -276,10 +278,10 @@ class DependencyGraph:
         for n in self.nodes:
             if n.heads:
                 for head in n.heads:
-                    print "({}, {}, {}) {}".format(n.heads_rel[head],
+                    print("({}, {}, {}) {}".format(n.heads_rel[head],
                                                    head.word,
                                                    n.word,
-                                                   n.token.pos)
+                                                   n.token.pos))
 
     def shortest_path(self, node_a, node_b):
         """Perform simple Dijkstra.
@@ -330,7 +332,7 @@ class DependencyGraph:
         """Pop min from queue."""
         minkey = None
         minvalue = 99999
-        for key, value in queue.iteritems():
+        for key, value in queue.items():
             if value < minvalue:
                 minkey = key
                 minvalue = value
@@ -390,7 +392,7 @@ def main():
         target = parse_result.dependency_parse.graph.nodes[10]
         path = parse_result.dependency_parse.graph.shortest_path(source, target)
         for p in path:
-            print p.token.token
+            print(p.token.token)
 
 if __name__ == '__main__':
     main()

@@ -10,7 +10,7 @@ from urllib3 import HTTPConnectionPool, Retry
 import logging
 import globals
 import csv
-import StringIO
+import io
 import json
 import time
 import traceback
@@ -99,7 +99,7 @@ class SPARQLHTTPBackend(object):
         logger.info("Using SPARQL backend at %s:%s%s" % (
             backend_host, backend_port, backend_url
         ))
-        return SPARQLHTTPBackend(backend_host, backend_port, backend_url)
+        return SPARQLHTTPBackend(backend_host, backend_port, backend_url, retry = 10)
 
     def query_json(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
@@ -114,7 +114,7 @@ class SPARQLHTTPBackend(object):
             "query": query,
             "maxrows": 2097151,
             # "debug": "off",
-            # "timeout": "",
+            "timeout": 10.0,
             "format": "application/json",
             # "save": "display",
             # "fname": ""
@@ -131,7 +131,7 @@ class SPARQLHTTPBackend(object):
 
         try:
             if resp.status == 200:
-                data = json.loads(resp.data, encoding='utf-8')
+                data = json.loads(resp.data.decode('utf-8'))
                 results = data['results']['bindings']
                 if filter_lang:
                     results = filter_results_language(results, filter_lang)
@@ -202,16 +202,16 @@ class SPARQLHTTPBackend(object):
                 text = resp.data
                 # Use csv module to parse
                 if parse_safe:
-                    data = csv.reader(StringIO.StringIO(text))
+                    data = csv.reader(io.StringIO(text))
                     # Consume header.
-                    fields = data.next()
+                    fields = next(data)
                     results = [
                         [normalize_output(c.decode('utf-8')) for c in resp]
                         for resp in data]
                 else:
                     results = [[normalize_output(c.decode('utf-8')) for c in
-                                l.split('\t')]
-                               for l in text.split('\n') if l][1:]
+                                l.split(b'\t')]
+                               for l in text.split(b'\n') if l][1:]
             else:
                 logger.warn("Return code %s for query '%s'" % (resp.status,
                                                                query))
@@ -244,14 +244,14 @@ class SPARQLHTTPBackend(object):
         :return:
         """
         offset = 0
-        limit_query = u"%s LIMIT %s OFFSET %s" % (query, page_size, offset)
+        limit_query = "%s LIMIT %s OFFSET %s" % (query, page_size, offset)
         result = self.query(limit_query, **kwargs)
         while result:
             yield result
             if len(result) < page_size:
                 break
             offset += page_size
-            limit_query = u"%s LIMIT %s OFFSET %s" % (query, page_size, offset)
+            limit_query = "%s LIMIT %s OFFSET %s" % (query, page_size, offset)
             result = self.query(limit_query, **kwargs)
         raise StopIteration()
 
@@ -268,14 +268,14 @@ def main():
      ?o fb:type.object.name ?x .
      FILTER (LANG(?x) = "en") }
     '''
-    print sparql.query(query)
+    print(sparql.query(query))
     query = '''
         SELECT ?name WHERE {
         ?x <http://rdf.freebase.com/ns/type.object.name> ?name.
         FILTER (lang(?name) != "en")
         } LIMIT 100
     '''
-    print sparql.query(query)
+    print(sparql.query(query))
 
 
 if __name__ == '__main__':

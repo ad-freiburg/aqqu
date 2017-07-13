@@ -14,18 +14,18 @@ import globals
 from query_translator.ranker import MLModel
 import scorer_globals
 from query_translator.translator import QueryTranslator
-from evaluation import EvaluationQuery, load_eval_queries, \
+from .evaluation import EvaluationQuery, load_eval_queries, \
     evaluate_translator, evaluate
 import os
-import ranker
-import cPickle as pickle
+from . import ranker
+import pickle as pickle
 import functools
 import random
 from joblib import Parallel, delayed
 import gc
 import multiprocessing as mp
 from collections import defaultdict
-import translator
+from . import translator
 from sklearn.model_selection import KFold
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s '
@@ -232,10 +232,10 @@ def test(scorer_name, test_dataset, cached, avg_runs=1):
                                                      scorer_obj,
                                                      num_processes=3)
         logger.info(res)
-        for k, v in res._asdict().iteritems():
+        for k, v in res._asdict().items():
             result[k] += v
         gc.collect()
-    for k, v in result.iteritems():
+    for k, v in result.items():
         result[k] = float(result[k]) / avg_runs
     logger.info("Average results over %s runs: " % avg_runs)
     for k in sorted(result.keys()):
@@ -279,10 +279,10 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
                                                          scorer_obj,
                                                          num_processes=6)
             logger.info(res)
-            for k, v in res._asdict().iteritems():
+            for k, v in res._asdict().items():
                 result[k] += v
             gc.collect()
-    for k, v in result.iteritems():
+    for k, v in result.items():
         result[k] = float(result[k]) / (n_folds * avg_runs)
     logger.info("Average results over %s runs: " % avg_runs)
     for k in sorted(result.keys()):

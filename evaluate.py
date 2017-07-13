@@ -51,17 +51,17 @@ def parse_result_list(rlist):
   return result_list
 
 """return a tuple with recall, precision, and f1 for one example"""
-def computeF1(goldList,predictedList):
+def computeF1(goldList, predictedList):
 
   """Assume all questions have at least one answer"""
   if len(goldList)==0:
     if len(predictedList)==0:
-        return (1,1,1)
+        return (1, 1, 1)
     else:
-        return (0,0,0)
+        return (0, 0, 0)
   """If we return an empty list recall is zero and precision is one"""
   if len(predictedList)==0:
-    return (0,1,0)
+    return (0, 1, 0)
   """It is guaranteed now that both lists are not empty"""
   goldList = parse_result_list(goldList)
   predictedList = parse_result_list(predictedList)
@@ -81,7 +81,7 @@ def computeF1(goldList,predictedList):
   f1 = 0
   if precision+recall>0:
     f1 = 2*recall*precision / (precision + recall)
-  return (recall,precision,f1)
+  return (recall, precision, f1)
 
 averageRecall=0
 averagePrecision=0
@@ -95,7 +95,7 @@ with open(sys.argv[1]) as f:
     tokens = line.split("\t")
     gold = json.loads(tokens[1])
     predicted = json.loads(tokens[2])
-    recall, precision, f1 = computeF1(gold,predicted)
+    recall, precision, f1 = computeF1(gold, predicted)
     if f1 == 1:
       nCorrect += 1
     averageRecall += recall
@@ -108,11 +108,11 @@ averageRecall = float(averageRecall) / count
 averagePrecision = float(averagePrecision) / count
 averageF1 = float(averageF1) / count
 accuracy = float(nCorrect) / count
-print "Number of questions: " + str(count)
-print "Average recall over questions: " + str(averageRecall)
-print "Average precision over questions: " + str(averagePrecision)
-print "Average f1 over questions: " + str(averageF1)
-print "Accuracy over questions: " + str(accuracy)
+print("Number of questions: " + str(count))
+print("Average recall over questions: " + str(averageRecall))
+print("Average precision over questions: " + str(averagePrecision))
+print("Average f1 over questions: " + str(averageF1))
+print("Accuracy over questions: " + str(accuracy))
 averageNewF1 = 2 * averageRecall * averagePrecision / (averagePrecision + averageRecall)
-print "F1 of average recall and average precision: " + str(averageNewF1)
+print("F1 of average recall and average precision: " + str(averageNewF1))
 

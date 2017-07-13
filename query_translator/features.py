@@ -7,7 +7,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 
-from query_candidate import QueryCandidate
+from .query_candidate import QueryCandidate
 from collections import defaultdict
 import math
 
@@ -24,7 +24,7 @@ def get_n_grams(tokens, n=2):
     :param n:
     :return:
     """
-    grams = zip(*[tokens[i:] for i in range(n)])
+    grams = list(zip(*[tokens[i:] for i in range(n)]))
     return grams
 
 
@@ -161,7 +161,7 @@ class FeatureExtractor(object):
                 for (t, _) in rm.derivation_match.token_names:
                     token_derivation_match_score[t] += 1.0
             # cardinality is only set for the answer relation.
-            if rm.cardinality > 0:
+            if rm.cardinality != -1: # this was rm.cardinality > 0 but it was a tuple?!?
                 # Number of facts in the relation (like in FreebaseEasy).
                 cardinality = rm.cardinality[0]
 

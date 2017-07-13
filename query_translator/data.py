@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def read_relation_expected_types(target_types_file):
     relation_target_types = {}
-    with open(target_types_file, 'r') as f:
+    with open(target_types_file, 'r', encoding = 'utf-8') as f:
         for line in f:
             cols = line.strip().split('\t')
             relation_name = cols[0]
@@ -32,9 +32,9 @@ def read_relation_lemmas(lemma_file):
     """
     logger.info("Reading relation lemmas from %s." % lemma_file)
     relation_lemma = dict()
-    with open(lemma_file, 'r') as f:
+    with open(lemma_file, 'r', encoding='utf-8') as f:
         for line in f:
-            cols = line.decode('utf-8').strip().split('\t')
+            cols = line.strip().split('\t')
             name = cols[0]
             lemma_name = cols[1]
             relation_lemma[name] = lemma_name
@@ -56,9 +56,9 @@ def read_word_type_distributions(word_type_counts_file,
     """
     word_type_counts = dict()
     logger.info("Reading word type counts from %s." % word_type_counts_file)
-    with open(word_type_counts_file, 'r') as f:
+    with open(word_type_counts_file, 'r', encoding='utf-8') as f:
         for line in f:
-            cols = line.decode('utf-8').strip().split('\t')
+            cols = line.strip().split('\t')
             word = cols[0]
             word_total_count = int(cols[1])
             if word_total_count < min_count:
@@ -86,9 +86,9 @@ def read_word_derivations(derivations_file):
     """
     word_derivations = dict()
     logger.info("Reading word derivations from %s." % derivations_file)
-    with open(derivations_file, "r") as f:
+    with open(derivations_file, "r", encoding = 'utf-8') as f:
         for line in f:
-            cols = line.strip().decode('utf-8').split('\t')
+            cols = line.strip().split('\t')
             word = cols[0]
             derivations = set(cols[1].split(' '))
             word_derivations[word] = derivations
@@ -99,7 +99,7 @@ def read_word_derivations(derivations_file):
 def read_relation_target_type_distributions(target_types_file):
     relation_target_types = {}
     ignore_types = {'common.topic'}
-    with open(target_types_file, 'r') as f:
+    with open(target_types_file, 'r', encoding = 'utf-8') as f:
         for line in f:
             cols = line.strip().split('\t')
             relation_name = cols[0]
@@ -130,9 +130,9 @@ def read_relation_words(relation_words_file, n_top_words=30):
     word_score_re = re.compile(r'([^(]+)\(([^\)]+)\)')
     relation_words = {}
     logging.info("Reading relation words from %s ." % relation_words_file)
-    with open(relation_words_file, 'r') as f:
+    with open(relation_words_file, 'r', encoding='utf-8') as f:
         for line in f:
-            cols = line.strip().decode('utf-8').split('\t')
+            cols = line.strip().split('\t')
             relation_name = cols[0]
             top_words = []
             words = cols[2].split(' ')
@@ -173,9 +173,9 @@ def read_mediated_relation_words(relation_words_file, n_top_words=10):
     relation_words = {}
     logging.info("Reading mediated relation words from %s ." %
                  relation_words_file)
-    with open(relation_words_file, 'r') as f:
+    with open(relation_words_file, 'r', encoding = 'utf-8') as f:
         for line in f:
-            cols = line.strip().decode('utf-8').split('\t')
+            cols = line.strip().split('\t')
             relation_names = tuple(cols[0].split(' '))
             top_words = []
             words = cols[2].split(' ')
@@ -199,9 +199,9 @@ def read_reverse_relations(reverse_relations_file):
     """
     prefix = "<http://rdf.freebase.com/ns"
     reverse_relations = {}
-    with open(reverse_relations_file, 'r') as f:
+    with open(reverse_relations_file, 'r', encoding = 'utf-8') as f:
         for line in f:
-            cols = line.strip().decode('utf-8').split('\t')
+            cols = line.strip().split('\t')
             name = cols[0]
             reverse = cols[1]
             # name = globals.get_mid_from_qualified_string(cols[0])
@@ -222,9 +222,9 @@ def read_relation_counts(name_mapping_file):
     """
     relation_counts = {}
     logger.info("Reading relation counts from %s." % name_mapping_file)
-    with open(name_mapping_file, 'r') as f:
+    with open(name_mapping_file, 'r', encoding = 'utf-8') as f:
         for line in f:
-            cols = line.strip().decode('utf-8').split('\t')
+            cols = line.strip().split('\t')
             name = cols[0]
             # Some weird 1-character relations...
             if len(name) > 1:
@@ -247,9 +247,8 @@ def read_mediator_names(mediator_names_file):
     :return:
     """
     mediator_names = {}
-    with open(mediator_names_file, 'r') as f:
+    with open(mediator_names_file, 'r', encoding = 'utf-8') as f:
         for line in f:
-            line = line.decode('utf-8')
             mid, name = line.strip().split('\t')
             mediator_names[name] = mid
     return mediator_names
@@ -263,8 +262,8 @@ def read_mediator_relations(mediator_relations_file):
     :return:
     """
     mediator_relations = set()
-    with open(mediator_relations_file, 'r') as f:
+    with open(mediator_relations_file, 'r', encoding = 'utf-8') as f:
         for line in f:
-            relation = line.decode('utf-8').strip()
+            relation = line.strip()
             mediator_relations.add(relation)
     return mediator_relations

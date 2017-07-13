@@ -18,10 +18,10 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import mmap
 import logging
 import os
-from util import normalize_entity_name
+from .util import normalize_entity_name
 import array
 import marshal
-import entity_linker
+from . import entity_linker
 import globals
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ class EntitySurfaceIndexMemory(object):
         self.surface_map_file = surface_map_file
         self.mid_vocabulary = self._get_entity_vocabulary(entity_index_prefix)
         self.surface_index = self._get_surface_index(entity_index_prefix)
-        self.entities_mm_f = open(entity_list_file, 'r')
+        self.entities_mm_f = open(entity_list_file, 'rb')
         self.entities_mm = mmap.mmap(self.entities_mm_f.fileno(), 0,
                                      prot=mmap.PROT_READ)
         logger.info("Done initializing surface index.")
@@ -52,11 +52,11 @@ class EntitySurfaceIndexMemory(object):
         vocab_file = index_prefix + "_mid_vocab"
         if os.path.isfile(vocab_file):
             logger.info("Loading entity vocabulary from disk.")
-            vocabulary = marshal.load(open(vocab_file, 'r'))
+            vocabulary = marshal.load(open(vocab_file, 'rb'))
         else:
             vocabulary = self._build_entity_vocabulary()
             logger.info("Writing entity vocabulary to disk.")
-            marshal.dump(vocabulary, open(vocab_file, 'w'))
+            marshal.dump(vocabulary, open(vocab_file, 'wb'))
         return vocabulary
 
     def _get_surface_index(self, index_prefix):
@@ -68,11 +68,11 @@ class EntitySurfaceIndexMemory(object):
         surface_index_file = index_prefix + "_surface_index"
         if os.path.isfile(surface_index_file):
             logger.info("Loading surfaces from disk.")
-            surface_index = marshal.load(open(surface_index_file, 'r'))
+            surface_index = marshal.load(open(surface_index_file, 'rb'))
         else:
             surface_index = self._build_surface_index()
             logger.info("Writing entity surfaces to disk.")
-            marshal.dump(surface_index, open(surface_index_file, 'w'))
+            marshal.dump(surface_index, open(surface_index_file, 'wb'))
         return surface_index
 
     def _build_surface_index(self):
@@ -86,13 +86,13 @@ class EntitySurfaceIndexMemory(object):
         n_lines = 0
         surface_index = dict()
         num_not_found = 0
-        with open(self.surface_map_file, 'r') as f:
+        with open(self.surface_map_file, 'rb') as f:
             last_surface_form = None
             surface_form_entries = array.array('d')
             for line in f:
                 n_lines += 1
                 try:
-                    cols = line.rstrip().split('\t')
+                    cols = line.rstrip().split(b'\t')
                     surface_form = cols[0]
                     score = float(cols[1])
                     mid = cols[2]
@@ -115,6 +115,7 @@ class EntitySurfaceIndexMemory(object):
                                     "unfound mids.")
                 if n_lines % 1000000 == 0:
                     logger.info('Stored %s surface-forms.' % n_lines)
+            # TODO(schnelle) WTF
             if surface_form_entries:
                 if surface_form_entries:
                     surface_index[last_surface_form] = surface_form_entries
@@ -131,7 +132,7 @@ class EntitySurfaceIndexMemory(object):
         mid_vocab = dict()
         num_lines = 0
         # Remember the offset for each entity.
-        with open(self.entity_list_file, 'r') as f:
+        with open(self.entity_list_file, 'rb') as f:
             mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
             offset = mm.tell()
             line = mm.readline()
@@ -139,7 +140,7 @@ class EntitySurfaceIndexMemory(object):
                 num_lines += 1
                 if num_lines % 1000000 == 0:
                     logger.info('Read %s lines' % num_lines)
-                cols = line.strip().split('\t')
+                cols = line.strip().split(b'\t')
                 mid = cols[0]
                 mid_vocab[mid] = offset
                 offset = mm.tell()
@@ -169,6 +170,7 @@ class EntitySurfaceIndexMemory(object):
         :param mid:
         :return:
         """
+        mid = mid.encode('utf-8')
         try:
             offset = self.mid_vocabulary[mid]
             entity = self._read_entity_from_offset(int(offset))
@@ -184,6 +186,7 @@ class EntitySurfaceIndexMemory(object):
         :return:
         """
         surface = normalize_entity_name(surface)
+        surface = surface.encode('utf-8')
         try:
             bytestr = self.surface_index[surface]
             ids_array = array.array('d')
@@ -234,7 +237,7 @@ def main():
     index = EntitySurfaceIndexMemory('data/entity-list_cai',
                                      'data/entity-surface-map_cai',
                                      'iprefix')
-    print index.get_entities_for_surface("Albert Einstein")
+    print(index.get_entities_for_surface("albert einstein"))
 
 
 if __name__ == '__main__':

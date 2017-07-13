@@ -6,7 +6,7 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
-from itertools import tee, izip
+from itertools import tee
 
 
 def edit_distance(s1, s2, compare_lower=True):
@@ -35,7 +35,7 @@ def edit_distance(s1, s2, compare_lower=True):
 def pairwise(iterable):
     a, b = tee(iterable)
     next(b, None)
-    return izip(a, b)
+    return zip(a, b)
 
 
 def triplewise(iterable):
@@ -43,8 +43,8 @@ def triplewise(iterable):
     next(b, None)
     next(c, None)
     next(c, None)
-    return izip(a, b, c)
+    return zip(a, b, c)
 
 
 if __name__ == '__main__':
-    print edit_distance('this is a house', 'this is not a house')
+    print(edit_distance('this is a house', 'this is not a house'))

@@ -74,7 +74,7 @@ class EntityOracle:
         self._read_oracle_entities(oracle_entities_file)
 
     def _read_oracle_entities(self, oracle_entities_file):
-        with open(oracle_entities_file, 'r') as f:
+        with open(oracle_entities_file, 'rb') as f:
             for line in f:
                 tokens, mid = line.decode('utf-8').strip().split('\t')
                 tokens = tokens.replace(' ', '')

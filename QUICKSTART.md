@@ -19,7 +19,7 @@ mainly scikit-learn (for machine learning), which requires numpy and scipy,
 Cython (for generation of fast C extensions) as well as a few smaller libraries.
 If you have virtualenv and pip, setup is easy:
 
-    virtualenv venv
+    virtualenv -p python3 venv
     source venv/bin/activate
     pip install -r requirements.txt
 

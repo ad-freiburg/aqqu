@@ -10,7 +10,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import logging
 import sys
-from util import *
+from .util import *
 import copy
 import globals
 from entity_linker.entity_linker import KBEntity
@@ -920,16 +920,16 @@ def test():
     ae_af = QueryCandidateRelation('ae-af', c, source_node=root, target_node=af)
     af_ah = QueryCandidateRelation('af-ah', c, source_node=af, target_node=ah)
     ah_ae = QueryCandidateRelation('ah-ae', c, source_node=ah, target_node=root)
-    print c.to_sparql_query()
+    print(c.to_sparql_query())
     x = QueryCandidate(query)
     root = QueryCandidateNode(':e:Albert_Einstein', 'm.123', x)
     x.root_node = root
     p = QueryCandidateVariable(x)
     o = QueryCandidateVariable(x)
-    print x._to_extended_sparql_query(root, p, o, [p])
+    print(x._to_extended_sparql_query(root, p, o, [p]))
 
 
 if __name__ == '__main__':
-    from translator import Query
+    from .translator import Query
 
     test()

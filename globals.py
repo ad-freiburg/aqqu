@@ -3,13 +3,14 @@ Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-from ConfigParser import SafeConfigParser
-from itertools import tee, izip
+from configparser import SafeConfigParser
+from itertools import tee
 import logging
 
 logger = logging.getLogger(__name__)
 
 FREEBASE_NS_PREFIX = "http://rdf.freebase.com/ns/"
+FREEBASE_NS_PREFIX_BYTES = b"http://rdf.freebase.com/ns/"
 FREEBASE_SPARQL_PREFIX = "fb"
 FREEBASE_NAME_RELATION = "type.object.name"
 FREEBASE_KEY_PREFIX = "http://rdf.freebase.com/key/"
@@ -54,9 +55,8 @@ def get_qualified_mid(mid):
 
 def get_mid_from_qualified_string(qualified_str):
     '''
-    Returns a fully qualified MID, with NS
-    prefix and brackets.
-    :param mid:
+    Returns a mid from a fully qualified string
+    :param qualified_str
     :return:
     '''
     if qualified_str.startswith('<') and qualified_str.endswith('>'):
@@ -65,8 +65,7 @@ def get_mid_from_qualified_string(qualified_str):
 
 def remove_freebase_ns(mid):
     '''
-    Returns a fully qualified MID, with NS
-    prefix and brackets.
+    Returns a MID without freebase namespace
     :param mid:
     :return:
     '''
@@ -74,10 +73,20 @@ def remove_freebase_ns(mid):
         return mid[len(FREEBASE_NS_PREFIX):]
     return mid
 
+def remove_freebase_ns_bytes(mid):
+    '''
+    Returns a MID without freebase namespace
+    :param mid:
+    :return:
+    '''
+    if mid.startswith(FREEBASE_NS_PREFIX_BYTES):
+        return mid[len(FREEBASE_NS_PREFIX_BYTES):]
+    return mid
+
 def pairwise(iterable):
     a, b = tee(iterable)
     next(b, None)
-    return izip(a, b)
+    return zip(a, b)
 
 
 def get_freebase_easy_name_for_freebase_relation_suffix(fb_suffix):

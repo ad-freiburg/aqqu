@@ -7,10 +7,10 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 from entity_linker.entity_linker import EntityLinker
-from answer_type import AnswerTypeIdentifier
-from pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
+from .answer_type import AnswerTypeIdentifier
+from .pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
 import logging
-import ranker
+from . import ranker
 import time
 from corenlp_parser.parser import CoreNLPParser
 import globals

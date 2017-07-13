@@ -14,9 +14,9 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import mmap
 import kyotocabinet
 import logging
-from util import *
+from .util import *
 import os
-import entity_linker
+from . import entity_linker
 import array
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class EntitySurfaceIndexDisk(object):
         self.index = index
         self.offset_index = offset_index
         # Memory-map the file.
-        self.entities_mm_f = open(entity_list_file, 'r')
+        self.entities_mm_f = open(entity_list_file, 'rb')
         self.entities_mm = mmap.mmap(self.entities_mm_f.fileno(), 0,
                                      prot=mmap.PROT_READ)
 
@@ -160,7 +160,7 @@ class EntitySurfaceIndexDisk(object):
         mid_offset_db.open(
             mid_offset_index_name + '#msiz=20000000000#bnum=200000000#opts=l')
         logging.info("Creating entity offset index on disk.")
-        for mid, offset in mid_offsets.iteritems():
+        for mid, offset in mid_offsets.items():
             mid_offset_db.set(mid, offset)
         logging.info("Done.")
         mid_offset_db.close()

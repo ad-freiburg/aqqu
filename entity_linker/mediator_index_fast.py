@@ -14,7 +14,7 @@ import bisect
 import mmap
 import time
 import globals
-from mediator_index_c import write_index, read_index, compute_intersection, \
+from .mediator_index_c import write_index, read_index, compute_intersection, \
     compute_intersection_for_list, compute_intersection_fast
 import numpy as np
 
@@ -86,17 +86,17 @@ class MediatorIndexFast(object):
         # Read the vocabulary.
         logger.info("Building vocabulary.")
         vocab__words_set = set()
-        with open(facts_file, 'r') as f:
+        with open(facts_file, 'rb') as f:
             mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
             line = mm.readline()
             while line:
-                cols = line.strip().split('\t')
+                cols = line.strip().split(b'\t')
                 if len(cols) != 4:
                     logger.warn("Invalid line: %s" % line)
                     line = mm.readline()
                     num_lines += 1
                     continue
-                cols = [globals.remove_freebase_ns(x) for x in cols]
+                cols = [globals.remove_freebase_ns_bytes(x) for x in cols]
                 vocab__words_set.update(cols)
                 line = mm.readline()
                 num_lines += 1
@@ -110,17 +110,17 @@ class MediatorIndexFast(object):
         # Second pass, this time with vocabulary.
         logger.info("Building index.")
         num_lines = 0
-        with open(facts_file, 'r') as f:
+        with open(facts_file, 'rb') as f:
             mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
             line = mm.readline()
             while line:
-                cols = line.strip().split('\t')
+                cols = line.strip().split(b'\t')
                 if len(cols) != 4:
                     logger.warn("Invalid line: %s" % line)
                     line = mm.readline()
                     num_lines += 1
                     continue
-                cols = [globals.remove_freebase_ns(x) for x in cols]
+                cols = [globals.remove_freebase_ns_bytes(x) for x in cols]
                 value_id = vocabulary[cols[0]]
                 relation_id = vocabulary[cols[1]]
                 mediator_id = vocabulary[cols[3]]
@@ -132,12 +132,12 @@ class MediatorIndexFast(object):
                 if num_lines % 2000000 == 0:
                     logger.info("Processed %s lines." % num_lines)
         logger.info("Sorting postings...")
-        for k, v in entity_postings.iteritems():
+        for k, v in entity_postings.items():
             a = sorted(entity_postings[k])
             # Remove the tuples
             a = [x for y in a for x in y]
             entity_postings[k] = np.array(a, dtype=np.uint32)
-        total_postings = sum([len(x) for _, x in entity_postings.iteritems()])
+        total_postings = sum([len(x) for _, x in entity_postings.items()])
         logger.info("Number of posting lists: %s " % len(entity_postings))
         logger.info("Avg. posting list length: %s " % (total_postings
                                                        / float(len(entity_postings))))
@@ -169,9 +169,9 @@ class MediatorIndexFast(object):
                                                  self.offsets, self.sizes)
         result = []
         for (mediator_id, relid_a, relid_b) in intersection:
-            result.append((self.vocabulary_words[mediator_id],
-                           self.vocabulary_words[relid_a],
-                           self.vocabulary_words[relid_b]))
+            result.append((self.vocabulary_words[mediator_id].decode('utf-8'),
+                           self.vocabulary_words[relid_a].decode('utf-8'),
+                           self.vocabulary_words[relid_b].decode('utf-8')))
         return result
 
     def get_freebase_mediators_list(self, fb_mids):
@@ -198,7 +198,7 @@ class MediatorIndexFast(object):
                                                          self.sizes)
             result = []
             for result_posting in intersection:
-                result.append(tuple([self.vocabulary_words[r]
+                result.append(tuple([self.vocabulary_words[r].decode('utf-8')
                                      for r in result_posting]))
             return result
         else:
@@ -207,10 +207,10 @@ class MediatorIndexFast(object):
 
 
 def build_test():
-    index = MediatorIndexFast('local-data/mediator_index_fast',
-                          'local-data/mediator_facts_clean.txt')
-    print index.get_freebase_mediators("m.01z0kvv", "m.01z0kvv")
-    print index.get_freebase_mediators_list(["m.02xg9mh", "m.01z0kvl", "m.01z0kvv"])
+    index = MediatorIndexFast('data/mediator_index_fast',
+                          'data/mediator_facts_cai_clean.txt')
+    print(index.get_freebase_mediators("m.0bnn73c", "m.0bnnbg2"))
+    print(index.get_freebase_mediators_list(["m.02xg9mh", "m.01z0kvl", "m.01z0kvv"]))
     import random
     ids = [i for i in range(len(index.vocabulary_words))]
     n_queries = 1000000
@@ -223,9 +223,9 @@ def build_test():
         ids_b.append(random.choice(ids))
     start = time.time()
     for id_a, id_b in zip(ids_a, ids_b):
-        id_a = index.vocabulary_words[id_a]
-        id_b = index.vocabulary_words[id_b]
-        res = index.get_freebase_mediators(id_a, id_b)
+        word_a = index.vocabulary_words[id_a].decode('utf-8')
+        word_b = index.vocabulary_words[id_b].decode('utf-8')
+        res = index.get_freebase_mediators(word_a, word_b)
         if len(res) > 0:
             n_successful += 1
     duration = (time.time() - start) * 1000

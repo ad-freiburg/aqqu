@@ -83,9 +83,8 @@ class EvaluationQuery(object):
                                    q['utterance'],
                                    q['result'],
                                    q.get('targetOrigSparql', None))
-        eval_queries = json.load(open(filename, 'r'),
-                                 object_hook=object_decoder,
-                                 encoding='utf-8')
+        eval_queries = json.load(open(filename, 'r', encoding = 'utf-8'),
+                                 object_hook=object_decoder)
         return sorted(eval_queries, key=lambda x: x.id)
 
 

@@ -9,7 +9,9 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import math
 import time
 import logging
-import translator
+import functools
+from itertools import chain
+from . import translator
 import random
 import globals
 import numpy as np
@@ -27,12 +29,13 @@ from sklearn.linear_model import SGDClassifier, SGDRegressor, \
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import StandardScaler, LabelEncoder, \
     Normalizer, MinMaxScaler
-from evaluation import EvaluationQuery, EvaluationCandidate
+from .evaluation import EvaluationQuery, EvaluationCandidate
 from query_translator.oracle import EntityOracle
-from features import FeatureExtractor
+from .features import FeatureExtractor
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
 from sklearn.model_selection import KFold, GridSearchCV
+
 
 RANDOM_SHUFFLE = 0.3
 
@@ -93,7 +96,7 @@ class Ranker(object):
         """
         x_score = x_candidate.rank_score.score
         y_score = y_candidate.rank_score.score
-        return cmp(x_score, y_score)
+        return x_score - y_score
 
     def rank_query_candidates(self, query_candidates, key=lambda x: x):
         """Rank query candidates by scoring and then sorting them.
@@ -106,8 +109,7 @@ class Ranker(object):
             candidate = key(qc)
             candidate.rank_score = self.score(candidate)
         ranked_candidates = sorted(query_candidates,
-                                   key=key,
-                                   cmp=self.compare,
+                                   key=functools.cmp_to_key(self.compare),
                                    reverse=True)
         return ranked_candidates
 
@@ -385,7 +387,7 @@ class AccuModel(MLModel, Ranker):
             for (x, y), s in zip(pairs, c):
                 self.cmp_cache[(x, y)] = s
 
-    def rank_query_candidates(self, query_candidates, key=lambda x: x):
+    def rank_query_candidates(self, query_candidates, key = lambda x: x):
         """Rank query candidates by scoring and then sorting them.
 
         :param query_candidates:
@@ -403,8 +405,7 @@ class AccuModel(MLModel, Ranker):
         candidates = [key(q) for q in query_candidates]
         self._precompute_cmp(candidates)
         ranked_candidates = sorted(query_candidates,
-                                   cmp=self.compare_pair,
-                                   key=key,
+                                   key=functools.cmp_to_key(self.compare_pair),
                                    reverse=True)
         self.cmp_cache = dict()
         if len(query_candidates) > 0:
@@ -451,7 +452,7 @@ class CandidatePruner(MLModel):
         logger.info("Printing top %s weights." % n_top)
         logger.info("intercept: %.4f" % classifier.intercept_[0])
         feature_weights = []
-        for name, index in dict_vec.vocabulary_.iteritems():
+        for name, index in dict_vec.vocabulary_.items():
             feature_weights.append((name, classifier.coef_[0][index]))
         feature_weights = sorted(feature_weights, key=lambda x: math.fabs(x[1]),
                                  reverse=True)
@@ -640,7 +641,7 @@ class RelationNgramScorer(MLModel):
         logger.info("Printing top %s weights." % n_top)
         logger.info("intercept: %.4f" % classifier.intercept_[0])
         feature_weights = []
-        for name, index in dict_vec.vocabulary_.iteritems():
+        for name, index in dict_vec.vocabulary_.items():
             feature_weights.append((name, classifier.coef_[0][index]))
         feature_weights = sorted(feature_weights, key=lambda x: math.fabs(x[1]),
                                  reverse=True)
@@ -748,8 +749,7 @@ class LiteralRankerFeatures(object):
             candidate = key(qc)
             candidate.rank_score = self.score(candidate)
         ranked_candidates = sorted(query_candidates,
-                                   key=key,
-                                   cmp=self.compare,
+                                   key=functools.cmp_to_key(self.compare),
                                    reverse=True)
         return ranked_candidates
 
@@ -829,7 +829,7 @@ class LiteralRanker(Ranker):
                     s *= 0.1
                     if t not in matched_tokens or matched_tokens[t] < s:
                         matched_tokens[t] = s
-            if rm.cardinality > 0:
+            if rm.cardinality != -1: # this was rm.cardinality > 0 but it was a tuple?!?
                 # Number of facts in the relation (like in FreebaseEasy).
                 cardinality = rm.cardinality[0]
         rm_token_score = sum(matched_tokens.values())
@@ -871,20 +871,20 @@ class LiteralRanker(Ranker):
 
         # Sum of literal matches and their coverage (see below for an
         # explanation of each). More of this sum is always better.
-        tmp = cmp(x_ent_lit + x_rel_lit + x.coverage,
-                  y_ent_lit + y_rel_lit + y.coverage)
+        tmp = (x_ent_lit + x_rel_lit + x.coverage) - \
+                  (y_ent_lit + y_rel_lit + y.coverage)
         if tmp != 0:
             return tmp
 
         # Literal matches (each entity / relation match counts as one
         #  in num_lit). More of these is always better.
-        tmp = cmp(x_ent_lit + x_rel_lit, y_ent_lit + y_rel_lit)
+        tmp = (x_ent_lit + x_rel_lit) - (y_ent_lit + y_rel_lit)
         if tmp != 0:
             return tmp
 
         # Coverage of literal matches (number of questions words covered). More
         # of these is always better, if equal number of literal matches.
-        tmp = cmp(x.coverage, y.coverage)
+        tmp = x.coverage - y.coverage
         if tmp != 0:
             return tmp
 
@@ -895,7 +895,7 @@ class LiteralRanker(Ranker):
         y_coverage_weak = y.cover_card - y.coverage
         assert x_coverage_weak >= 0
         assert y_coverage_weak >= 0
-        tmp = cmp(x_coverage_weak, y_coverage_weak)
+        tmp = x_coverage_weak - y_coverage_weak
         if tmp != 0:
             return tmp
 
@@ -940,7 +940,10 @@ class LiteralRanker(Ranker):
                          x_rel_key_2, x_res_size)
                 y_key = (y_pop_key, y_med_key, y_score, y_rel_key_1,
                          y_rel_key_2, y_res_size)
-                return cmp(x_key, y_key)
+                if x_key < y_key:
+                    return -1
+                else:
+                    return 1
 
             # CASE 1.2: no literal entity matches and no literal
             # relation matches.
@@ -951,7 +954,10 @@ class LiteralRanker(Ranker):
                          x_rel_key_2, x_res_size)
                 y_key = (y_score, y.entity_popularity, y_med_key, y_rel_key_1,
                          y_rel_key_2, y_res_size)
-                return cmp(x_key, y_key)
+                if x_key < y_key:
+                    return -1
+                else:
+                    return 1
 
         # CASE 2: different number of literal entity matches and literal
         # relation matches.
@@ -961,7 +967,10 @@ class LiteralRanker(Ranker):
                      x_rel_key_2, x_res_size)
             y_key = (y_score, y.entity_popularity, y_med_key, y_rel_key_1,
                      y_rel_key_2, y_res_size)
-            return cmp(x_key, y_key)
+            if x_key < y_key:
+                return -1
+            else:
+                return 1
 
 
 def get_top_chi2_candidate_ngrams(queries, f_extractor, percentile):
@@ -1006,7 +1015,7 @@ def construct_pair_examples(queries, f_extractor):
         if correct_cands:
             candidates = [x.query_candidate for x in query.eval_candidates]
             n_candidates = len(candidates)
-            sample_size = n_candidates / 2
+            sample_size = n_candidates // 2
             if sample_size < 200:
                 sample_size = min(200, n_candidates)
             sample_candidates = random.sample(candidates, sample_size)
@@ -1096,7 +1105,7 @@ def feature_diff(features_a, features_b):
     :param features_b:
     :return:
     """
-    keys = set(features_a.keys() + features_b.keys())
+    keys = set(chain(features_a.keys(), features_b.keys()))
     diff = dict()
     for k in keys:
         v_a = features_a.get(k, 0.0)

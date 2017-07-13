@@ -187,10 +187,11 @@ def read_index(index_prefix):
     cdef int value_id
     offsets = None
     cdef np.ndarray[DTYPE_uint32, ndim=1] index
-    with open(index_prefix + ".vocabulary", "r") as f:
+    with open(index_prefix + ".vocabulary", "rb") as f:
+        # we are keeping the words in UTF-8 to save memory
         for line in f:
             name = line.strip()
-            vocabulary_words.append(name)
+            vocabulary_words.append(name) 
     with open(index_prefix + ".offsets", "rb") as f:
         offsets = np.fromstring(f.read(), dtype=np.uint32)
     with open(index_prefix + ".sizes", "rb") as f:
@@ -228,13 +229,13 @@ def write_index(index_prefix, vocabulary_words, postings):
                 current_length += len(posting_list)
             sizes_np[value_id] = current_length - offset
             offset = current_length
-    with open(index_prefix + ".offsets", "w") as f:
+    with open(index_prefix + ".offsets", "wb") as f:
         f.write(offsets_np.tostring())
-    with open(index_prefix + ".sizes", "w") as f:
+    with open(index_prefix + ".sizes", "wb") as f:
         f.write(sizes_np.tostring())
-    with open(index_prefix + ".vocabulary", "w") as f:
+    with open(index_prefix + ".vocabulary", "wb") as f:
         for word in vocabulary_words:
-            f.write("%s\n" % word)
+            f.write(b"%s\n" % word)
     # Re-read the index
     with open(index_prefix + ".bin", "rb") as f:
         index = np.fromstring(f.read(), dtype=np.uint32)
