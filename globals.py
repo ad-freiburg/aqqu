@@ -15,18 +15,8 @@ FREEBASE_SPARQL_PREFIX = "fb"
 FREEBASE_NAME_RELATION = "type.object.name"
 FREEBASE_KEY_PREFIX = "http://rdf.freebase.com/key/"
 
-sparql_backend = None
 # When a configuration is read, store it here to make it accessible.
 config = None
-
-# TODO(elmar): move this somewhere else.
-def get_sparql_backend(config_options):
-    global sparql_backend
-    from sparql_backend.backend import  SPARQLHTTPBackend
-    if not sparql_backend:
-        sparql_backend = SPARQLHTTPBackend.init_from_config(config_options)
-    return sparql_backend
-
 
 def get_prefixed_qualified_mid(mid, prefix):
     return "%s:%s" % (prefix, mid)

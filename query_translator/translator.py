@@ -15,6 +15,7 @@ import time
 from corenlp_parser.parser import CoreNLPParser
 import globals
 import collections
+import sparql_backend.loader
 
 logger = logging.getLogger(__name__)
 
@@ -57,12 +58,12 @@ class Query:
 
 class QueryTranslator(object):
 
-    def __init__(self, sparql_backend,
+    def __init__(self, backend,
                  query_extender,
                  entity_linker,
                  parser,
                  scorer_obj):
-        self.sparql_backend = sparql_backend
+        self.backend = backend
         self.query_extender = query_extender
         self.entity_linker = entity_linker
         self.parser = parser
@@ -72,12 +73,12 @@ class QueryTranslator(object):
     @staticmethod
     def init_from_config():
         config_params = globals.config
-        sparql_backend = globals.get_sparql_backend(config_params)
+        backend = sparql_backend.loader.get_backend(config_params)
         query_extender = QueryCandidateExtender.init_from_config()
         entity_linker = EntityLinker.init_from_config()
         parser = CoreNLPParser.init_from_config()
         scorer_obj = ranker.SimpleScoreRanker('DefaultScorer')
-        return QueryTranslator(sparql_backend, query_extender,
+        return QueryTranslator(backend, query_extender,
                                entity_linker, parser, scorer_obj)
 
     def set_scorer(self, scorer):
@@ -118,7 +119,7 @@ class QueryTranslator(object):
         # Match the patterns.
         pattern_matcher = QueryPatternMatcher(query,
                                               self.query_extender,
-                                              self.sparql_backend)
+                                              self.backend)
         ert_matches = []
         ermrt_matches = []
         ermrert_matches = []
@@ -167,11 +168,11 @@ class QueryTranslator(object):
                                                    verbose=False)
         # Parse query.
         results = []
-        num_sparql_queries = self.sparql_backend.num_queries_executed
-        sparql_query_time = self.sparql_backend.total_query_time
+        num_sparql_queries = self.backend.num_queries_executed
+        sparql_query_time = self.backend.total_query_time
         queries_candidates = self.translate_query(query)
-        translation_time = (self.sparql_backend.total_query_time - sparql_query_time) * 1000
-        num_sparql_queries = self.sparql_backend.num_queries_executed - num_sparql_queries
+        translation_time = (self.backend.total_query_time - sparql_query_time) * 1000
+        num_sparql_queries = self.backend.num_queries_executed - num_sparql_queries
         avg_query_time = translation_time / (num_sparql_queries + 0.001)
         logger.info("Translation executed %s queries in %.2f ms."
                     " Average: %.2f ms." % (num_sparql_queries,
@@ -180,7 +181,7 @@ class QueryTranslator(object):
         ranker = self.scorer
         ranked_candidates = ranker.rank_query_candidates(queries_candidates)
         logger.info("Fetching results for all candidates.")
-        sparql_query_time = self.sparql_backend.total_query_time
+        sparql_query_time = self.backend.total_query_time
         n_total_results = 0
         if len(ranked_candidates) > n_top:
             logger.info("Truncating returned candidates to %s." % n_top)
@@ -191,7 +192,7 @@ class QueryTranslator(object):
             results.append(result)
         # This assumes that each query candidate uses the same SPARQL backend
         # instance which should be the case at the moment.
-        result_fetch_time = (self.sparql_backend.total_query_time - sparql_query_time) * 1000
+        result_fetch_time = (self.backend.total_query_time - sparql_query_time) * 1000
         avg_result_fetch_time = result_fetch_time / (len(results) + 0.001)
         logger.info("Fetched a total of %s results in %s queries in %.2f ms."
                     " Avg per query: %.2f ms." % (n_total_results, len(results),

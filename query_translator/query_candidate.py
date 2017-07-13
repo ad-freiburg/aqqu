@@ -259,12 +259,12 @@ class QueryCandidate:
     The contained object pointing to a root node.
     """
 
-    def __init__(self, query, sparql_backend, root_node=None):
+    def __init__(self, query, backend, root_node=None):
         # The query we are translating.
         self.query = query
         # The SPARQL backend we used for generating this query candidate.
         # Used to execute the query candidate (once the candidate is matched)
-        self.sparql_backend = sparql_backend
+        self.backend = backend
         # A list of nodes of this candidate.
         self.nodes = []
         # A list of relations of this candidate.
@@ -322,7 +322,7 @@ class QueryCandidate:
         if self.cached_result_count == -1:
             self.get_result_count()
         d = dict(self.__dict__)
-        del d['sparql_backend']
+        del d['backend']
         del d['extension_history']
         return d
 
@@ -333,7 +333,7 @@ class QueryCandidate:
         :return:
         """
         self.__dict__.update(d)
-        self.sparql_backend = None
+        self.backend = None
         self.extension_history = []
 
     def get_result_count(self, use_cached_value=True):
@@ -346,7 +346,7 @@ class QueryCandidate:
         if use_cached_value and self.cached_result_count > -1:
             return self.cached_result_count
         sparql_query = self.to_sparql_query(count_query=True)
-        query_result = self.sparql_backend.query_json(sparql_query)
+        query_result = self.backend.query_json(sparql_query)
         # The query result should have one row with one column which is a
         # number as result or 0 rows
         try:
@@ -373,7 +373,7 @@ class QueryCandidate:
         :return:
         """
         sparql_query = self.to_sparql_query(include_name=include_name)
-        query_result = self.sparql_backend.query_json(sparql_query)
+        query_result = self.backend.query_json(sparql_query)
         return query_result
 
     def get_relation_suggestions(self):
@@ -387,7 +387,7 @@ class QueryCandidate:
         o = QueryCandidateVariable(None, name='o')
         query = self._to_extended_sparql_query(query_current_extension,
                                                p, o, [p])
-        result = self.sparql_backend.query(query)
+        result = self.backend.query(query)
         relations_list = []
         # Flatten the list.
         if result:
@@ -482,7 +482,7 @@ class QueryCandidate:
 
     def __deepcopy__(self, memo):
         # Create a new empty query candidate
-        new_qc = QueryCandidate(self.query, self.sparql_backend, None)
+        new_qc = QueryCandidate(self.query, self.backend, None)
         # Copy the root node, and adjust all pointers to the new candidate.
         memo[id(self)] = new_qc
         new_root = copy.deepcopy(self.root_node, memo)

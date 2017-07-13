@@ -14,6 +14,7 @@ from .answer_type import AnswerType
 from .alignment import WordembeddingSynonyms, WordDerivations
 import globals
 import math
+import sparql_backend.loader
 
 logger = logging.getLogger(__name__)
 
@@ -238,10 +239,10 @@ def filter_important_types(relation_target_types, relation_counts,
 
 
 class QueryPatternMatcher:
-    def __init__(self, query, extender, sparql_backend):
+    def __init__(self, query, extender, backend):
         self.extender = extender
         self.query = query
-        self.sparql_backend = sparql_backend
+        self.backend = backend
 
     def construct_initial_query_candidates(self):
         query_candidates = []
@@ -249,7 +250,7 @@ class QueryPatternMatcher:
             if isinstance(entity.entity, Value):
                 logger.info("Ignoring %s as start entity." % entity.name)
                 continue
-            query_candidate = qc.QueryCandidate(self.query, self.sparql_backend)
+            query_candidate = qc.QueryCandidate(self.query, self.backend)
             entity_node = qc.QueryCandidateNode(entity.name, entity,
                                                 query_candidate)
             query_candidate.root_node = entity_node
@@ -349,7 +350,7 @@ class QueryPatternMatcher:
 class QueryCandidateExtender:
     def __init__(self, mediator_index, relation_counts, mediator_names,
                  mediator_relations, reverse_relations, relation_expected_types,
-                 sparql_backend, relation_words, mediated_rel_words,
+                 backend, relation_words, mediated_rel_words,
                  target_type_distributions, synonyms, word_derivations,
                  word_type_counts, relation_lemmas):
         """
@@ -360,7 +361,7 @@ class QueryCandidateExtender:
         :param mediator_relations:
         :param reverse_relations:
         :param relation_expected_types:
-        :param sparql_backend:
+        :param backend:
         :param relation_words:
         :param mediated_rel_words:
         :param target_type_distributions:
@@ -388,7 +389,7 @@ class QueryCandidateExtender:
             target_type_distributions,
             relation_counts)
         self.relation_lemmas = relation_lemmas
-        self.sparql_backend = sparql_backend
+        self.backend = backend
         self.relation_words = relation_words
         self.word_derivations = word_derivations
         # A map from rel_a -> [(rel_b, words) ...]
@@ -422,7 +423,7 @@ class QueryCandidateExtender:
         :return:
         """
         config_options = globals.config
-        sparql_backend = globals.get_sparql_backend(config_options)
+        backend = sparql_backend.loader.get_backend(config_options)
         relation_counts_file = config_options.get('QueryCandidateExtender',
                                                   'relation-counts')
         mediator_names_file = config_options.get('QueryCandidateExtender',
@@ -473,7 +474,7 @@ class QueryCandidateExtender:
                                       mediator_relations,
                                       reverse_relations,
                                       relation_expected_types,
-                                      sparql_backend, relation_words,
+                                      backend, relation_words,
                                       mediated_relation_words,
                                       rel_tt_distributions, we_synonyms,
                                       word_derivations, word_type_counts,

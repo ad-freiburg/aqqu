@@ -1,5 +1,5 @@
 """
-A module to communicate with a SPARQL HTTP endpoint.
+A module to communicate with a Virtuoso SPARQL HTTP endpoint.
 The class uses a connection pool to reuse existing connections for new queries.
 
 Copyright 2015, University of Freiburg.
@@ -52,7 +52,7 @@ def filter_results_language(results, language):
     return filtered_results
 
 
-class SPARQLHTTPBackend(object):
+class Backend(object):
     def __init__(self, backend_host,
                  backend_port,
                  backend_url,
@@ -93,13 +93,13 @@ class SPARQLHTTPBackend(object):
         :return:
         """
 
-        backend_host = config_options.get('SPARQLBackend', 'backend-host')
-        backend_port = config_options.get('SPARQLBackend', 'backend-port')
-        backend_url = config_options.get('SPARQLBackend', 'backend-url')
-        logger.info("Using SPARQL backend at %s:%s%s" % (
+        backend_host = config_options.get('VirtuosoBackend', 'backend-host')
+        backend_port = config_options.get('VirtuosoBackend', 'backend-port')
+        backend_url = config_options.get('VirtuosoBackend', 'backend-url')
+        logger.info("Using Virtuoso SPARQL backend at %s:%s%s" % (
             backend_host, backend_port, backend_url
         ))
-        return SPARQLHTTPBackend(backend_host, backend_port, backend_url, retry = 10)
+        return Backend(backend_host, backend_port, backend_url, retry = 10)
 
     def query_json(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
@@ -159,6 +159,7 @@ class SPARQLHTTPBackend(object):
         # Add result to cache.
         if self.cache_enabled:
             self._add_result_to_cache(query, results)
+        logger.debug("Processed Result {}".format(results))
         return results
 
     def query(self, query, method='GET',
@@ -257,7 +258,7 @@ class SPARQLHTTPBackend(object):
 
 
 def main():
-    sparql = SPARQLHTTPBackend('filicudi', '8999', '/sparql')
+    sparql = VirtuosoBackend('filicudi', '8999', '/sparql')
     query = '''
     PREFIX fb: <http://rdf.freebase.com/ns/>
     SELECT DISTINCT ?x
@@ -278,5 +279,3 @@ def main():
     print(sparql.query(query))
 
 
-if __name__ == '__main__':
-    main()
