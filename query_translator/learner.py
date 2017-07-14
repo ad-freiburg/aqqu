@@ -66,7 +66,7 @@ def evaluate_scorer_parallel(test_queries, scorer_obj,
     pool = mp.Pool(processes=num_processes)
     logger.info("Parallelly rescoring candidates.")
     queries = pool.map(re_rank, test_queries,
-                       len(test_queries) / num_processes)
+                       len(test_queries) // num_processes)
     pool.close()
     logger.info("Evaluating re-scored candidates.")
     res, queries = evaluate(queries)
@@ -257,7 +257,7 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
     queries = get_evaluated_queries(dataset,
                                     cached,
                                     scorer_obj.get_parameters())
-    fold_size = len(queries) / n_folds
+    fold_size = len(queries) // n_folds
     logger.info("Splitting into %s folds with %s queries each." % (n_folds,
                                                                    fold_size))
     kf = KFold(n_splits=n_folds, shuffle=True,

@@ -41,6 +41,7 @@ class EvaluationQuery(object):
         self.target_sparql = target_sparql
         # When processed, the ranked list of candidates returned.
         # TODO(Elmar): RENAME THIS!!!! VERY CONFUSING!!!
+        # TODO(schnelle): Indeed I'm quite confused
         self.eval_candidates = []
         self.oracle_position = -1
         # These are the final results for this query.
