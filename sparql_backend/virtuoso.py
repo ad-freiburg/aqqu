@@ -101,7 +101,7 @@ class Backend(object):
         ))
         return Backend(backend_host, backend_port, backend_url, retry = 10)
 
-    def query_json(self, query, method='GET',
+    def query(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
                    filter_lang='en'):
         """Returns the result table of the query as a list of rows.
@@ -160,73 +160,6 @@ class Backend(object):
         if self.cache_enabled:
             self._add_result_to_cache(query, results)
         logger.debug("Processed Result {}".format(results))
-        return results
-
-    def query(self, query, method='GET',
-              normalize_output=normalize_freebase_output,
-              parse_safe=False):
-        """Execute SPARQL query.
-
-        Returns a list of elements. Each list element is a list of requested
-        columns, in the order requested.
-        Literals do not contain a language suffix!
-        If an error occurred, returns None.
-
-        :param query:
-        :return:
-        """
-        if self.cache_enabled and query in self.cache:
-            logger.debug("Return result from cache! %s" % query)
-            return self.cache[query]
-        result_format = "text/tab-separated-values"
-        if parse_safe:
-            result_format = "text/csv"
-        # Construct parameter dict.
-        params = {
-            # "default-graph-URI": "<http://freebase.com>",
-            "query": query,
-            "maxrows": 2097151,
-            # "debug": "off",
-            # "timeout": "",
-            "format": result_format,
-            # "save": "display",
-            # "fname": ""
-        }
-        start = time.time()
-        resp = self.connection_pool.request(method,
-                                            self.backend_url,
-                                            fields=params)
-        self.total_query_time += (time.time() - start)
-        self.num_queries_executed += 1
-        try:
-            if resp.status == 200:
-                text = resp.data
-                # Use csv module to parse
-                if parse_safe:
-                    data = csv.reader(io.StringIO(text))
-                    # Consume header.
-                    fields = next(data)
-                    results = [
-                        [normalize_output(c.decode('utf-8')) for c in resp]
-                        for resp in data]
-                else:
-                    results = [[normalize_output(c.decode('utf-8')) for c in
-                                l.split(b'\t')]
-                               for l in text.split(b'\n') if l][1:]
-            else:
-                logger.warn("Return code %s for query '%s'" % (resp.status,
-                                                               query))
-                logger.warn("Message: %s" % resp.data)
-                results = None
-        except ValueError:
-            logger.warn("Error executing query: %s." % query)
-            logger.warn(traceback.format_exc())
-            logger.warn("Headers: %s." % resp.headers)
-            logger.warn("Data: %s." % resp.data)
-            results = None
-        # Add result to cache.
-        if self.cache_enabled:
-            self._add_result_to_cache(query, results)
         return results
 
     def _add_result_to_cache(self, query, result):

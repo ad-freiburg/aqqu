@@ -346,7 +346,7 @@ class QueryCandidate:
         if use_cached_value and self.cached_result_count > -1:
             return self.cached_result_count
         sparql_query = self.to_sparql_query(count_query=True)
-        query_result = self.backend.query_json(sparql_query)
+        query_result = self.backend.query(sparql_query)
         # The query result should have one row with one column which is a
         # number as result or 0 rows
         try:
@@ -373,7 +373,7 @@ class QueryCandidate:
         :return:
         """
         sparql_query = self.to_sparql_query(include_name=include_name)
-        query_result = self.backend.query_json(sparql_query)
+        query_result = self.backend.query(sparql_query)
         return query_result
 
     def get_relation_suggestions(self):
