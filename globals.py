@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 FREEBASE_NS_PREFIX = "http://rdf.freebase.com/ns/"
-FREEBASE_NS_PREFIX_BYTES = b"http://rdf.freebase.com/ns/"
+FREEBASE_NS_PREFIX_BYTES = FREEBASE_NS_PREFIX.encode('utf-8')
 FREEBASE_SPARQL_PREFIX = "fb"
 FREEBASE_NAME_RELATION = "type.object.name"
 FREEBASE_KEY_PREFIX = "http://rdf.freebase.com/key/"
