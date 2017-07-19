@@ -138,6 +138,10 @@ public class CoreNLPParser {
     private void annotateSentence(Annotation document) {
         List<CoreMap> sentences = new ArrayList<CoreMap>();
         List<CoreLabel> tokens = document.get(CoreAnnotations.TokensAnnotation.class);
+        if (tokens.size() < 1) {
+            document.set(CoreAnnotations.SentencesAnnotation.class, sentences);
+            return;
+        }
         String text = document.get(CoreAnnotations.TextAnnotation.class);
         int begin = tokens.get(0).get(CoreAnnotations.CharacterOffsetBeginAnnotation.class);
         int last = tokens.size() - 1;
