@@ -179,8 +179,10 @@ class DependencyParse(object):
         # Construct graph object.
         if "ROOT-0" in nodes:
             root = nodes["ROOT-0"]
-        else:
+        elif nodes:
             root = nodes.items()[0]
+        else:
+            root = None
         g = DependencyGraph(nodes.values(), root)
         duration = (time.time() - t0) * 1000
         logger.debug("Building dependency graph took %s ms." % duration)
@@ -384,15 +386,18 @@ class DependencyNode:
 
 
 def main():
-    for query in ['He likes the first 13 american states from the last year']:
-        parser = CoreNLPParser("http://localhost:10001/parse")
+    for query in ['He likes the first 13 american states from the last year',
+            'Which character did Ellen play in Finding Nemo?', 'Ellen DeGeneres', '']:
+        parser = CoreNLPParser("http://localhost:4000/parse")
         parse_result = parser.parse(query, parse_trees=True)
         parse_result.dependency_parse.graph.print_dependencies()
-        source = parse_result.dependency_parse.graph.nodes[0]
-        target = parse_result.dependency_parse.graph.nodes[10]
-        path = parse_result.dependency_parse.graph.shortest_path(source, target)
-        for p in path:
-            print(p.token.token)
+        print()
+        # TODO(schnelle) this seems to have been broken some time ago
+        #source = parse_result.dependency_parse.graph.nodes[0]
+        #target = parse_result.dependency_parse.graph.nodes[10]
+        #path = parse_result.dependency_parse.graph.shortest_path(source, target)
+        #for p in path:
+        #    print(p.token.token)
 
 if __name__ == '__main__':
     main()

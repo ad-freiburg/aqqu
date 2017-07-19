@@ -83,13 +83,16 @@ public class CoreNLPServer {
 
         public String parseAnnotationToJson(Annotation document) {
             List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
+            if (sentences.size() < 1) {
+                return "{\"text\": \"\", \"words\":[], \"dependencies\":[]}";
+            }
             CoreMap parsedSentence = sentences.get(0);
             String text = parsedSentence.get(CoreAnnotations.TextAnnotation.class);
             List<CoreLabel> tokens = document.get(CoreAnnotations.TokensAnnotation.class);
-
             Tree tree = parsedSentence.get(TreeCoreAnnotations.TreeAnnotation.class);
             List<String[]> dependencyStrings = parser.dependencyStrings(parsedSentence);
             List<CoreMap> timexAnnotations = document.get(TimeAnnotations.TimexAnnotations.class);
+
             StringBuffer sb = new StringBuffer();
             sb.append("{");
             // Text
