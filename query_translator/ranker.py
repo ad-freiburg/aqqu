@@ -9,7 +9,6 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import math
 import time
 import logging
-import functools
 from itertools import chain
 from . import translator
 import random
@@ -41,6 +40,27 @@ RANDOM_SHUFFLE = 0.3
 
 logger = logging.getLogger(__name__)
 
+def Compare2Key(key_func, cmp_func):
+    # TODO(schnelle) We should find a refactoring where candidates
+    # know how to compare to each other
+    """Convert a cmp= function and a key= into a key= function"""
+    class K(object):
+        __slots__ = ['obj']
+        def __init__(self, obj, *args):
+            self.obj = obj
+        def __lt__(self, other):
+            return cmp_func(key_func(self.obj), key_func(other.obj)) < 0
+        def __gt__(self, other):
+            return cmp_func(key_func(self.obj), key_func(other.obj)) > 0
+        def __eq__(self, other):
+            return cmp_func(key_func(self.obj), key_func(other.obj)) == 0
+        def __le__(self, other):
+            return cmp_func(key_func(self.obj), key_func(other.obj)) <= 0
+        def __ge__(self, other):
+            return cmp_func(key_func(self.obj), key_func(other.obj)) >= 0
+        def __ne__(self, other):
+            return cmp_func(key_func(self.obj), key_func(other.obj)) != 0
+    return K
 
 class RankScore(object):
     """A simple score for each candidate.
@@ -109,7 +129,7 @@ class Ranker(object):
             candidate = key(qc)
             candidate.rank_score = self.score(candidate)
         ranked_candidates = sorted(query_candidates,
-                                   key=functools.cmp_to_key(self.compare),
+                                   key=Compare2Key(key, self.compare),
                                    reverse=True)
         return ranked_candidates
 
@@ -405,7 +425,7 @@ class AccuModel(MLModel, Ranker):
         candidates = [key(q) for q in query_candidates]
         self._precompute_cmp(candidates)
         ranked_candidates = sorted(query_candidates,
-                                   key=functools.cmp_to_key(self.compare_pair),
+                                   key=Compare2Key(key, self.compare_pair),
                                    reverse=True)
         self.cmp_cache = dict()
         if len(query_candidates) > 0:
@@ -749,7 +769,7 @@ class LiteralRankerFeatures(object):
             candidate = key(qc)
             candidate.rank_score = self.score(candidate)
         ranked_candidates = sorted(query_candidates,
-                                   key=functools.cmp_to_key(self.compare),
+                                   key=Compare2Key(key, self.compare),
                                    reverse=True)
         return ranked_candidates
 
