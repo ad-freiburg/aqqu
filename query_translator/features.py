@@ -10,6 +10,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 from .query_candidate import QueryCandidate
 from collections import defaultdict
 import math
+import itertools
 
 N_GRAM_STOPWORDS = {'be', 'do', '?', 'the', 'of', 'is', 'are', 'in', 'was',
                     'did', 'does', 'a', 'for', 'have', 'there', 'on', 'has',
@@ -24,7 +25,7 @@ def get_n_grams(tokens, n=2):
     :param n:
     :return:
     """
-    grams = list(zip(*[tokens[i:] for i in range(n)]))
+    grams = zip(*[tokens[i:] for i in range(n)])
     return grams
 
 
@@ -39,7 +40,7 @@ def get_n_grams_features(candidate):
     # First get bi-grams.
     n_grams = get_n_grams(query_text_tokens, n=2)
     # Then get uni-grams.
-    n_grams.extend(get_n_grams(query_text_tokens, n=1))
+    n_grams = itertools.chain(n_grams, get_n_grams(query_text_tokens, n=1))
     return n_grams
 
 
