@@ -79,6 +79,10 @@ class Backend(object):
         self.supports_optional = True
         self.supports_filter = True
         self.lang_in_relations = False
+        self.query_log = open('virtuoso_log.txt', 'wt', encoding='UTF-8')
+
+    def __delete__(self):
+        self.query_log.close()
 
     def _init_connection_pool(self, pool_maxsize, retry=None):
         if not retry:
@@ -114,6 +118,7 @@ class Backend(object):
         :param query:
         :return:
         """
+        self.query_log.write(query+'\n')
         params = {
             # "default-graph-URI": "<http://freebase.com>",
             "query": query,

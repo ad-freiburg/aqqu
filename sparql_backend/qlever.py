@@ -7,7 +7,7 @@
 
 """
 
-from urllib3 import HTTPConnectionPool, Retry
+from urllib3 import HTTPConnectionPool, Retry, make_headers
 import logging
 import globals
 import io
@@ -23,11 +23,38 @@ def normalize_freebase_output(text):
     :param text:
     :return:
     """
-    if len(text) > 1 and text.startswith('"') and text.endswith('"'):
-        text = text[1:-1]
+    startQuote = text.find('"')
+    if startQuote >= 0 and startQuote + 1 < len(text):
+        endQuote = text.rfind('"')
+        if endQuote >= 0:
+            text = text[startQuote+1:endQuote]
+
     if len(text) > 1 and text.startswith('<') and text.endswith('>'):
         text = text[1:-1]
     return globals.remove_freebase_ns(text)
+
+
+def filter_results_language(results, language):
+    """Remove results that contain a literal with another language.
+
+    Empty language is allowed!
+    :param results:
+    :param language:
+    :return:
+    """
+    langsuffix = "@"+language
+    filtered_results = []
+    for row in results:
+        contains_literal = False
+        for value in row:
+            value = value.strip()
+            if value.startswith('"'):
+                contains_literal = True
+                if value.endswith(langsuffix):
+                    filtered_results.append(row)
+        if not contains_literal:
+            filtered_results.append(row)
+    return filtered_results
 
 
 class Backend(object):
@@ -59,13 +86,17 @@ class Backend(object):
         self.supports_optional = False
         self.supports_filter = True
         self.lang_in_relations = lang_in_relations
+        self.query_log = open('qlever_log.txt', 'wt', encoding='UTF-8')
+
+    def __delete__(self):
+        self.query_log.close()
 
     def _init_connection_pool(self, pool_maxsize, retry=None):
         if not retry:
             # By default, retry on 404 and 503 messages because
             # these seem to happen sometimes, but very rarely.
             retry = Retry(total=10, status_forcelist=[404, 503],
-                          backoff_factor=0.2)
+                          backoff_factor=0.1)
         self.connection_pool = HTTPConnectionPool(self.backend_host,
                                                   port=self.backend_port,
                                                   maxsize=pool_maxsize,
@@ -85,8 +116,8 @@ class Backend(object):
         logger.info("Using QLever SPARQL backend at %s:%s%s" % (
             backend_host, backend_port, backend_url
         ))
-        return Backend(backend_host, backend_port, backend_url, 
-                retry = 10,  lang_in_relations = backend_lir)
+        return Backend(backend_host, backend_port, backend_url,
+                lang_in_relations = backend_lir)
 
     def query(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
@@ -96,6 +127,7 @@ class Backend(object):
         :param query:
         :return:
         """
+        self.query_log.write(query+'\n')
         params = {
             "query": query,
         }
@@ -105,6 +137,7 @@ class Backend(object):
         start = time.time()
         resp = self.connection_pool.request(method,
                                             self.backend_url,
+                                            headers=make_headers(keep_alive=False),
                                             fields=params)
         self.total_query_time += (time.time() - start)
         self.num_queries_executed += 1
@@ -115,6 +148,8 @@ class Backend(object):
                 key_indices = sorted([(column, key.lstrip('?')) for column, key 
                     in enumerate(data['selected'])], key=itemgetter(1))
                 result_rows = data['res']
+                if filter_lang:
+                    result_rows = filter_results_language(result_rows, filter_lang)
                 results = [[normalize_output(row[index]) for index, _ in key_indices]
                         for row in result_rows]
             else:
