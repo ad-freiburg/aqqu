@@ -39,7 +39,7 @@ class Backend(object):
                  cache_enabled=False,
                  cache_maxsize=10000,
                  retry=None,
-                 lang_in_relations=True):
+                 lang_in_relations=False):
         self.backend_host = backend_host
         self.backend_port = backend_port
         self.backend_url = backend_url
@@ -81,7 +81,7 @@ class Backend(object):
         backend_host = config_options.get('QLeverBackend', 'backend-host')
         backend_port = config_options.get('QLeverBackend', 'backend-port')
         backend_url = config_options.get('QLeverBackend', 'backend-url')
-        backend_lir = config_options.get('QLeverBackend', 'lang-in-relations')
+        backend_lir = config_options.getboolean('QLeverBackend', 'lang-in-relations')
         logger.info("Using QLever SPARQL backend at %s:%s%s" % (
             backend_host, backend_port, backend_url
         ))
@@ -149,9 +149,9 @@ def main():
     PREFIX fb: <http://rdf.freebase.com/ns/>
     SELECT DISTINCT ?x
     WHERE {
-     ?s fb:type.object.name.en "Albert Einstein" .
+     ?s fb:type.object.name "Albert Einstein" .
      ?s ?p ?o .
-     ?o fb:type.object.name.en ?x . }
+     ?o fb:type.object.name ?x . }
     '''
     print(sparql.query(query))
 
