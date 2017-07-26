@@ -345,19 +345,25 @@ class QueryCandidate:
         """
         if use_cached_value and self.cached_result_count > -1:
             return self.cached_result_count
-        sparql_query = self.to_sparql_query(count_query=True)
-        query_result = self.backend.query_json(sparql_query)
-        # The query result should have one row with one column which is a
-        # number as result or 0 rows
-        try:
-            if len(query_result) > 0:
-                result = int(query_result[0][0])
-            else:
+        if self.backend.supports_count:
+            sparql_query = self.to_sparql_query(count_query=True)
+            query_result = self.backend.query(sparql_query)
+            # The query result should have one row with one column which is a
+            # number as result or 0 rows
+            try:
+                if len(query_result) > 0:
+                    result = int(query_result[0][0])
+                else:
+                    result = 0
+            except ValueError:
                 result = 0
-        except ValueError:
-            result = 0
-            logger.warn(
-                "Count query returned funky value: %s." % query_result[0][0])
+                logger.warn(
+                    "Count query returned funky value: %s." % query_result[0][0])
+        else:
+            sparql_query = self.to_sparql_query(count_query=True)
+            query_result = self.backend.query(sparql_query)
+            result = len(query_result)
+
         # For count queries only check if there is a count or not.
         if self.query.is_count_query:
             if result > 1:
@@ -373,7 +379,7 @@ class QueryCandidate:
         :return:
         """
         sparql_query = self.to_sparql_query(include_name=include_name)
-        query_result = self.backend.query_json(sparql_query)
+        query_result = self.backend.query(sparql_query)
         return query_result
 
     def get_relation_suggestions(self):
@@ -520,13 +526,17 @@ class QueryCandidate:
         s += self.root_node.graph_as_simple_string(visited, indent + 2)
         return s
 
-    def to_sparql_query(self, targets=None, distinct=True,
+    def to_sparql_query(self, distinct=True,
                         include_name=False, filter_target=True,
                         limit=300, count_query=False):
         """
         Returns a SPARQL query corresponding to this graph,
         or None if some error occurred.
-        :param target_node:
+        :param distinct adds a distinct qualifier
+        :param include_name adds a triple for getting the human readable name
+        :param filter_target filter out the target
+        :param limit the limit
+        :param count_query whether this query is supposed to count results
         :return:
         """
         # A set of nodes we visited.
@@ -540,10 +550,7 @@ class QueryCandidate:
         o.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX))
                                        for s, p, o in sparql_triples])
         query_vars = []
-        if targets:
-            query_vars = [var.get_sparql_name() for
-                          var in targets]
-        elif self.target_nodes:
+        if self.target_nodes:
             query_vars = [var.get_sparql_name() for
                           var in self.target_nodes]
         else:
@@ -567,16 +574,22 @@ class QueryCandidate:
             query_vars_str_names = ' '.join("%sname" % var for
                                             var in query_vars)
             query_vars_str += ' ' + query_vars_str_names
+            name_relation = globals.FREEBASE_NAME_RELATION if not self.backend.lang_in_relations else \
+                globals.FREEBASE_NAME_RELATION+".en"
             query_var_triples = ' .\n '.join("%s %s:%s %sname" % (var,
                                                                   globals.FREEBASE_SPARQL_PREFIX,
-                                                                  globals.FREEBASE_NAME_RELATION,
+                                                                  name_relation,
                                                                   var)
                                              for var in query_vars)
-            triples_string += ' .\n OPTIONAL {' + query_var_triples + '}'
+            if self.backend.supports_optional:
+                triples_string += ' .\n OPTIONAL {' + query_var_triples + '}'
+            else:
+                triples_string += ' .\n ' + query_var_triples
+
         distinct_str = 'DISTINCT' if distinct else ''
         # Filter the target so it is not equal to one of the subjects or objects
         # of the query.
-        if filter_target:
+        if filter_target and self.backend.supports_filter:
             node_strs = set()
             filters = []
             for s, p, o in sparql_triples:
@@ -593,21 +606,21 @@ class QueryCandidate:
 
         # If the query asks for a query count and the target relation is not already
         # a count -> count the results. (Also do this if exlicitly requested).
-        if (self.query.is_count_query and not self.target_is_count) \
-                or count_query:
+        if self.backend.supports_count and \
+                ((self.query.is_count_query and not self.target_is_count) or count_query):
             # For count queries we increase the limit.
             limit *= 100
             # Note: this does not add "distinct" to the inner clause,
             # which is wrong but what sempre did as well.
-            query = "%s SELECT count(%s) WHERE " \
-                    "{\n SELECT %s WHERE {\n %s \n} LIMIT %s" \
-                    "}" % (query_prefix,
+            query = "%s\nSELECT count(%s) WHERE " \
+                    "{\nSELECT %s WHERE {\n %s \n} LIMIT %s" \
+                    "\n}" % (query_prefix,
                            query_vars[0],
                            query_vars_str,
                            triples_string, limit)
         # Just prepend the prefix
         else:
-            query = "%s SELECT %s %s WHERE {\n %s \n} LIMIT %s" % (query_prefix,
+            query = "%s\nSELECT %s %s WHERE {\n %s \n} LIMIT %s" % (query_prefix,
                                                                    distinct_str,
                                                                    query_vars_str,
                                                                    triples_string,

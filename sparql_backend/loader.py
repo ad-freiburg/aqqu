@@ -16,10 +16,10 @@ def static_vars(**kwargs):
 
 @static_vars(sparql_backend = None)
 def get_backend(config_options):
-    backend_module = config_options.get("Backend", "backend").strip('"')
-    logger.info("Loading backend: {}".format(backend_module))
+    backend_module_name = config_options.get("Backend", "backend")
+    logger.info("Loading backend: {}".format(backend_module_name))
 
-    backend_module = importlib.import_module('.'+backend_module, 'sparql_backend')
+    backend_module = importlib.import_module('.'+backend_module_name, 'sparql_backend')
     Backend = getattr(backend_module, 'Backend')
     if not get_backend.sparql_backend:
         get_backend.sparql_backend = Backend.init_from_config(config_options)

@@ -1,22 +1,21 @@
 """
-A module to communicate with a Virtuoso SPARQL HTTP endpoint.
-The class uses a connection pool to reuse existing connections for new queries.
+ Implements a SPARQL backend using the QLever API
 
-Copyright 2015, University of Freiburg.
+ Copyright (c) 2017 University of Freiburg
+ Chair of Algorithms and Data Structures
+ Author: Niklas Schnelle
 
-Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-from urllib3 import HTTPConnectionPool, Retry
+
+from urllib3 import HTTPConnectionPool, Retry, make_headers
 import logging
 import globals
-import csv
 import io
 import json
 import time
-import traceback
+from operator import itemgetter
 
 logger = logging.getLogger(__name__)
-
 
 def normalize_freebase_output(text):
     """Remove starting and ending quotes and the namespace prefix.
@@ -24,7 +23,13 @@ def normalize_freebase_output(text):
     :param text:
     :return:
     """
-    if len(text) > 1 and text.startswith('"') and text.endswith('"'):
+    startQuote = text.find('"')
+    if startQuote >= 0 and startQuote + 1 < len(text):
+        endQuote = text.rfind('"')
+        if endQuote >= 0:
+            text = text[startQuote+1:endQuote]
+
+    if len(text) > 1 and text.startswith('<') and text.endswith('>'):
         text = text[1:-1]
     return globals.remove_freebase_ns(text)
 
@@ -37,18 +42,18 @@ def filter_results_language(results, language):
     :param language:
     :return:
     """
+    langsuffix = "@"+language
     filtered_results = []
-    for r in results:
+    for row in results:
         contains_literal = False
-        for k in r.keys():
-            if r[k]['type'] == 'literal':
+        for value in row:
+            value = value.strip()
+            if value.startswith('"'):
                 contains_literal = True
-                if 'xml:lang' not in r[k] or \
-                    r[k]['xml:lang'] == language or \
-                        r[k]['xml:lang'] == '':
-                    filtered_results.append(r)
+                if value.endswith(langsuffix):
+                    filtered_results.append(row)
         if not contains_literal:
-            filtered_results.append(r)
+            filtered_results.append(row)
     return filtered_results
 
 
@@ -56,10 +61,12 @@ class Backend(object):
     def __init__(self, backend_host,
                  backend_port,
                  backend_url,
-                 connection_pool_maxsize=10,
+                 # TODO(schnelle) increase once QLever multithreads
+                 connection_pool_maxsize=1, 
                  cache_enabled=False,
                  cache_maxsize=10000,
-                 retry=None):
+                 retry=None,
+                 lang_in_relations=False):
         self.backend_host = backend_host
         self.backend_port = backend_port
         self.backend_url = backend_url
@@ -75,11 +82,11 @@ class Backend(object):
         self.num_queries_executed = 0
         self.total_query_time = 0.0
         # Backend capabilities
-        self.supports_count = True
-        self.supports_optional = True
+        self.supports_count = False
+        self.supports_optional = False
         self.supports_filter = True
-        self.lang_in_relations = False
-        self.query_log = open('virtuoso_log.txt', 'wt', encoding='UTF-8')
+        self.lang_in_relations = lang_in_relations
+        self.query_log = open('qlever_log.txt', 'wt', encoding='UTF-8')
 
     def __delete__(self):
         self.query_log.close()
@@ -88,8 +95,8 @@ class Backend(object):
         if not retry:
             # By default, retry on 404 and 503 messages because
             # these seem to happen sometimes, but very rarely.
-            retry = Retry(total=5, status_forcelist=[404, 503],
-                          backoff_factor=0.2)
+            retry = Retry(total=10, status_forcelist=[404, 503],
+                          backoff_factor=0.1)
         self.connection_pool = HTTPConnectionPool(self.backend_host,
                                                   port=self.backend_port,
                                                   maxsize=pool_maxsize,
@@ -102,13 +109,15 @@ class Backend(object):
         :return:
         """
 
-        backend_host = config_options.get('VirtuosoBackend', 'backend-host')
-        backend_port = config_options.get('VirtuosoBackend', 'backend-port')
-        backend_url = config_options.get('VirtuosoBackend', 'backend-url')
-        logger.info("Using Virtuoso SPARQL backend at %s:%s%s" % (
+        backend_host = config_options.get('QLeverBackend', 'backend-host')
+        backend_port = config_options.get('QLeverBackend', 'backend-port')
+        backend_url = config_options.get('QLeverBackend', 'backend-url')
+        backend_lir = config_options.getboolean('QLeverBackend', 'lang-in-relations')
+        logger.info("Using QLever SPARQL backend at %s:%s%s" % (
             backend_host, backend_port, backend_url
         ))
-        return Backend(backend_host, backend_port, backend_url, retry = 10)
+        return Backend(backend_host, backend_port, backend_url,
+                lang_in_relations = backend_lir)
 
     def query(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
@@ -120,14 +129,7 @@ class Backend(object):
         """
         self.query_log.write(query+'\n')
         params = {
-            # "default-graph-URI": "<http://freebase.com>",
             "query": query,
-            "maxrows": 2097151,
-            # "debug": "off",
-            "timeout": 10.0,
-            "format": "application/json",
-            # "save": "display",
-            # "fname": ""
         }
         if self.cache_enabled and query in self.cache:
             logger.debug("Return result from cache! %s" % query)
@@ -135,6 +137,7 @@ class Backend(object):
         start = time.time()
         resp = self.connection_pool.request(method,
                                             self.backend_url,
+                                            headers=make_headers(keep_alive=False),
                                             fields=params)
         self.total_query_time += (time.time() - start)
         self.num_queries_executed += 1
@@ -142,19 +145,13 @@ class Backend(object):
         try:
             if resp.status == 200:
                 data = json.loads(resp.data.decode('utf-8'))
-                results = data['results']['bindings']
+                key_indices = sorted([(column, key.lstrip('?')) for column, key 
+                    in enumerate(data['selected'])], key=itemgetter(1))
+                result_rows = data['res']
                 if filter_lang:
-                    results = filter_results_language(results, filter_lang)
-                result_rows = []
-                keys = sorted(data['head']['vars'])
-                for row in results:
-                    result_row = []
-                    for k in keys:
-                        if k in row:
-                            result_row.append(row[k]['value'])
-                    result_rows.append(result_row)
-                results = [[normalize_output(c) for c in r]
-                           for r in result_rows]
+                    result_rows = filter_results_language(result_rows, filter_lang)
+                results = [[normalize_output(row[index]) for index, _ in key_indices]
+                        for row in result_rows]
             else:
                 logger.warn("Return code %s for query '%s'" % (resp.status,
                                                                query))
@@ -167,7 +164,7 @@ class Backend(object):
             logger.warn("Data: %s." % resp.data)
             results = None
         # Add result to cache.
-        if self.cache_enabled:
+        if self.cache_enabled and results != None:
             self._add_result_to_cache(query, results)
         logger.debug("Processed Result {}".format(results))
         return results
@@ -181,24 +178,17 @@ class Backend(object):
 
 
 def main():
-    sparql = Backend('filicudi', '8999', '/sparql')
+    print("Connecting")
+    sparql = Backend('vulcano', '7001', '/')
     query = '''
     PREFIX fb: <http://rdf.freebase.com/ns/>
     SELECT DISTINCT ?x
     WHERE {
-     ?s fb:type.object.name "Albert Einstein"@EN .
+     ?s fb:type.object.name "Albert Einstein" .
      ?s ?p ?o .
-     FILTER regex(?p, "profession") .
-     ?o fb:type.object.name ?x .
-     FILTER (LANG(?x) = "en") }
-    '''
-    print(sparql.query(query))
-    query = '''
-        SELECT ?name WHERE {
-        ?x <http://rdf.freebase.com/ns/type.object.name> ?name.
-        FILTER (lang(?name) != "en")
-        } LIMIT 100
+     ?o fb:type.object.name ?x . }
     '''
     print(sparql.query(query))
 
-
+if __name__ == '__main__':
+    main()
