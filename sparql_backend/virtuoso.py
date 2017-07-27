@@ -77,7 +77,6 @@ class Backend(object):
         # Backend capabilities
         self.supports_count = True
         self.supports_optional = True
-        self.supports_filter = True
         self.lang_in_relations = False
         self.query_log = open('virtuoso_log.txt', 'wt', encoding='UTF-8')
 
@@ -118,7 +117,7 @@ class Backend(object):
         :param query:
         :return:
         """
-        self.query_log.write(query+'\n')
+        self.query_log.write('---\n'+query+'\n')
         params = {
             # "default-graph-URI": "<http://freebase.com>",
             "query": query,

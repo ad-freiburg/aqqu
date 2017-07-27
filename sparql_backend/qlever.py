@@ -84,7 +84,6 @@ class Backend(object):
         # Backend capabilities
         self.supports_count = False
         self.supports_optional = False
-        self.supports_filter = True
         self.lang_in_relations = lang_in_relations
         self.query_log = open('qlever_log.txt', 'wt', encoding='UTF-8')
 
@@ -127,7 +126,7 @@ class Backend(object):
         :param query:
         :return:
         """
-        self.query_log.write(query+'\n')
+        self.query_log.write('---\n'+query+'\n')
         params = {
             "query": query,
         }
