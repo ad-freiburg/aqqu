@@ -589,7 +589,7 @@ class QueryCandidate:
         distinct_str = 'DISTINCT' if distinct else ''
         # Filter the target so it is not equal to one of the subjects or objects
         # of the query.
-        if filter_target and self.backend.supports_filter:
+        if filter_target:
             node_strs = set()
             filters = []
             for s, p, o in sparql_triples:
