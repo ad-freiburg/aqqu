@@ -606,7 +606,7 @@ class QueryCandidate:
 
         # If the query asks for a query count and the target relation is not already
         # a count -> count the results. (Also do this if exlicitly requested).
-        if self.backend.supports_count and \
+        if self.backend and self.backend.supports_count and \
                 ((self.query.is_count_query and not self.target_is_count) or count_query):
             # For count queries we increase the limit.
             limit *= 100
