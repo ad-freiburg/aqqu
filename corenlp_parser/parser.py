@@ -183,7 +183,7 @@ class DependencyParse(object):
             root = nodes.items()[0]
         else:
             root = None
-        g = DependencyGraph(nodes.values(), root)
+        g = DependencyGraph(list(nodes.values()), root)
         duration = (time.time() - t0) * 1000
         logger.debug("Building dependency graph took %s ms." % duration)
         return g
@@ -363,7 +363,7 @@ class DependencyNode:
         self.rel_heads = defaultdict(list)
         # A map from rel -> nodes: (dep nodes with this rel)
         self.rel_deps = defaultdict(list)
-        # Part of Speech tag of the word attached to this node.
+        # Token attached to this node
         self.token = None
 
     def add_dependant(self, dep, rel="x"):
@@ -386,18 +386,30 @@ class DependencyNode:
 
 
 def main():
+    parser = CoreNLPParser("http://localhost:4000/parse")
     for query in ['He likes the first 13 american states from the last year',
             'Which character did Ellen play in Finding Nemo?', 'Ellen DeGeneres', '']:
-        parser = CoreNLPParser("http://localhost:4000/parse")
+        print('Parsing:', query)
         parse_result = parser.parse(query, parse_trees=True)
+        print()
+        print('Tokens:')
+        for token in parse_result.tokens:
+            print(token.token, token.pos)
+        print()
+        print('Dependencies:')
         parse_result.dependency_parse.graph.print_dependencies()
         print()
         # TODO(schnelle) this seems to have been broken some time ago
-        #source = parse_result.dependency_parse.graph.nodes[0]
-        #target = parse_result.dependency_parse.graph.nodes[10]
-        #path = parse_result.dependency_parse.graph.shortest_path(source, target)
-        #for p in path:
-        #    print(p.token.token)
+        if len(parse_result.tokens) < 1:
+            continue
+        source = parse_result.dependency_parse.graph.nodes[0]
+        target = parse_result.dependency_parse.graph.nodes[-1]
+        path = parse_result.dependency_parse.graph.shortest_path(source, target)
+        print('Shortest path from start to end')
+        for p in path:
+            if p.token != None:
+                print(p.token.token)
+        print()
 
 if __name__ == '__main__':
     main()
