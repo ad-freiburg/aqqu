@@ -126,7 +126,6 @@ class Backend(object):
         :param query:
         :return:
         """
-        self.query_log.write('---\n'+query+'\n')
         params = {
             "query": query,
         }
@@ -138,8 +137,11 @@ class Backend(object):
                                             self.backend_url,
                                             headers=make_headers(keep_alive=False),
                                             fields=params)
-        self.total_query_time += (time.time() - start)
+        query_time = (time.time() - start)
+        self.total_query_time += query_time
         self.num_queries_executed += 1
+
+        self.query_log.write("----\n{}\n# TOOK {} ms\n".format(query, query_time*1000.0))
 
         try:
             if resp.status == 200:

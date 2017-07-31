@@ -135,16 +135,17 @@ class ParseResult(object):
 class Token(object):
     """A single Token processed by the parser."""
 
-    def __init__(self, token):
+    def __init__(self, token, pos = None, lemma = None,
+            index = None, ne_tag = None, nne_tag = None,
+            dep_node = None):
         self.token = token
-        self.pos = None
-        self.lemma = None
-        self.index = None
-        self.ne_tag = None
-        self.nne_tag = None
-        self.index = None
+        self.pos = pos
+        self.lemma = lemma
+        self.index = index
+        self.ne_tag = ne_tag
+        self.nne_tag = nne_tag
         # A link to the dependency graph node.
-        self.dep_node = None
+        self.dep_node = dep_node
 
 
 class DependencyParse(object):
