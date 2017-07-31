@@ -423,7 +423,8 @@ class QueryCandidateExtender:
         :return:
         """
         config_options = globals.config
-        backend = sparql_backend.loader.get_backend(config_options)
+        backend_module_name = config_options.get("Backend", "backend")
+        backend = sparql_backend.loader.get_backend(backend_module_name)
         relation_counts_file = config_options.get('QueryCandidateExtender',
                                                   'relation-counts')
         mediator_names_file = config_options.get('QueryCandidateExtender',

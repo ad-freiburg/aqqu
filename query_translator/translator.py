@@ -6,7 +6,7 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
-from entity_linker.entity_linker import EntityLinker
+from entity_linker.entity_linker_qlever import EntityLinkerQlever
 from .answer_type import AnswerTypeIdentifier
 from .pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
 import logging
@@ -73,9 +73,10 @@ class QueryTranslator(object):
     @staticmethod
     def init_from_config():
         config_params = globals.config
-        backend = sparql_backend.loader.get_backend(config_params)
+        backend_module_name = config_params.get("Backend", "backend")
+        backend = sparql_backend.loader.get_backend(backend_module_name)
         query_extender = QueryCandidateExtender.init_from_config()
-        entity_linker = EntityLinker.init_from_config()
+        entity_linker = EntityLinkerQlever.init_from_config()
         parser = CoreNLPParser.init_from_config()
         scorer_obj = ranker.SimpleScoreRanker('DefaultScorer')
         return QueryTranslator(backend, query_extender,
