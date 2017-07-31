@@ -69,6 +69,9 @@ class EntityLinkerQlever:
             entities.append(ie)
         return entities
 
+    def get_entity_for_mid(self, mid):
+        return self.sub_linker.get_entity_for_mid(mid)
+
     @staticmethod
     def loadStopwords(stopwordsfile):
         stopwords = set()
