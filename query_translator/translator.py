@@ -188,6 +188,9 @@ class QueryTranslator(object):
             logger.info("Truncating returned candidates to %s." % n_top)
         for query_candidate in ranked_candidates[:n_top]:
             query_result = query_candidate.get_result(include_name=True)
+            # Sometimes virtuoso just doesn't process a query
+            if not query_result:
+                continue
             n_total_results += sum([len(rows) for rows in query_result])
             result = TranslationResult(query_candidate, query_result)
             results.append(result)

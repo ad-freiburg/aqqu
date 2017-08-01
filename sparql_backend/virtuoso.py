@@ -107,7 +107,7 @@ class Backend(object):
         logger.info("Using Virtuoso SPARQL backend at %s:%s%s" % (
             backend_host, backend_port, backend_url
         ))
-        return Backend(backend_host, backend_port, backend_url, retry = 10)
+        return Backend(backend_host, backend_port, backend_url)
 
     def query(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
