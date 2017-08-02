@@ -23,13 +23,11 @@ logger = logging.getLogger(__name__)
 
 class EntityLinkerQlever:
 
-    def __init__(self, sub_linker, qlever_backend, stopwords, max_text_entities = 4,
-                 min_entities_per_tokens = 4):
+    def __init__(self, sub_linker, qlever_backend, stopwords, max_text_entities = 4):
         self.sub_linker = sub_linker
         self.qlever_backend = qlever_backend
         self.stopwords = stopwords
         self.max_text_entities = max_text_entities
-        self.min_entities_per_tokens = min_entities_per_tokens
         self.min_subrange = 3
 
     def textEntityQuery(self, tokens):
@@ -40,10 +38,12 @@ class EntityLinkerQlever:
         for start in range(max_start+1):
             min_subrange_end = min(start + self.min_subrange, len(toks_nostop))
             for end in range(min_subrange_end, len(toks_nostop)+1):
-                entities.extend(self.simpleTextEntityQuery(toks_nostop[start:end]))
-
+                new_entities = self.simpleTextEntityQuery(toks_nostop[start:end])
+                logger.info('Found {} entities'.format(len(new_entities)))
+                entities.extend(new_entities)
         best = sorted(entities, key = lambda x: x.score, reverse = True)
         return best[:self.max_text_entities]
+
 
     def simpleTextEntityQuery(self, tokens):
         text = ' '.join([t.token for t in tokens])
@@ -64,7 +64,7 @@ class EntityLinkerQlever:
         for row in results:
             kbe = KBEntity(row[1], row[0], int(row[2]), [])
             ie = IdentifiedEntity(tokens, # TODO(schnelle) not as in EntityLinker
-                                  kbe.name, kbe, kbe.score, 0.2,
+                                  kbe.name, kbe, kbe.score, 1,
                                   False, text_query = True)
             entities.append(ie)
         return entities
@@ -73,7 +73,7 @@ class EntityLinkerQlever:
         return self.sub_linker.get_entity_for_mid(mid)
 
     @staticmethod
-    def loadStopwords(stopwordsfile):
+    def load_stopwords(stopwordsfile):
         stopwords = set()
         with open(stopwordsfile, 'rt', encoding='utf-8') as swfile:
             for word in swfile:
@@ -89,7 +89,7 @@ class EntityLinkerQlever:
         :return:
         """
         config_options = globals.config
-        stopwords = EntityLinkerQlever.loadStopwords(
+        stopwords = EntityLinkerQlever.load_stopwords(
                 config_options.get('EntityLinkerQlever',
                 'stopwords'))
         sub_linker = EntityLinker.init_from_config()
@@ -116,8 +116,14 @@ class EntityLinkerQlever:
                 tokens, min_surface_score) if self.sub_linker else []
 
         logger.info("Trying text queries to get more target entities")
-        entities.extend(self.textEntityQuery(tokens))
-        return entities
+        text_entities = self.textEntityQuery(tokens)
+        tfsum = sum([te.score for te in text_entities])
+        for te in text_entities:
+            logger.info("Text entity "+te.as_string())
+            te.surface_score = te.score/tfsum
+        entities.extend(text_entities)
+        best = sorted(entities, key = lambda x: x.surface_score, reverse = True)
+        return best
     
 
 def main():
