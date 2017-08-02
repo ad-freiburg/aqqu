@@ -87,8 +87,8 @@ class Backend(object):
         if not retry:
             # By default, retry on 404 and 503 messages because
             # these seem to happen sometimes, but very rarely.
-            retry = Retry(total=5, status_forcelist=[404, 503],
-                          backoff_factor=0.2)
+            retry = Retry(total=20, status_forcelist=[404, 503],
+                          backoff_factor=0.4)
         self.connection_pool = HTTPConnectionPool(self.backend_host,
                                                   port=self.backend_port,
                                                   maxsize=pool_maxsize,
