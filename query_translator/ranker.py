@@ -151,8 +151,7 @@ class MLModel(object):
     def get_model_name(self):
         """Return the model name."""
         if hasattr(self, "get_parameters"):
-            param_suffix = translator.get_suffix_for_params(
-                self.get_parameters())
+            param_suffix = self.get_parameters().get_suffix()
         else:
             param_suffix = ""
         if self.train_dataset is not None:

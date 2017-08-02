@@ -100,7 +100,7 @@ def get_cache_name_for_dataset_and_params(dataset,
     :param parameters:
     :return:
     """
-    params_suffix = translator.get_suffix_for_params(parameters)
+    params_suffix = parameters.get_suffix()
     try:
         dataset_file = scorer_globals.DATASETS[dataset]
     except KeyError:

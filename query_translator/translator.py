@@ -215,21 +215,21 @@ class TranslatorParameters(object):
         self.require_relation_match = True
 
 
-def get_suffix_for_params(parameters):
-    """Return a suffix string for the selected parameters.
+    def get_suffix(self):
+        """Return a suffix string for the selected parameters.
 
-    :type parameters TranslatorParameters
-    :param parameters:
-    :return:
-    """
-    suffix = ""
-    if parameters.entity_oracle:
-        suffix += "_eo"
-    if not parameters.require_relation_match:
-        suffix += "_arm"
-    if not parameters.restrict_answer_type:
-        suffix += "_atm"
-    return suffix
+        :type parameters TranslatorParameters
+        :param parameters:
+        :return:
+        """
+        suffix = ""
+        if self.entity_oracle:
+            suffix += "_eo"
+        if not self.require_relation_match:
+            suffix += "_arm"
+        if not self.restrict_answer_type:
+            suffix += "_atm"
+        return suffix
 
 
 if __name__ == '__main__':
