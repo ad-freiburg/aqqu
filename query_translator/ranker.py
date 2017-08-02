@@ -624,7 +624,7 @@ class RelationNgramScorer(MLModel):
             logger.info("Performing grid search.")
             relation_scorer = SGDClassifier(loss='log', class_weight='balanced',
                                             n_iter=np.ceil(
-                                                10 ** 6 // len(labels)),
+                                                10 ** 6 / len(labels)),
                                             random_state=999)
             cv_params = [{"alpha": [10.0, 5.0, 2.0, 1.5, 1.0, 0.5,
                                     0.1, 0.01, 0.001, 0.0001]}]
@@ -643,7 +643,7 @@ class RelationNgramScorer(MLModel):
                         % self.regularization_C)
             relation_scorer = SGDClassifier(loss='log', class_weight='balanced',
                                             n_iter=np.ceil(
-                                                10 ** 6 // len(labels)),
+                                                10 ** 6 / len(labels)),
                                             alpha=self.regularization_C,
                                             random_state=999)
             relation_scorer.fit(X, labels)
