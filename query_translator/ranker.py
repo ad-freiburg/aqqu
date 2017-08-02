@@ -85,12 +85,14 @@ class Ranker(object):
     def __init__(self,
                  name,
                  entity_oracle_file=None,
+                 entity_linker_qlever=True,
                  all_relations_match=True,
                  all_types_match=True):
         self.name = name
         self.parameters = translator.TranslatorParameters()
         if entity_oracle_file:
             self.parameters.entity_oracle = EntityOracle(entity_oracle_file)
+        self.parameters.entity_linker_qlever = entity_linker_qlever
         self.parameters.require_relation_match = not all_relations_match
         self.parameters.restrict_answer_type = not all_types_match
 

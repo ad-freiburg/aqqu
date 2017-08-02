@@ -76,9 +76,12 @@ class QueryTranslator(object):
         backend_module_name = config_params.get("Backend", "backend")
         backend = sparql_backend.loader.get_backend(backend_module_name)
         query_extender = QueryCandidateExtender.init_from_config()
-        entity_linker = EntityLinkerQlever.init_from_config()
         parser = CoreNLPParser.init_from_config()
         scorer_obj = ranker.SimpleScoreRanker('DefaultScorer')
+        if scorer_obj.get_parameters().entity_linker_qlever:
+            entity_linker = EntityLinkerQlever.init_from_config()
+        else:
+            entity_linker = EntityLinker.init_from_config()
         return QueryTranslator(backend, query_extender,
                                entity_linker, parser, scorer_obj)
 
@@ -217,6 +220,8 @@ class TranslatorParameters(object):
         # When matching candidates, require that relations
         # match in some way in the question.
         self.require_relation_match = True
+        # Use QLever to support EntityLinking
+        self.entity_linker_qlever = True
 
 
     def get_suffix(self):
@@ -229,6 +234,8 @@ class TranslatorParameters(object):
         suffix = ""
         if self.entity_oracle:
             suffix += "_eo"
+        if self.entity_linker_qlever:
+            suffix += "_eql"
         if not self.require_relation_match:
             suffix += "_arm"
         if not self.restrict_answer_type:
