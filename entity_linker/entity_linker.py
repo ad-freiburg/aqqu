@@ -177,17 +177,8 @@ class EntityLinker:
         self.ignore_lemmas = {'be', 'of', 'the', 'and', 'or', 'a'}
         self.year_re = re.compile(r'[0-9]{4}')
 
-    def get_entity_for_mid(self, mid):
-        '''
-        Returns the entity object for the MID or None
-         if the MID is unknown. Forwards to surface index.
-        :param mid:
-        :return:
-        '''
-        return self.surface_index.get_entity_for_mid(mid)
-
     @staticmethod
-    def init_from_config():
+    def init_from_config(ranker_params):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:

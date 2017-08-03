@@ -1,5 +1,5 @@
 """
-A module for relation and entity oracles.
+A module for a relation oracle
 
 Copyright 2015, University of Freiburg.
 
@@ -7,8 +7,6 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 import logging
-from entity_linker.entity_linker import IdentifiedEntity, get_value_for_year, \
-    DateValue
 
 logger = logging.getLogger(__name__)
 
@@ -60,56 +58,6 @@ class RelationOracle:
             return False
 
 
-class EntityOracle:
-    """
-    This class can be used in place of an entity linker.
-    It provides the identify_entities_in_tokens method that
-    wraps around a standard entity_linker. This is needed to obtain
-    information about the identified entities like popularity and readable
-    name etc.
-    """
-
-    def __init__(self, oracle_entities_file):
-        self.tokens_mid_map = dict()
-        self._read_oracle_entities(oracle_entities_file)
-
-    def _read_oracle_entities(self, oracle_entities_file):
-        with open(oracle_entities_file, 'rb') as f:
-            for line in f:
-                tokens, mid = line.decode('utf-8').strip().split('\t')
-                tokens = tokens.replace(' ', '')
-                if tokens not in self.tokens_mid_map:
-                    self.tokens_mid_map[tokens] = []
-                self.tokens_mid_map[tokens].append(mid)
-
-    def identify_entities_in_tokens(self, tokens, entity_linker):
-        logger.info("Using entity oracle...")
-        identified_entities = []
-        for i in range(1, len(tokens) + 1):
-            for j in range(i):
-                span = tokens[j:i]
-                span_str = ''.join([t.token for t in span])
-                if span_str in self.tokens_mid_map:
-                    mids = self.tokens_mid_map[span_str]
-                    for mid in mids:
-                        if mid.startswith('/type/datetime') \
-                                or mid.startswith('/un/'):
-                            e = DateValue(span_str, get_value_for_year(span_str))
-                            ie = IdentifiedEntity(span, e.name, e, perfect_match=True)
-                            identified_entities.append(ie)
-                        else:
-                            entity = entity_linker.get_entity_for_mid(mid)
-                            if entity:
-                                ie = IdentifiedEntity(span,
-                                                      entity.name,
-                                                      entity, entity.score,
-                                                      1.0,
-                                                      perfect_match=True)
-                                identified_entities.append(ie)
-                            else:
-                                logger.warn("Oracle entity does not exist:"
-                                            " %s." % mid)
-        return identified_entities
 
 
 

@@ -29,15 +29,14 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import StandardScaler, LabelEncoder, \
     Normalizer, MinMaxScaler
 from .evaluation import EvaluationQuery, EvaluationCandidate
-from query_translator.oracle import EntityOracle
 from . import feature_extraction as f_ext
+from entity_linker.entity_linker import EntityLinker
+from entity_linker.entity_linker_qlever import EntityLinkerQlever
+from entity_linker.entity_oracle import EntityOracle
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
-from sklearn.model_selection import KFold, GridSearchCV, ParameterGrid
-from sklearn.metrics import classification_report
-from .deep_relscorer import DeepCNNAqquRelScorer
-import xgboost as xgb
-from sklearn import utils
+from sklearn.model_selection import KFold, GridSearchCV
+
 
 RANDOM_SHUFFLE = 0.3
 
@@ -75,6 +74,44 @@ class RankScore(object):
     def as_string(self):
         return "%s" % self.score
 
+class RankerParameters(object):
+    """A class that holds parameters for the ranker."""
+
+    def __init__(self):
+        self.relation_oracle = None
+        # When generating candidates, restrict them to the
+        # deterimined answer type.
+        self.restrict_answer_type = True
+        # When matching candidates, require that relations
+        # match in some way in the question.
+        self.require_relation_match = True
+        # Class of the EntityLinker to use
+        # one of [EntityLinker, EntityLinkerQlever, EntityOracle]
+        self.entity_linker_class = None
+        # Path to file containing EntityOracle data,
+        # ignored by all other EntityLinkers
+        self.entity_oracle_file = None
+
+
+    def get_suffix(self):
+        """Return a suffix string for the selected parameters.
+
+        :type parameters RankerParameters
+        :param parameters:
+        :return:
+        """
+        suffix = ""
+        if self.entity_linker_class == EntityOracle:
+            suffix += "_eo"
+        elif self.entity_linker_class == EntityLinkerQlever:
+            suffix += "_eql"
+
+        if not self.require_relation_match:
+            suffix += "_arm"
+        if not self.restrict_answer_type:
+            suffix += "_atm"
+        return suffix
+
 
 class Ranker(object):
     """Superclass for rankers.
@@ -84,15 +121,15 @@ class Ranker(object):
 
     def __init__(self,
                  name,
+                 entity_linker_class=EntityLinker,
                  entity_oracle_file=None,
                  entity_linker_qlever=True,
                  all_relations_match=True,
                  all_types_match=True):
         self.name = name
-        self.parameters = translator.TranslatorParameters()
-        if entity_oracle_file:
-            self.parameters.entity_oracle = EntityOracle(entity_oracle_file)
-        self.parameters.entity_linker_qlever = entity_linker_qlever
+        self.parameters = RankerParameters()
+        self.parameters.entity_linker_class = entity_linker_class
+        self.parameters.entity_oracle_file = entity_oracle_file
         self.parameters.require_relation_match = not all_relations_match
         self.parameters.restrict_answer_type = not all_types_match
 
@@ -608,6 +645,8 @@ class AqquModel(MLModel, Ranker):
         self.pruner.store_model()
         logger.info("Done.")
 
+    def compare_pair(self, x_candidate, y_candidate):
+        """Compare two candidates.
 
     def rank_candidates(self, candidates, features):
         """Pre-compute comparisons.
@@ -1152,8 +1191,7 @@ class LiteralRankerFeatures(object):
             candidate = key(qc)
             candidate.rank_score = self.score(candidate)
         ranked_candidates = sorted(query_candidates,
-                                   key=key,
-                                   cmp=self.compare,
+                                   key=Compare2Key(key, self.compare),
                                    reverse=True)
         return ranked_candidates
 
@@ -1233,7 +1271,7 @@ class LiteralRanker(Ranker):
                     s *= 0.1
                     if t not in matched_tokens or matched_tokens[t] < s:
                         matched_tokens[t] = s
-            if rm.cardinality > 0:
+            if rm.cardinality != -1: # this was rm.cardinality > 0 but it was a tuple?!?
                 # Number of facts in the relation (like in FreebaseEasy).
                 cardinality = rm.cardinality[0]
         rm_token_score = sum(matched_tokens.values())
@@ -1275,20 +1313,20 @@ class LiteralRanker(Ranker):
 
         # Sum of literal matches and their coverage (see below for an
         # explanation of each). More of this sum is always better.
-        tmp = cmp(x_ent_lit + x_rel_lit + x.coverage,
-                  y_ent_lit + y_rel_lit + y.coverage)
+        tmp = (x_ent_lit + x_rel_lit + x.coverage) - \
+                  (y_ent_lit + y_rel_lit + y.coverage)
         if tmp != 0:
             return tmp
 
         # Literal matches (each entity / relation match counts as one
         #  in num_lit). More of these is always better.
-        tmp = cmp(x_ent_lit + x_rel_lit, y_ent_lit + y_rel_lit)
+        tmp = (x_ent_lit + x_rel_lit) - (y_ent_lit + y_rel_lit)
         if tmp != 0:
             return tmp
 
         # Coverage of literal matches (number of questions words covered). More
         # of these is always better, if equal number of literal matches.
-        tmp = cmp(x.coverage, y.coverage)
+        tmp = x.coverage - y.coverage
         if tmp != 0:
             return tmp
 
@@ -1299,7 +1337,7 @@ class LiteralRanker(Ranker):
         y_coverage_weak = y.cover_card - y.coverage
         assert x_coverage_weak >= 0
         assert y_coverage_weak >= 0
-        tmp = cmp(x_coverage_weak, y_coverage_weak)
+        tmp = x_coverage_weak - y_coverage_weak
         if tmp != 0:
             return tmp
 
@@ -1344,7 +1382,10 @@ class LiteralRanker(Ranker):
                          x_rel_key_2, x_res_size)
                 y_key = (y_pop_key, y_med_key, y_score, y_rel_key_1,
                          y_rel_key_2, y_res_size)
-                return cmp(x_key, y_key)
+                if x_key < y_key:
+                    return -1
+                else:
+                    return 1
 
             # CASE 1.2: no literal entity matches and no literal
             # relation matches.
@@ -1355,7 +1396,10 @@ class LiteralRanker(Ranker):
                          x_rel_key_2, x_res_size)
                 y_key = (y_score, y.entity_popularity, y_med_key, y_rel_key_1,
                          y_rel_key_2, y_res_size)
-                return cmp(x_key, y_key)
+                if x_key < y_key:
+                    return -1
+                else:
+                    return 1
 
         # CASE 2: different number of literal entity matches and literal
         # relation matches.
@@ -1365,7 +1409,10 @@ class LiteralRanker(Ranker):
                      x_rel_key_2, x_res_size)
             y_key = (y_score, y.entity_popularity, y_med_key, y_rel_key_1,
                      y_rel_key_2, y_res_size)
-            return cmp(x_key, y_key)
+            if x_key < y_key:
+                return -1
+            else:
+                return 1
 
 
 def get_top_chi2_candidate_ngrams(queries, f_extract, percentile):
@@ -1568,7 +1615,7 @@ def feature_diff(features_a, features_b):
     :param features_b:
     :return:
     """
-    keys = set(features_a.keys() + features_b.keys())
+    keys = set(chain(features_a.keys(), features_b.keys()))
     diff = dict()
     for k in keys:
         v_a = features_a.get(k, 0.0)

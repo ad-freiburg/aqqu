@@ -30,6 +30,21 @@ class EntityLinkerQlever:
         self.max_text_entities = max_text_entities
         self.min_subrange = 3
 
+    @staticmethod
+    def init_from_config(ranker_params):
+        """
+        Return an instance with options parsed by a config parser.
+        :param config_options:
+        :return:
+        """
+        config_options = globals.config
+        stopwords = EntityLinkerQlever.load_stopwords(
+                config_options.get('EntityLinkerQlever',
+                'stopwords'))
+        sub_linker = EntityLinker.init_from_config(ranker_params)
+        backend = sparql_backend.loader.get_backend('qlever')
+        return EntityLinkerQlever(sub_linker, backend, stopwords)
+
     def textEntityQuery(self, tokens):
         toks_nostop = [t for t in tokens 
                 if t.token.lower() not in self.stopwords]
@@ -69,9 +84,6 @@ class EntityLinkerQlever:
             entities.append(ie)
         return entities
 
-    def get_entity_for_mid(self, mid):
-        return self.sub_linker.get_entity_for_mid(mid)
-
     @staticmethod
     def load_stopwords(stopwordsfile):
         stopwords = set()
@@ -79,22 +91,6 @@ class EntityLinkerQlever:
             for word in swfile:
                 stopwords.add(word.strip())
         return stopwords
-
-
-    @staticmethod
-    def init_from_config():
-        """
-        Return an instance with options parsed by a config parser.
-        :param config_options:
-        :return:
-        """
-        config_options = globals.config
-        stopwords = EntityLinkerQlever.load_stopwords(
-                config_options.get('EntityLinkerQlever',
-                'stopwords'))
-        sub_linker = EntityLinker.init_from_config()
-        backend = sparql_backend.loader.get_backend('qlever')
-        return EntityLinkerQlever(sub_linker, backend, stopwords)
 
     def identify_dates(self, tokens):
         '''
