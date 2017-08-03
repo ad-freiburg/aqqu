@@ -6,7 +6,6 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
-from entity_linker.entity_linker_qlever import EntityLinkerQlever
 from .answer_type import AnswerTypeIdentifier
 from .pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
 import logging
@@ -77,23 +76,26 @@ class QueryTranslator(object):
         backend = sparql_backend.loader.get_backend(backend_module_name)
         query_extender = QueryCandidateExtender.init_from_config()
         parser = CoreNLPParser.init_from_config()
-        scorer_obj = ranker.SimpleScoreRanker('DefaultScorer')
-        if scorer_obj.get_parameters().entity_linker_qlever:
-            entity_linker = EntityLinkerQlever.init_from_config()
-        else:
-            entity_linker = EntityLinker.init_from_config()
+        scorer = ranker.SimpleScoreRanker('DefaultScorer')
+        entity_linker = scorer.parameters.\
+                entity_linker_class.init_from_config(
+                        scorer.get_parameters())
         return QueryTranslator(backend, query_extender,
-                               entity_linker, parser, scorer_obj)
+                               entity_linker, parser, scorer)
 
     def set_scorer(self, scorer):
         """Sets the parameters of the translator.
 
-        :type scorer: ranker.BaseRanker
+        :type scorer: ranker.Ranker
         :return:
         """
-        # TODO(Elmar): should this be a parameter of a function call?
         self.scorer = scorer
-        self.query_extender.set_parameters(scorer.get_parameters())
+        params = scorer.get_parameters()
+        if type(self.entity_linker) != params.entity_linker_class:
+            self.entity_linker = params.entity_linker_class.init_from_config(
+                            params)
+
+        self.query_extender.set_parameters(params)
 
     def get_scorer(self):
         """Returns the current parameters of the translator.
@@ -105,7 +107,6 @@ class QueryTranslator(object):
         Perform the actual translation.
         :param query_text:
         :param relation_oracle:
-        :param entity_oracle:
         :return:
         """
         # Parse query.
@@ -139,7 +140,6 @@ class QueryTranslator(object):
         Parses the provided text and identifies entities.
         Returns a query object.
         :param query_text:
-        :param entity_oracle:
         :return:
         """
         # Parse query.
@@ -148,14 +148,8 @@ class QueryTranslator(object):
         # Create a query object.
         query = Query(query_text)
         query.query_tokens = tokens
-        if not self.scorer.get_parameters().entity_oracle:
-            entities = self.entity_linker.identify_entities_in_tokens(
-                query.query_tokens)
-        else:
-            entity_oracle = self.scorer.get_parameters().entity_oracle
-            entities = entity_oracle.identify_entities_in_tokens(
-                query.query_tokens,
-                self.entity_linker)
+        entities = self.entity_linker.identify_entities_in_tokens(
+            query.query_tokens)
         query.identified_entities = entities
         return query
 
@@ -208,39 +202,6 @@ class QueryTranslator(object):
         return results
 
 
-class TranslatorParameters(object):
-
-    """A class that holds parameters for the translator."""
-    def __init__(self):
-        self.entity_oracle = None
-        self.relation_oracle = None
-        # When generating candidates, restrict them to the
-        # deterimined answer type.
-        self.restrict_answer_type = True
-        # When matching candidates, require that relations
-        # match in some way in the question.
-        self.require_relation_match = True
-        # Use QLever to support EntityLinking
-        self.entity_linker_qlever = True
-
-
-    def get_suffix(self):
-        """Return a suffix string for the selected parameters.
-
-        :type parameters TranslatorParameters
-        :param parameters:
-        :return:
-        """
-        suffix = ""
-        if self.entity_oracle:
-            suffix += "_eo"
-        if self.entity_linker_qlever:
-            suffix += "_eql"
-        if not self.require_relation_match:
-            suffix += "_arm"
-        if not self.restrict_answer_type:
-            suffix += "_atm"
-        return suffix
 
 
 if __name__ == '__main__':

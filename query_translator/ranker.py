@@ -29,8 +29,10 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.preprocessing import StandardScaler, LabelEncoder, \
     Normalizer, MinMaxScaler
 from .evaluation import EvaluationQuery, EvaluationCandidate
-from query_translator.oracle import EntityOracle
 from .features import FeatureExtractor
+from entity_linker.entity_linker import EntityLinker
+from entity_linker.entity_linker_qlever import EntityLinkerQlever
+from entity_linker.entity_oracle import EntityOracle
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
 from sklearn.model_selection import KFold, GridSearchCV
@@ -72,6 +74,44 @@ class RankScore(object):
     def as_string(self):
         return "%s" % self.score
 
+class RankerParameters(object):
+    """A class that holds parameters for the ranker."""
+
+    def __init__(self):
+        self.relation_oracle = None
+        # When generating candidates, restrict them to the
+        # deterimined answer type.
+        self.restrict_answer_type = True
+        # When matching candidates, require that relations
+        # match in some way in the question.
+        self.require_relation_match = True
+        # Class of the EntityLinker to use
+        # one of [EntityLinker, EntityLinkerQlever, EntityOracle]
+        self.entity_linker_class = None
+        # Path to file containing EntityOracle data,
+        # ignored by all other EntityLinkers
+        self.entity_oracle_file = None
+
+
+    def get_suffix(self):
+        """Return a suffix string for the selected parameters.
+
+        :type parameters RankerParameters
+        :param parameters:
+        :return:
+        """
+        suffix = ""
+        if self.entity_linker_class == EntityOracle:
+            suffix += "_eo"
+        elif self.entity_linker_class == EntityLinkerQlever:
+            suffix += "_eql"
+
+        if not self.require_relation_match:
+            suffix += "_arm"
+        if not self.restrict_answer_type:
+            suffix += "_atm"
+        return suffix
+
 
 class Ranker(object):
     """Superclass for rankers.
@@ -81,15 +121,14 @@ class Ranker(object):
 
     def __init__(self,
                  name,
+                 entity_linker_class=EntityLinker,
                  entity_oracle_file=None,
-                 entity_linker_qlever=True,
                  all_relations_match=True,
                  all_types_match=True):
         self.name = name
-        self.parameters = translator.TranslatorParameters()
-        if entity_oracle_file:
-            self.parameters.entity_oracle = EntityOracle(entity_oracle_file)
-        self.parameters.entity_linker_qlever = entity_linker_qlever
+        self.parameters = RankerParameters()
+        self.parameters.entity_linker_class = entity_linker_class
+        self.parameters.entity_oracle_file = entity_oracle_file
         self.parameters.require_relation_match = not all_relations_match
         self.parameters.restrict_answer_type = not all_types_match
 

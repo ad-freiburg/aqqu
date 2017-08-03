@@ -5,6 +5,9 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 from query_translator import ranker
 from collections import OrderedDict
+from entity_linker.entity_linker import EntityLinker
+from entity_linker.entity_linker_qlever import EntityLinkerQlever
+from entity_linker.entity_oracle import EntityOracle
 
 free917_entities = "evaluation-data/free917_entities.txt"
 
@@ -15,11 +18,13 @@ scorer_list = [ranker.AccuModel('F917_Ranker',
                                  rel_regularization_C=0.002),
                ranker.AccuModel('F917_EQL_Ranker',
                                  "free917train",
+                                 entity_linker_class=EntityLinkerQlever,
                                  top_ngram_percentile=2,
                                  rel_regularization_C=0.002),
                ranker.AccuModel('F917_Ranker_entity_oracle',
                                  "free917train",
                                  entity_oracle_file=free917_entities,
+                                 entity_linker_class=EntityOracle,
                                  top_ngram_percentile=2,
                                  rel_regularization_C=1.0),
                ranker.AccuModel('WQ_Ranker',
@@ -28,14 +33,17 @@ scorer_list = [ranker.AccuModel('F917_Ranker',
                                  rel_regularization_C=1.0),
                ranker.AccuModel('WQ_EQL_Ranker',
                                  "webquestionstrain",
+                                 entity_linker_class=EntityLinkerQlever,
                                  top_ngram_percentile=5,
                                  rel_regularization_C=1.0),
                ranker.SimpleScoreRanker('SimpleRanker'),
                ranker.SimpleScoreRanker('SimpleRanker_entity_oracle',
-                                         entity_oracle_file=free917_entities),
+                                         entity_oracle_file=free917_entities,
+                                         entity_linker_class=EntityOracle),
                ranker.LiteralRanker('LiteralRanker'),
                ranker.LiteralRanker('LiteralRanker_entity_oracle',
-                                     entity_oracle_file=free917_entities),
+                                     entity_oracle_file=free917_entities,
+                                     entity_linker_class=EntityOracle),
                ]
 
 # A dictionary used for lookup via scorer name.
