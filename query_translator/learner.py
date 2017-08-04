@@ -51,7 +51,7 @@ def rank_candidates(query, ranker):
 
 
 def evaluate_scorer_parallel(test_queries, scorer_obj,
-                             num_processes=6):
+                             num_processes=1):
     """Parallel rank the candidates and evaluate the result.
 
     :rtype (EvaluationResult, list[EvaluationQuery])
@@ -84,7 +84,9 @@ def evaluate_scorer(test_queries, scorer_obj):
     :param num_processes:
     :return:
     """
-    for query in test_queries:
+    total_queries = len(test_queries)
+    for i, query in enumerate(test_queries):
+        logger.info("Evaluating query %d/%d." % (i + 1, total_queries))
         query.eval_candidates = scorer_obj.rank_query_candidates(
             query.eval_candidates,
             key=lambda x: x.query_candidate)
@@ -198,7 +200,8 @@ def train(scorer_name, cached):
     train_dataset = scorer_obj.train_dataset
     train_queries = get_evaluated_queries(train_dataset,
                                           cached,
-                                          scorer_obj.get_parameters())
+                                          scorer_obj.get_parameters(),
+                                          n_top=2000)
     logger.info("Loaded %s queries for training." % len(train_queries))
     logger.info("Training model.")
     scorer_obj.learn_model(train_queries)
@@ -228,9 +231,8 @@ def test(scorer_name, test_dataset, cached, avg_runs=1):
     for _ in range(avg_runs):
         logger.info("Run %s of %s" % (n_runs, avg_runs))
         n_runs += 1
-        res, test_queries = evaluate_scorer_parallel(queries,
-                                                     scorer_obj,
-                                                     num_processes=3)
+        res, test_queries = evaluate_scorer(queries,
+                                            scorer_obj)
         logger.info(res)
         for k, v in res._asdict().iteritems():
             result[k] += v
@@ -277,7 +279,7 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
             num_fold += 1
             res, test_queries = evaluate_scorer_parallel(test_fold,
                                                          scorer_obj,
-                                                         num_processes=6)
+                                                         num_processes=2)
             logger.info(res)
             for k, v in res._asdict().iteritems():
                 result[k] += v

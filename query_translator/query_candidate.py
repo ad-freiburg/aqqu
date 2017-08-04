@@ -305,6 +305,9 @@ class QueryCandidate:
     def get_relation_names(self):
         return sorted([r.name for r in self.relations])
 
+    def get_unsorted_relation_names(self):
+        return [r.canonical_name for r in self.relations]
+
     def get_entity_names(self):
         return sorted([me.entity.name for me in self.matched_entities])
 
@@ -403,7 +406,9 @@ class QueryCandidate:
         self._next_var += 1
         return var
 
-    def extend_with_relation_and_variable(self, relation, relation_match,
+    def extend_with_relation_and_variable(self, relation,
+                                          canonical_relation,
+                                          relation_match,
                                           allow_new_match=False,
                                           create_copy=True):
         """
@@ -422,6 +427,7 @@ class QueryCandidate:
         entity_node = new_query_candidate.current_extension
         target_node = QueryCandidateVariable(new_query_candidate)
         relation_node = QueryCandidateRelation(relation,
+                                               canonical_relation,
                                                new_query_candidate,
                                                entity_node,
                                                target_node)
@@ -455,6 +461,7 @@ class QueryCandidate:
                                          new_query_candidate)
         target_node.set_entity_match(identified_entity)
         relation_node = QueryCandidateRelation(relation,
+                                               relation,
                                                new_query_candidate,
                                                entity_node,
                                                target_node)
@@ -864,8 +871,10 @@ class QueryCandidateRelation(QueryCandidateNode):
     it is a special kind of Node.
     """
 
-    def __init__(self, name, query_candidate, source_node, target_node):
+    def __init__(self, name, canonical_name,
+                 query_candidate, source_node, target_node):
         QueryCandidateNode.__init__(self, name, name, query_candidate)
+        self.canonical_name = canonical_name
         self.relation_match = None
         self.entity_match = None
         self.name = name

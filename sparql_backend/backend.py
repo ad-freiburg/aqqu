@@ -6,6 +6,12 @@ Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
+import collections
+import functools
+import joblib
+import cPickle
+import atexit
+
 from urllib3 import HTTPConnectionPool, Retry
 import logging
 import globals
@@ -52,6 +58,57 @@ def filter_results_language(results, language):
     return filtered_results
 
 
+class memoized(object):
+    '''Decorator. Caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned
+    (not reevaluated).
+    Adapted from: https://wiki.python.org/moin/PythonDecoratorLibrary
+    '''
+
+    def __init__(self, func, cache_name):
+        self.func = func
+        self.cache = {}
+        self.cache_file_name = "data/learning_cache/" + cache_name + ".dump"
+        self.changed = False
+        try:
+            self.cache = joblib.load(self.cache_file_name)
+            logger.info("Re-using cache %s." % self.cache_file_name)
+        except IOError:
+            logger.info("Using new cache for %s." % cache_name)
+        atexit.register(self.save)
+
+    def __call__(self, *args):
+        # Get rid of the instance reference self
+        margs = args[1:]
+        if margs in self.cache:
+            return self.cache[margs]
+        else:
+            value = self.func(*args)
+            self.cache[margs] = value
+            self.changed = True
+            return value
+
+    def __repr__(self):
+        '''Return the function's docstring.'''
+        return self.func.__doc__
+
+    def __get__(self, obj, objtype):
+        '''Support instance methods.'''
+        return functools.partial(self.__call__, obj)
+
+    def save(self):
+        if self.changed:
+            logger.info("Writing cache to %s." % self.cache_file_name)
+            #cPickle.dump(self.cache, f, -1)
+            joblib.dump(self.cache, self.cache_file_name)
+
+
+def cache(cache_name):
+    def decorator(func):
+        return memoized(func, cache_name)
+    return decorator
+
+
 class SPARQLHTTPBackend(object):
     def __init__(self, backend_host,
                  backend_port,
@@ -79,8 +136,8 @@ class SPARQLHTTPBackend(object):
         if not retry:
             # By default, retry on 404 and 503 messages because
             # these seem to happen sometimes, but very rarely.
-            retry = Retry(total=5, status_forcelist=[404, 503],
-                          backoff_factor=0.2)
+            retry = Retry(total=10, status_forcelist=[404, 503],
+                          backoff_factor=0.5)
         self.connection_pool = HTTPConnectionPool(self.backend_host,
                                                   port=self.backend_port,
                                                   maxsize=pool_maxsize,
@@ -101,6 +158,7 @@ class SPARQLHTTPBackend(object):
         ))
         return SPARQLHTTPBackend(backend_host, backend_port, backend_url)
 
+    @cache("query_json")
     def query_json(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
                    filter_lang='en'):
@@ -161,6 +219,7 @@ class SPARQLHTTPBackend(object):
             self._add_result_to_cache(query, results)
         return results
 
+    @cache("query")
     def query(self, query, method='GET',
               normalize_output=normalize_freebase_output,
               parse_safe=False):
