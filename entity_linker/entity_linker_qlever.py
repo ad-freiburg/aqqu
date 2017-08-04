@@ -14,6 +14,7 @@ import logging
 import re
 import time
 import globals
+from .surface_index_memory import EntitySurfaceIndexMemory
 from .entity_linker import EntityLinker, Entity, KBEntity, Value, DateValue,\
                             IdentifiedEntity
 import sparql_backend.loader
@@ -21,10 +22,11 @@ from corenlp_parser.parser import Token
 
 logger = logging.getLogger(__name__)
 
-class EntityLinkerQlever:
+class EntityLinkerQlever(EntityLinker):
 
-    def __init__(self, sub_linker, qlever_backend, stopwords, max_text_entities = 4):
-        self.sub_linker = sub_linker
+    def __init__(self, surface_index, qlever_backend, stopwords,
+            max_entities_per_tokens=4, max_text_entities = 2):
+        super().__init__(surface_index, max_entities_per_tokens)
         self.qlever_backend = qlever_backend
         self.stopwords = stopwords
         self.max_text_entities = max_text_entities
@@ -41,11 +43,14 @@ class EntityLinkerQlever:
         stopwords = EntityLinkerQlever.load_stopwords(
                 config_options.get('EntityLinkerQlever',
                 'stopwords'))
-        sub_linker = EntityLinker.init_from_config(ranker_params)
-        backend = sparql_backend.loader.get_backend('qlever')
-        return EntityLinkerQlever(sub_linker, backend, stopwords)
+        surface_index = EntitySurfaceIndexMemory.init_from_config()
+        max_entities_per_tokens = int(config_options.get('EntityLinker',
+                                                      'max-entites-per-tokens'))
+        qlever_backend = sparql_backend.loader.get_backend('qlever')
+        return EntityLinkerQlever(surface_index, qlever_backend, stopwords,
+                max_entities_per_tokens=max_entities_per_tokens)
 
-    def textEntityQuery(self, tokens):
+    def textEntityQuery(self, tokens, limit):
         toks_nostop = [t for t in tokens 
                 if t.token.lower() not in self.stopwords]
         entities = []
@@ -53,14 +58,12 @@ class EntityLinkerQlever:
         for start in range(max_start+1):
             min_subrange_end = min(start + self.min_subrange, len(toks_nostop))
             for end in range(min_subrange_end, len(toks_nostop)+1):
-                new_entities = self.simpleTextEntityQuery(toks_nostop[start:end])
-                logger.info('Found {} entities'.format(len(new_entities)))
+                new_entities = self.simpleTextEntityQuery(toks_nostop[start:end], limit)
                 entities.extend(new_entities)
-        best = sorted(entities, key = lambda x: x.score, reverse = True)
-        return best[:self.max_text_entities]
+        return entities
 
 
-    def simpleTextEntityQuery(self, tokens):
+    def simpleTextEntityQuery(self, tokens, limit):
         text = ' '.join([t.token for t in tokens])
         text_query = """
         PREFIX fb: <http://rdf.freebase.com/ns/>
@@ -71,14 +74,14 @@ class EntityLinkerQlever:
         }}
         ORDER BY DESC(SCORE(?t))
         LIMIT {1}
-        """.format(text, self.max_text_entities)
+        """.format(text, limit)
 
         logger.info("Text Query: "+text_query)
         results = self.qlever_backend.query(text_query)
         entities = []
         for row in results:
             kbe = KBEntity(row[1], row[0], int(row[2]), [])
-            ie = IdentifiedEntity(tokens, # TODO(schnelle) not as in EntityLinker
+            ie = IdentifiedEntity([], # TODO(schnelle) not as in EntityLinker
                                   kbe.name, kbe, kbe.score, 1,
                                   False, text_query = True)
             entities.append(ie)
@@ -92,35 +95,33 @@ class EntityLinkerQlever:
                 stopwords.add(word.strip())
         return stopwords
 
-    def identify_dates(self, tokens):
-        '''
-        Identify entities representing dates in the
-        tokens.
-        :param tokens:
-        :return:
-        '''
-        return self.sub_linker.identify_dates(tokens)
 
     def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):
         '''
         Identify instances in the tokens.
         :param tokens: A list of string tokens.
-        :return: A list of tuples (i, j, e, score) for an identified entity e,
-                 at token index i (inclusive) to j (exclusive)
+        :return: A list of IdentifiedEntity
         '''
-        entities = self.sub_linker.identify_entities_in_tokens(
-                tokens, min_surface_score) if self.sub_linker else []
+        entities = super().identify_entities_in_tokens(
+                tokens, min_surface_score)
 
-        logger.info("Trying text queries to get more target entities")
-        text_entities = self.textEntityQuery(tokens)
-        tfsum = sum([te.score for te in text_entities])
-        for te in text_entities:
-            logger.info("Text entity "+te.as_string())
-            te.surface_score = te.score/tfsum
-        entities.extend(text_entities)
-        best = sorted(entities, key = lambda x: x.surface_score, reverse = True)
-        return best
-    
+        if len(entities) < self.max_entities_per_tokens:
+            logger.info("Trying text queries to get more target entities")
+            text_entities = self.textEntityQuery(tokens, self.max_text_entities)
+            text_entities = sorted(text_entities,
+                    key = lambda x: x.score, reverse = True)
+            entities_left = max(self.max_text_entities,
+                    self.max_entities_per_tokens - len(entities))
+            best = text_entities[:entities_left]
+            tfsum = sum([te.score for te in best])
+            for te in best:
+                logger.info("Text entity "+te.as_string())
+                te.surface_score = te.score/tfsum
+
+            entities.extend(best)
+
+        return entities
+
 
 def main():
     globals.read_configuration('config.cfg')

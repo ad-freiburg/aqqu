@@ -186,10 +186,10 @@ class EntityLinker:
         """
         config_options = globals.config
         surface_index = EntitySurfaceIndexMemory.init_from_config()
-        max_entities_p_token = int(config_options.get('EntityLinker',
+        max_entities_per_tokens = int(config_options.get('EntityLinker',
                                                       'max-entites-per-tokens'))
         return EntityLinker(surface_index,
-                            max_entities_per_tokens=max_entities_p_token)
+                            max_entities_per_tokens=max_entities_per_tokens)
 
 
     def _text_matches_main_name(self, entity, text):
@@ -264,8 +264,7 @@ class EntityLinker:
         '''
         Identify instances in the tokens.
         :param tokens: A list of string tokens.
-        :return: A list of tuples (i, j, e, score) for an identified entity e,
-                 at token index i (inclusive) to j (exclusive)
+        :return: A list of IdentifiedEntity
         '''
         n_tokens = len(tokens)
         logger.info("Starting entity identification.")
