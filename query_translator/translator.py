@@ -30,7 +30,6 @@ class Query:
         self.query_tokens = None
         self.query_content_tokens = None
         self.identified_entities = None
-        self.consistent_entities = None
         self.relation_oracle = None
         self.is_count_query = False
         self.transform_query(self.query_text)
