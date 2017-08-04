@@ -75,19 +75,6 @@ def get_content_tokens(tokens):
     return content_tokens
 
 
-def remove_entity_tokens(query_tokens, matched_entity):
-    """
-    Remove tokens of matched_entity from the query_tokens
-    :param query_tokens:
-    :param entity_tokens:
-    :return:
-    """
-    # This is inefficient
-    remaining_query_tokens = [t for t in query_tokens
-                              if t not in matched_entity.tokens]
-    return remaining_query_tokens
-
-
 def filter_relation_suggestions(relation_suggestions):
     """Remove unwanted relation from provided suggestion.
     :return:
