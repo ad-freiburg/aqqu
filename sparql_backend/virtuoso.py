@@ -1,11 +1,16 @@
 """
-A module to communicate with a Virtuoso SPARQL HTTP endpoint.
+A module to communicate with a SPARQL HTTP endpoint.
 The class uses a connection pool to reuse existing connections for new queries.
 
 Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
+import collections
+import functools
+import joblib
+import atexit
+
 from urllib3 import HTTPConnectionPool, Retry
 import logging
 import globals
@@ -52,6 +57,57 @@ def filter_results_language(results, language):
     return filtered_results
 
 
+class memoized(object):
+    '''Decorator. Caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned
+    (not reevaluated).
+    Adapted from: https://wiki.python.org/moin/PythonDecoratorLibrary
+    '''
+
+    def __init__(self, func, cache_name):
+        self.func = func
+        self.cache = {}
+        self.cache_file_name = "data/learning_cache/" + cache_name + ".dump"
+        self.changed = False
+        try:
+            self.cache = joblib.load(self.cache_file_name)
+            logger.info("Re-using cache %s." % self.cache_file_name)
+        except IOError:
+            logger.info("Using new cache for %s." % cache_name)
+        atexit.register(self.save)
+
+    def __call__(self, *args):
+        # Get rid of the instance reference self
+        margs = args[1:]
+        if margs in self.cache:
+            return self.cache[margs]
+        else:
+            value = self.func(*args)
+            self.cache[margs] = value
+            self.changed = True
+            return value
+
+    def __repr__(self):
+        '''Return the function's docstring.'''
+        return self.func.__doc__
+
+    def __get__(self, obj, objtype):
+        '''Support instance methods.'''
+        return functools.partial(self.__call__, obj)
+
+    def save(self):
+        if self.changed:
+            logger.info("Writing cache to %s." % self.cache_file_name)
+            #cPickle.dump(self.cache, f, -1)
+            joblib.dump(self.cache, self.cache_file_name)
+
+
+def cache(cache_name):
+    def decorator(func):
+        return memoized(func, cache_name)
+    return decorator
+
+
 class Backend(object):
     def __init__(self, backend_host,
                  backend_port,
@@ -87,8 +143,8 @@ class Backend(object):
         if not retry:
             # By default, retry on 404 and 503 messages because
             # these seem to happen sometimes, but very rarely.
-            retry = Retry(total=5, status_forcelist=[404, 503],
-                          backoff_factor=0.2)
+            retry = Retry(total=10, status_forcelist=[404, 503],
+                          backoff_factor=0.5)
         self.connection_pool = HTTPConnectionPool(self.backend_host,
                                                   port=self.backend_port,
                                                   maxsize=pool_maxsize,
@@ -109,6 +165,7 @@ class Backend(object):
         ))
         return Backend(backend_host, backend_port, backend_url, retry = 10)
 
+    @cache("query")
     def query(self, query, method='GET',
                    normalize_output=normalize_freebase_output,
                    filter_lang='en'):
@@ -117,13 +174,12 @@ class Backend(object):
         :param query:
         :return:
         """
-        self.query_log.write('---\n'+query+'\n')
         params = {
             # "default-graph-URI": "<http://freebase.com>",
             "query": query,
             "maxrows": 2097151,
             # "debug": "off",
-            "timeout": 10.0,
+            # "timeout": "",
             "format": "application/json",
             # "save": "display",
             # "fname": ""
@@ -140,7 +196,7 @@ class Backend(object):
 
         try:
             if resp.status == 200:
-                data = json.loads(resp.data.decode('utf-8'))
+                data = json.loads(resp.data, encoding='utf-8')
                 results = data['results']['bindings']
                 if filter_lang:
                     results = filter_results_language(results, filter_lang)
@@ -201,3 +257,5 @@ def main():
     print(sparql.query(query))
 
 
+if __name__ == '__main__':
+    main()
