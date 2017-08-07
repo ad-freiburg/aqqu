@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class EntityLinkerQlever(EntityLinker):
 
     def __init__(self, surface_index, qlever_backend, stopwords,
-            max_entities_per_tokens=4, max_text_entities = 2):
+            max_entities_per_tokens=4, max_text_entities = 5):
         super().__init__(surface_index, max_entities_per_tokens)
         self.qlever_backend = qlever_backend
         self.stopwords = stopwords
@@ -105,20 +105,14 @@ class EntityLinkerQlever(EntityLinker):
         entities = super().identify_entities_in_tokens(
                 tokens, min_surface_score)
 
-        if len(entities) < self.max_entities_per_tokens:
-            logger.info("Trying text queries to get more target entities")
-            text_entities = self.textEntityQuery(tokens, self.max_text_entities)
-            text_entities = sorted(text_entities,
-                    key = lambda x: x.score, reverse = True)
-            entities_left = max(self.max_text_entities,
-                    self.max_entities_per_tokens - len(entities))
-            best = text_entities[:entities_left]
-            tfsum = sum([te.score for te in best])
-            for te in best:
-                logger.info("Text entity "+te.as_string())
-                te.surface_score = te.score/tfsum
-
-            entities.extend(best)
+        text_entities = self.textEntityQuery(tokens, self.max_text_entities)
+        text_entity_map = {te.entity.id: te for te in text_entities}
+        for entity in entities:
+            if hasattr(entity.entity, 'id') and \
+                    entity.entity.id in text_entity_map:
+                entity.score += text_entity_map[entity.entity.id].score
+                entity.surface_score *= 10
+                entity.text_match = True
 
         return entities
 

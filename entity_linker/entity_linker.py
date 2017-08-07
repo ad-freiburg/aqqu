@@ -114,6 +114,7 @@ class IdentifiedEntity():
                  name, entity,
                  score=0, surface_score=0,
                  perfect_match=False,
+                 text_match=False,
                  text_query=False):
         # A readable name to be displayed to the user.
         self.name = name
@@ -128,17 +129,20 @@ class IdentifiedEntity():
         # A flag indicating whether the entity perfectly
         # matched the tokens.
         self.perfect_match = perfect_match
+        # Indicates whether the entity was matched as text and in the question
+        self.text_match = text_match
         # A flag indicating if this entity was obtained via text query
         self.text_query = text_query
 
     def as_string(self):
         t = ','.join(["%s" % t.token
                       for t in self.tokens])
-        return "%s: tokens:%s prob:%.3f score:%s perfect_match:%s text_query:%s" % \
+        return "%s: tokens:%s prob:%.3f score:%s perfect_match:%s text_match:%s text_query:%s" % \
                (self.name, t,
                 self.surface_score,
                 self.score,
                 self.perfect_match,
+                self.text_match,
                 self.text_query)
 
     def overlaps(self, other):
