@@ -8,12 +8,14 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import math
 import time
+import copy
 import logging
-from itertools import chain
+import itertools
 from . import translator
 import random
 import globals
 import numpy as np
+from functools import partial
 from random import Random
 from sklearn import utils
 from sklearn import metrics
@@ -645,9 +647,6 @@ class AqquModel(MLModel, Ranker):
         self.pruner.store_model()
         logger.info("Done.")
 
-    def compare_pair(self, x_candidate, y_candidate):
-        """Compare two candidates.
-
     def rank_candidates(self, candidates, features):
         """Pre-compute comparisons.
 
@@ -699,7 +698,7 @@ class AqquModel(MLModel, Ranker):
             else:
                 return 1
         sorted_i = sorted(range(num_candidates),
-                          cmp=compare_pair)
+                key=Compare2Key(lambda x:x, compare_pair))
         duration = (time.time() - start) * 1000
         logger.info("Sort for %s took %s ms" % (len(pairs), duration))
         return [candidates[i] for i in sorted_i]
@@ -769,7 +768,7 @@ class AqquModel(MLModel, Ranker):
         # -> have a submodel class. It would be responsible for feature extraction
         # and folding, which would again improve training time if features are
         # extracted only once.
-        kf = KFold(len(train_queries), n_folds=n_folds, shuffle=True,
+        kf = KFold(n_splits=n_folds, shuffle=True,
                    random_state=999)
         num_fold = 1
         num_features = 2
@@ -782,11 +781,11 @@ class AqquModel(MLModel, Ranker):
             qc_index += num_c
             qc_indices[i] = c_indices
         features = np.zeros(shape=(qc_index, num_features))
-        for train, test in kf:
+        for train_idx, test_idx in kf.split(train_queries):
             logger.info("Training relation score model on fold %s/%s" % (
                 num_fold, n_folds))
-            test_fold = [train_queries[i] for i in test]
-            train_fold = [train_queries[i] for i in train]
+            test_fold = [train_queries[i] for i in test_idx]
+            train_fold = [train_queries[i] for i in train_idx]
             #write_dl_examples(train_fold,"train", num_fold)
             #write_dl_examples(test_fold, "test", num_fold)
             test_candidates = [x.query_candidate for query in test_fold
@@ -802,7 +801,7 @@ class AqquModel(MLModel, Ranker):
                                                                  test_fold)
                 deep_rel_scores = deep_rel_model.score_multiple(test_candidates)
             c_index = 0
-            for i in test:
+            for i in test_idx:
                 for c in qc_indices[i]:
                     features[c, 0] = rel_scores[c_index].score
                     if self.learn_deep_rel_model:
@@ -1448,7 +1447,7 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
                 correct_cands_index.add(i)
         if correct_cands_index:
             n_candidates = len(candidates)
-            sample_size = n_candidates / 2
+            sample_size = n_candidates // 2
             if sample_size < 200:
                 sample_size = min(200, n_candidates)
             sample_candidates_index = random.sample(range(n_candidates), sample_size)
@@ -1615,7 +1614,7 @@ def feature_diff(features_a, features_b):
     :param features_b:
     :return:
     """
-    keys = set(chain(features_a.keys(), features_b.keys()))
+    keys = set(itertools.chain(features_a.keys(), features_b.keys()))
     diff = dict()
     for k in keys:
         v_a = features_a.get(k, 0.0)

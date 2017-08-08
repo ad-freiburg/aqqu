@@ -5,6 +5,9 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 from query_translator import ranker
 from collections import OrderedDict
+from entity_linker.entity_oracle import EntityOracle
+from entity_linker.entity_linker import EntityLinker
+from entity_linker.entity_linker_qlever import EntityLinkerQlever
 
 free917_entities = "evaluation-data/free917_entities.txt"
 

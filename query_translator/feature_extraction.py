@@ -10,6 +10,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 from .query_candidate import QueryCandidate
 from collections import defaultdict
 import math
+from itertools import chain
 from entity_linker.entity_linker import KBEntity
 
 N_GRAM_STOPWORDS = {'be', 'do', '?', 'the', 'of', 'is', 'are', 'in', 'was',
@@ -40,8 +41,7 @@ def get_n_grams_features(candidate):
     # First get bi-grams.
     n_grams = get_n_grams(query_text_tokens, n=2)
     # Then get uni-grams.
-    n_grams.extend(get_n_grams(query_text_tokens, n=1))
-    return n_grams
+    return chain(n_grams, get_n_grams(query_text_tokens, n=1))
 
 
 def get_query_text_tokens(candidate, include_mid=False):
@@ -151,7 +151,7 @@ def simple_features(candidate,
             for (t, _) in rm.derivation_match.token_names:
                 token_derivation_match_score[t] += 1.0
         # cardinality is only set for the answer relation.
-        if rm.cardinality > 0:
+        if rm.cardinality != -1: # this is a tuple but gets initalized as -1
             # Number of facts in the relation (like in FreebaseEasy).
             cardinality = rm.cardinality[0]
 

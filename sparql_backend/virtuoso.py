@@ -14,6 +14,9 @@ import io
 import json
 import time
 import traceback
+import joblib
+import functools
+import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +196,7 @@ class Backend(object):
 
         try:
             if resp.status == 200:
-                data = json.loads(resp.data, encoding='utf-8')
+                data = json.loads(resp.data.decode('utf-8'))
                 results = data['results']['bindings']
                 if filter_lang:
                     results = filter_results_language(results, filter_lang)
