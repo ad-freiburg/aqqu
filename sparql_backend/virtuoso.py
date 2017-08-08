@@ -1,16 +1,11 @@
 """
-A module to communicate with a SPARQL HTTP endpoint.
+A module to communicate with a Virtuoso SPARQL HTTP endpoint.
 The class uses a connection pool to reuse existing connections for new queries.
 
 Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-import collections
-import functools
-import joblib
-import atexit
-
 from urllib3 import HTTPConnectionPool, Retry
 import logging
 import globals
