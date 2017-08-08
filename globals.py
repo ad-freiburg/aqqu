@@ -3,7 +3,7 @@ Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-from configparser import SafeConfigParser
+from configparser import ConfigParser
 from itertools import tee
 import logging
 
@@ -29,7 +29,7 @@ def read_configuration(configfile):
     """
     global config
     logger.info("Reading configuration from: " + configfile)
-    parser = SafeConfigParser()
+    parser = ConfigParser()
     parser.read(configfile)
     config = parser
     return parser

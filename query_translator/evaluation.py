@@ -191,6 +191,7 @@ def evaluate_translator(translator, queries, n_queries=9999,
     logger.info("Computing evaluation statistics.")
     result, evaluated_queries = evaluate(translated_queries)
     logger.info("Finished computing evaluation statistics.")
+    logger.info(result)
     if output_result:
         logger.info(result)
     return result, evaluated_queries

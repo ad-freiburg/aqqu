@@ -645,9 +645,10 @@ class QueryCandidateExtender:
                 start_entity,
                 target_entity)
             for (_, rel_a, rel_b) in mediator_list:
+                rev_rel_a = rel_a
                 if rel_a in self.reverse_relations:
-                    rel_a = self.reverse_relations[rel_a]
-                relations.add((rel_a, rel_b))
+                    rev_rel_a = self.reverse_relations[rel_a]
+                relations.add((rev_rel_a, rel_a, rel_b))
         except KeyError:
             return []
         if query.relation_oracle:
@@ -846,6 +847,7 @@ class QueryCandidateExtender:
 
                 new_query_candidate = query_candidate.extend_with_relation_and_variable(
                     rel,
+                    rel,
                     relation_match)
                 new_query_candidate.target_nodes = [
                     new_query_candidate.current_extension]
@@ -877,7 +879,7 @@ class QueryCandidateExtender:
             # Remove the other entity's tokens for relation matches
             new_query_content_tokens = remaining_query_content_tokens - set(
                 other_entity.tokens)
-            for rel_a, rel_b in relations:
+            for rel_a, rev_rel_a, rel_b in relations:
                 relation_matches = self.match_mediated_relation_with_tokens(
                     rel_a,
                     rel_b,
@@ -892,6 +894,7 @@ class QueryCandidateExtender:
                     match = qc.RelationMatch((rel_a, rel_b))
                 new_candidate = query_candidate.extend_with_relation_and_variable(
                     rel_a,
+                    rev_rel_a,
                     match,
                     allow_new_match=True)
                 new_candidate.extend_with_relation_and_entity(rel_b,
@@ -919,6 +922,9 @@ class QueryCandidateExtender:
             # Ignore mediators here.
             if rel not in self.mediator_relations:
                 continue
+            rev_rel = rel
+            if rel in self.reverse_relations:
+                rev_rel = self.reverse_relations[rel]
             relation_matches = self.match_mediated_relation_with_tokens(rel,
                                                                         None,
                                                                         remaining_query_content_tokens,
@@ -938,8 +944,10 @@ class QueryCandidateExtender:
                     relation_match.cardinality = cardinality
                 new_query_candidate = query_candidate.extend_with_relation_and_variable(
                     rel,
+                    rev_rel,
                     relation_match)
                 new_query_candidate.extend_with_relation_and_variable(
+                    relation_match.relation[1],
                     relation_match.relation[1],
                     relation_match,
                     create_copy=False)
@@ -964,6 +972,9 @@ class QueryCandidateExtender:
             # Only consider mediators here.
             if rel not in self.mediator_relations:
                 continue
+            rev_rel = rel
+            if rel in self.reverse_relations:
+                rev_rel = self.reverse_relations[rel]
             relation_match = self.match_relation_with_tokens(rel,
                                                              remaining_query_content_tokens,
                                                              query)
@@ -971,6 +982,7 @@ class QueryCandidateExtender:
                     or not relation_match.is_empty():
                 new_query_candidate = query_candidate.extend_with_relation_and_variable(
                     rel,
+                    rev_rel,
                     relation_match,
                     allow_new_match=True)
                 query_candidates.append(new_query_candidate)
@@ -1010,6 +1022,7 @@ class QueryCandidateExtender:
                     cardinality = self.relation_counts[relation]
                     relation_match.cardinality = cardinality
                 new_query_candidate = query_candidate.extend_with_relation_and_variable(
+                    relation,
                     relation,
                     relation_match,
                     allow_new_match=True)
