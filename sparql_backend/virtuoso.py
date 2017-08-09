@@ -70,7 +70,8 @@ class memoized(object):
         try:
             self.cache = joblib.load(self.cache_file_name)
             logger.info("Re-using cache %s." % self.cache_file_name)
-        except IOError:
+        except Exception as e:
+            logger.warn("Exception reading memoization cache: %s"%(type(e)))
             logger.info("Using new cache for %s." % cache_name)
         atexit.register(self.save)
 
