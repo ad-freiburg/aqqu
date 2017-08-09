@@ -747,13 +747,12 @@ class QueryCandidateExtender:
         # Only return a date if we know it is requested.
         elif self.relation_has_date_target(relation):
             matches_answer_type = False
-        query_candidate.matches_answer_type = matches_answer_type
         return matches_answer_type
 
     def compute_answer_type_match(self, relation, query_candidate):
         """Check to extent the relation matches the answer type.
 
-        Returns a continuous score: 0 for no match, 1 for perfect match.
+        Returns a continuous score: 0 for no match, 100.0 for perfect match.
         :param relation:
         :param query_candidate:
         :return:
@@ -831,7 +830,7 @@ class QueryCandidateExtender:
             # match = self.compute_answer_type_match(rel, query_candidate, )
             # logger.info((rel, match))
             at_match = self.relation_matches_answer_type(rel, query_candidate)
-            # Do we care about the answer type?
+            # Do we require an answer type match?
             if self.parameters.restrict_answer_type and not at_match:
                 continue
 
