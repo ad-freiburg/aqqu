@@ -8,6 +8,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 from .answer_type import AnswerTypeIdentifier
 from .pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
+from entity_linker.surface_index_memory import EntitySurfaceIndexMemory
 import logging
 from . import ranker
 import time
@@ -60,13 +61,15 @@ class QueryTranslator(object):
                  query_extender,
                  entity_linker,
                  parser,
-                 scorer_obj):
+                 scorer,
+                 surface_index):
         self.backend = backend
         self.query_extender = query_extender
         self.entity_linker = entity_linker
         self.parser = parser
-        self.scorer = scorer_obj
-        self.query_extender.set_parameters(scorer_obj.get_parameters())
+        self.scorer = scorer
+        self.surface_index = surface_index
+        self.query_extender.set_parameters(scorer.get_parameters())
 
     @staticmethod
     def init_from_config():
@@ -76,11 +79,13 @@ class QueryTranslator(object):
         query_extender = QueryCandidateExtender.init_from_config()
         parser = CoreNLPParser.init_from_config()
         scorer = ranker.SimpleScoreRanker('DefaultScorer')
+        surface_index = EntitySurfaceIndexMemory.init_from_config()
         entity_linker = scorer.parameters.\
                 entity_linker_class.init_from_config(
-                        scorer.get_parameters())
+                        scorer.get_parameters(),
+                        surface_index)
         return QueryTranslator(backend, query_extender,
-                               entity_linker, parser, scorer)
+                               entity_linker, parser, scorer, surface_index)
 
     def set_scorer(self, scorer):
         """Sets the parameters of the translator.
@@ -92,7 +97,8 @@ class QueryTranslator(object):
         params = scorer.get_parameters()
         if type(self.entity_linker) != params.entity_linker_class:
             self.entity_linker = params.entity_linker_class.init_from_config(
-                            params)
+                            params,
+                            self.surface_index)
 
         self.query_extender.set_parameters(params)
 

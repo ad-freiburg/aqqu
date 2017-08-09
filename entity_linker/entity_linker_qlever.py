@@ -33,7 +33,7 @@ class EntityLinkerQlever(EntityLinker):
         self.min_subrange = 3
 
     @staticmethod
-    def init_from_config(ranker_params):
+    def init_from_config(ranker_params, surface_index):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -43,7 +43,6 @@ class EntityLinkerQlever(EntityLinker):
         stopwords = EntityLinkerQlever.load_stopwords(
                 config_options.get('EntityLinkerQlever',
                 'stopwords'))
-        surface_index = EntitySurfaceIndexMemory.init_from_config()
         max_entities_per_tokens = int(config_options.get('EntityLinker',
                                                       'max-entites-per-tokens'))
         qlever_backend = sparql_backend.loader.get_backend('qlever')

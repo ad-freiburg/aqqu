@@ -33,14 +33,13 @@ class EntityOracle:
         self._read_oracle_entities(oracle_entities_file)
 
     @staticmethod
-    def init_from_config(ranker_params):
+    def init_from_config(ranker_params, surface_index):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
         :return:
         """
         config_options = globals.config
-        surface_index = EntitySurfaceIndexMemory.init_from_config()
         return EntityOracle(ranker_params.entity_oracle_file, surface_index)
 
     def _read_oracle_entities(self, oracle_entities_file):

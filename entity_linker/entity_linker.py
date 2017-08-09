@@ -182,14 +182,13 @@ class EntityLinker:
         self.year_re = re.compile(r'[0-9]{4}')
 
     @staticmethod
-    def init_from_config(ranker_params):
+    def init_from_config(ranker_params, surface_index):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
         :return:
         """
         config_options = globals.config
-        surface_index = EntitySurfaceIndexMemory.init_from_config()
         max_entities_per_tokens = int(config_options.get('EntityLinker',
                                                       'max-entites-per-tokens'))
         return EntityLinker(surface_index,
