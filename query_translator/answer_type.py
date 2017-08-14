@@ -37,19 +37,6 @@ class AnswerTypeIdentifier:
     """
 
     def __init__(self):
-        self.what_type_pos_patterns = [
-            # tv programs
-            ("NN NNS ", 1, 2),
-            # ship class
-            ("NN NN ", 1, 2),
-            # characters
-            ("NNS ", 0, 1),
-            # religion
-            ("NN ", 0, 1)]
-        self.target_class_blacklist = {"sort",
-                                       "type",
-                                       "kind",
-                                       "kinds"}
         self.target_class_date_patterns = {"in what year",
                                            "what year",
                                            "when",

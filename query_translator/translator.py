@@ -62,13 +62,15 @@ class QueryTranslator(object):
                  entity_linker,
                  parser,
                  scorer,
-                 surface_index):
+                 surface_index,
+                 answer_type_identifier):
         self.backend = backend
         self.query_extender = query_extender
         self.entity_linker = entity_linker
         self.parser = parser
         self.scorer = scorer
         self.surface_index = surface_index
+        self.answer_type_identifier = answer_type_identifier
         self.query_extender.set_parameters(scorer.get_parameters())
 
     @staticmethod
@@ -84,8 +86,10 @@ class QueryTranslator(object):
                 entity_linker_class.init_from_config(
                         scorer.get_parameters(),
                         surface_index)
+        answer_type_identifier = AnswerTypeIdentifier()
         return QueryTranslator(backend, query_extender,
-                               entity_linker, parser, scorer, surface_index)
+                               entity_linker, parser, scorer, surface_index,
+                               answer_type_identifier)
 
     def set_scorer(self, scorer):
         """Sets the parameters of the translator.
@@ -119,11 +123,10 @@ class QueryTranslator(object):
         start_time = time.time()
         # Parse the query.
         query = self.parse_and_identify_entities(query_text)
+        # Identify the target type.
+        self.answer_type_identifier.identify_target(query)
         # Set the relation oracle.
         query.relation_oracle = self.scorer.get_parameters().relation_oracle
-        # Identify the target type.
-        target_identifier = AnswerTypeIdentifier()
-        target_identifier.identify_target(query)
         # Get content tokens of the query.
         query.query_content_tokens = get_content_tokens(query.query_tokens)
         # Match the patterns.

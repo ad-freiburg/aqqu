@@ -115,7 +115,8 @@ class IdentifiedEntity():
                  score=0, surface_score=0,
                  perfect_match=False,
                  text_match=False,
-                 text_query=False):
+                 text_query=False,
+                 entity_types=None):
         # A readable name to be displayed to the user.
         self.name = name
         # The tokens that matched this entity.
@@ -133,6 +134,8 @@ class IdentifiedEntity():
         self.text_match = text_match
         # A flag indicating if this entity was obtained via text query
         self.text_query = text_query
+        # The possible types of this entity in order of relevance descending
+        self.types = entity_types
 
     def as_string(self):
         t = ','.join(["%s" % t.token

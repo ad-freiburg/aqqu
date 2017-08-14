@@ -89,12 +89,20 @@ def simple_features(candidate,
     """
     # The number of literal entities.
     n_literal_entities = 0
+    # The number of entities matched in the question and matched in a text query
+    n_text_and_question_entities = 0
     # The sum of surface_score * mention_length over all entity mentions.
     em_token_score = 0.0
     # A flag whether the candidate contains a mediator.
     is_mediator = 0.0
     # The number of relations that are matched literally at least once.
     n_literal_relations = 0
+    # The number of relations that are matched by word at least once.
+    n_word_relations = 0
+    # The number of relations that are matched by word weakly at least once.
+    n_word_weak_relations = 0
+    # The number of relations that are matched by derivative at least once.
+    n_derivative_relations = 0
     # The number of tokens that are part of a literal entity match.
     literal_entities_length = 0
     # The number of tokens that match literal in a relation.
@@ -124,6 +132,8 @@ def simple_features(candidate,
         if em.entity.perfect_match or em.entity.surface_score > threshold:
             n_literal_entities += 1
             literal_entities_length += len(em.entity.tokens)
+        if em.entity.text_match:
+            n_text_and_question_entities += 1
         em_surface_scores.append(em.entity.surface_score)
         em_score = em.entity.surface_score
         em_score *= len(em.entity.tokens)
@@ -144,12 +154,15 @@ def simple_features(candidate,
         if rm.words_match:
             for (t, s) in rm.words_match.token_scores:
                 token_word_match_score[t] += s
+            n_word_relations += 1
         if rm.name_weak_match:
             for (t, _, s) in rm.name_weak_match.token_name_scores:
                 token_weak_match_score[t] += s
+            n_word_weak_relations += 1
         if rm.derivation_match:
             for (t, _) in rm.derivation_match.token_names:
                 token_derivation_match_score[t] += 1.0
+            n_derivative_relations += 1
         # cardinality is only set for the answer relation.
         if rm.cardinality != -1: # this is a tuple but gets initalized as -1
             # Number of facts in the relation (like in FreebaseEasy).
@@ -157,7 +170,7 @@ def simple_features(candidate,
 
     n_literal_relation_tokens = len(token_name_match_score)
     n_derivation_relation_tokens = len(token_derivation_match_score)
-    n_context_relation_tokens = len(token_word_match_score)
+    n_word_relation_tokens = len(token_word_match_score)
     n_weak_relation_tokens = len(token_weak_match_score)
     sum_weak_relation_tokens = round(sum(token_weak_match_score.values()), 2)
     sum_context_relation_tokens = round(sum(token_word_match_score.values()), 6)
@@ -183,6 +196,7 @@ def simple_features(candidate,
         coverage = ((n_rel_tokens + n_entity_tokens) /
                     float(len(candidate.query.query_tokens)))
     features = {}
+    relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0
     result_size_1_to_20 = 1 if 1 <= result_size <= 20 else 0
     result_size_gt_20 = 1 if result_size >= 20 else 0
@@ -192,6 +206,7 @@ def simple_features(candidate,
             features.update({
                 'n_literal_entities': n_literal_entities,
                 'n_entity_matches': n_entity_matches,
+                'n_text_and_question_entities': n_text_and_question_entities > 0,
                 'literal_entities_length': literal_entities_length,
                 'avg_em_surface_score': avg_em_surface_score,
                 'sum_em_surface_score': sum_em_surface_score,
@@ -203,10 +218,14 @@ def simple_features(candidate,
         features.update({
             # "Relation Features"
             'n_relations': len(candidate.get_relation_names()),
+            'relation_match': relation_match,
             'n_literal_relations': n_literal_relations,
+            'n_word_relations': n_word_relations,
+            'n_word_weak_relations': n_word_weak_relations,
+            'n_derivative_relations': n_derivative_relations,
             'n_literal_relation_tokens': n_literal_relation_tokens,
             'n_derivation_relation_tokens': n_derivation_relation_tokens,
-            'n_context_relation_tokens': n_context_relation_tokens,
+            'n_word_relation_tokens': n_word_relation_tokens,
             'n_weak_relation_tokens': n_weak_relation_tokens,
             'sum_weak_relation_tokens': sum_weak_relation_tokens,
             'sum_context_relation_tokens': sum_context_relation_tokens,
