@@ -103,6 +103,8 @@ class EntitySurfaceIndexMemory(object):
                                 last_surface_form] = surface_form_entries
                         last_surface_form = surface_form
                         surface_form_entries = array.array('d')
+                    #TODO(schnelle) saving an entity_id in a double
+                    #               is suuuper ugly
                     surface_form_entries.append(entity_id)
                     surface_form_entries.append(score)
                 except KeyError:
@@ -115,10 +117,9 @@ class EntitySurfaceIndexMemory(object):
                                     "unfound mids.")
                 if n_lines % 1000000 == 0:
                     logger.info('Stored %s surface-forms.' % n_lines)
-            # TODO(schnelle) WTF
+
             if surface_form_entries:
-                if surface_form_entries:
-                    surface_index[last_surface_form] = surface_form_entries
+                surface_index[last_surface_form] = surface_form_entries
         logger.warn("%s entity appearances in surface map w/o mapping to "
                     "entity list" % num_not_found)
         return surface_index
