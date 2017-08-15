@@ -10,7 +10,7 @@ from entity_linker.mediator_index_fast import MediatorIndexFast
 from entity_linker.entity_linker import Value, DateValue
 import time
 from . import data
-from .answer_type import AnswerType
+from answer_type.answer_type_guesser import AnswerType
 from .alignment import WordembeddingSynonyms, WordDerivations
 import globals
 import math
@@ -707,19 +707,19 @@ class QueryCandidateExtender:
         :param target_class:
         :return:
         """
+        target_class_suffix = target_class[target_class.rfind('.'):]
         # Sometimes the class is meantioned in the relation.
-        if target_class in get_relation_suffix(relation, suffix_length=2):
+        if target_class_suffix in get_relation_suffix(relation, suffix_length=2):
             return True
         # Check if the class is in the relation type distribution.
         elif relation in self.relation_target_types:
             types = self.relation_target_types[relation]
             for t in types:
-                suffix = t[t.rindex('.') + 1:]
-                if target_class in suffix:
+                if target_class == t:
                     return True
         # Check if the class is in the expected_type of the relation.
         elif relation in self.relation_expected_types:
-            if target_class in self.relation_expected_types[relation]:
+            if target_class_suffix in self.relation_expected_types[relation]:
                 return True
         return False
 
@@ -730,65 +730,19 @@ class QueryCandidateExtender:
         :return:
         """
         matches_answer_type = True
-        if query_candidate.query.target_type.type == AnswerType.DATE:
-            if not self.relation_has_date_target(relation):
+        if self.relation_has_date_target(relation):
+            if 'date' not in query_candidate.query.target_type.target_classes:
                 matches_answer_type = False
-        elif query_candidate.query.target_type.type == AnswerType.CLASS:
-            # Relations that have a date as target are not welcome here.
-            if self.relation_has_date_target(relation):
-                matches_answer_type = False
-            else:
-                matches_answer_type = False
-                for target_class in query_candidate.query.target_type.target_classes:
-                    if self.relation_answers_target_class(relation,
-                                                          target_class):
-                        matches_answer_type = True
-                        break
-        # Only return a date if we know it is requested.
-        elif self.relation_has_date_target(relation):
-            matches_answer_type = False
-        return matches_answer_type
-
-    def compute_answer_type_match(self, relation, query_candidate):
-        """Check to extent the relation matches the answer type.
-
-        Returns a continuous score: 0 for no match, 100.0 for perfect match.
-        :param relation:
-        :param query_candidate:
-        :return:
-        """
-        if query_candidate.query.target_type.type == AnswerType.DATE:
-            if not self.relation_has_date_target(relation):
-                return 90.0
-            else:
-                return 0.0
-        # This is for a hard selection of classes.
-        elif query_candidate.query.target_type.type == AnswerType.CLASS:
-            # Relations that have a date as target are not welcome here.
-            if self.relation_has_date_target(relation):
-                return 90.0
-            for target_class in query_candidate.query.target_type.target_classes:
-                if self.relation_answers_target_class(relation, target_class):
-                    return 10.0
-            return 90.0
-        elif query_candidate.query.target_type.type == AnswerType.SOFT_CLASS:
-            class_word = query_candidate.query.target_type.target_classes[0]
-            if relation in self.relation_target_type_distributions and \
-                            class_word in self.word_type_counts:
-                dist_a = filter_type_distribution(
-                    self.word_type_counts[class_word])
-                dist_b = filter_type_distribution(
-                    self.relation_target_type_distributions[relation])
-                # return kl_divergence(dist_a, dist_b, alpha=0.1)
-                return cosine_similarity(dist_a, dist_b)
-            else:
-                return 90.0
-        # AnswerType is OTHER
+        # Relations that have a date as target are not welcome here.
         else:
-            # Only return a date if we know it is requested.
-            if self.relation_has_date_target(relation):
-                return 90.0
-            return 0.0
+            matches_answer_type = False
+            for target_class in query_candidate.query.target_type.target_classes:
+                if self.relation_answers_target_class(relation,
+                                                      target_class):
+                    matches_answer_type = True
+                    break
+        # Only return a date if we know it is requested.
+        return matches_answer_type
 
     def get_relation_suggestions(self, query_candidate):
         """Return the relation suggestions for the candidate.

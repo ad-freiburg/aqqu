@@ -6,6 +6,7 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import logging
+from collections import defaultdict
 import re
 import time
 from .surface_index_memory import EntitySurfaceIndexMemory
@@ -165,12 +166,26 @@ def get_value_for_year(year):
     #return "%s-01-01T00:00:00+01:00" % (year)
     return "%s" % year
 
+def load_entity_types(entity_types_path, max_len=None):
+    logger.info('loading entity types list')
+    entity_types_map = defaultdict(lambda: ['UNK'])
+    with open(entity_types_path, 'rt', encoding='utf-8') as entity_types_file:
+        for line in entity_types_file:
+            mid, types = line.split('\t')
+            types = types.strip()
+            # list[:None] is the same as list[:] see
+            # https://stackoverflow.com/q/30622809
+            entity_types_map[mid] = types.split(' ')[:max_len]
+    return entity_types_map
+
 
 class EntityLinker:
 
     def __init__(self, surface_index,
-                 max_entities_per_tokens=4):
+                 max_entities_per_tokens=4,
+                 entity_types_map=defaultdict(lambda: ['UNK'])):
         self.surface_index = surface_index
+        self.entity_types_map = entity_types_map
         self.max_entities_per_tokens = max_entities_per_tokens
         # Entities are a mix of nouns, adjectives and numbers and
         # a LOT of other stuff as it turns out:
@@ -194,8 +209,17 @@ class EntityLinker:
         config_options = globals.config
         max_entities_per_tokens = int(config_options.get('EntityLinker',
                                                       'max-entites-per-tokens'))
+        max_types = int(config_options.get('EntityLinker',
+                                                      'max-types-per-entity'))
+        entity_types_path = config_options.get('EntityLinker',
+                                                      'entity-types-map')
+
+        entity_types_map = load_entity_types(entity_types_path, max_types)
+
         return EntityLinker(surface_index,
-                            max_entities_per_tokens=max_entities_per_tokens)
+                            max_entities_per_tokens=max_entities_per_tokens,
+                            entity_types_map = entity_types_map)
+
 
 
     def _text_matches_main_name(self, entity, text):
@@ -262,7 +286,8 @@ class EntityLinker:
                 if re.match(self.year_re, t.token):
                     year = t.token
                     e = DateValue(year, get_value_for_year(year))
-                    ie = IdentifiedEntity([t], e.name, e, perfect_match=True)
+                    #TODO(schnelle) the year is currently used in training but should be more specific
+                    ie = IdentifiedEntity([t], e.name, e, perfect_match=True, entity_types=['Year'])
                     identified_dates.append(ie)
         return identified_dates
 
@@ -297,9 +322,10 @@ class EntityLinker:
                     # Check if the main name of the entity exactly matches the text.
                     if self._text_matches_main_name(e, entity_str):
                         perfect_match = True
+                    types = self.entity_types_map[e.id]
                     ie = IdentifiedEntity(tokens[start:end],
                                           e.name, e, e.score, surface_score,
-                                          perfect_match)
+                                          perfect_match, entity_types=types)
                     # self.boost_entity_score(ie)
                     identified_entities.append(ie)
         identified_entities.extend(self.identify_dates(tokens))

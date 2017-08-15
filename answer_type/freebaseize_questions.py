@@ -72,7 +72,7 @@ def freebasesize_answer(answer, name_to_mid, entity_types_map):
     if answer[0] == '[' and answer[-1] == ']':
         return freebasesize_mention(answer, name_to_mid, entity_types_map)
     else:
-        return EntityMention(name=answer, easy_type='year')
+        return EntityMention(name=answer, easy_type='Date', types=['date'])
 
 def dumb_tokenize(text):
     toks_split = text.split(' ')

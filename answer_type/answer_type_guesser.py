@@ -4,12 +4,12 @@ import re
 import logging
 import sys
 import numpy as np
+import globals
 from collections import Counter, defaultdict
 from operator import itemgetter
 
 from .freebaseize_questions import EntityMention
 
-from query_translator.translator import Query
 from entity_linker.entity_linker import IdentifiedEntity
 
 from sklearn.feature_extraction import DictVectorizer
@@ -35,7 +35,6 @@ class AnswerType:
     """
     Represents the guessed type of an answer
     """
-    DATE = 1
     CLASS = 2
 
     def __init__(self, type, target_classes=[]):
@@ -43,10 +42,16 @@ class AnswerType:
         self.target_classes = target_classes
 
     def as_string(self):
-        if self.type == AnswerType.DATE:
-            return "Date"
-        else:
             return ', '.join([repr(c) for c in self.target_classes])
+
+class DummyQuery:
+    """ 
+    Query class used as stand-in for query_translator.Query during training.
+    This prevents a cyclic dependency
+    """
+    def __init__(self, text):
+        self.query_tokens = None
+        self.identified_entities = None
 
 class DummyToken:
     """ 
@@ -80,7 +85,7 @@ def gq_read(gq_file_path):
             ie_answer = IdentifiedEntity(em_answer.tokens,
                                           em_answer.name, em_answer.mid, 0, 0,
                                           True, entity_types=em_answer.types)
-            query = Query(query_str)
+            query = DummyQuery(query_str)
             query.query_tokens = []
             query.identified_entities = []
             for position, tok in enumerate(dumb_tokenize(query_str)):
@@ -104,24 +109,39 @@ class AnswerTypeIdentifier:
     """
 
     def __init__(self):
-        self.target_class_date_patterns = {"in what year",
-                                           "what year",
-                                           "when",
-                                           "since when"}
         self.clf = None
         self.vectorizer = None
 
-    def starts_with_date_pattern(self, query):
-        for p in self.target_class_date_patterns:
-            if query.startswith(p):
-                return True
-        return False
+    @staticmethod
+    def init_from_config():
+        """
+        Return an instance with options parsed by a config parser.
+        :param config_options:
+        :return:
+        """
+        config_options = globals.config
+        answer_type_identifier = AnswerTypeIdentifier()
+        model_file = config_options.get('AnswerTypeIdentifier',
+                                                      'model')
+        answer_type_identifier.load_model(model_file)
+        return answer_type_identifier
+
+    def load_model(self, model_file):
+        logger.info("Loading answer type model")
+        self.clf, self.vectorizer = joblib.load(model_file)
+
+    def save_model(self, model_file):
+        joblib.dump((self.clf, self.vectorizer), model_file)
 
     def identify_target(self, query):
-        if self.starts_with_date_pattern(query.query_text):
-            query.target_type = AnswerType(AnswerType.DATE)
-        else:
-            query.target_type = AnswerType(AnswerType.CLASS)
+        query.target_type = AnswerType(AnswerType.CLASS)
+        query_features = self.extract_features(query)
+        logger.info("Query AnswerType Features: {}".format(
+            repr(query_features)))
+        prediction = self.predict_best(self.vectorizer.transform(
+            query_features))
+        logger.info("predict: {}".format(repr(prediction)))
+        query.target_type.target_classes = prediction
 
 
     def transform_answer(self, answer):
@@ -174,15 +194,31 @@ class AnswerTypeIdentifier:
         print("Training data shape:", X.shape)
 
         y = np.asarray(answer_types)
-        self.clf = self.train_model(X, y)
+        self.train_model(X, y)
+
+    def predict_best(self, X, best_n=3):
+        probs = self.clf.predict_proba(X)
+        best_n_indices = np.argsort(probs, axis=1)[0, -best_n:]
+        return self.clf.classes_[best_n_indices].tolist()
+
+
+    def test_predictions(self, X, y, num=25, best_n=3):
+        X_subset = X[:num]
+        y_subset = y[:num]
+        for i, x in enumerate(X_subset):
+            prediction = self.predict_best(x, best_n)
+            print('query: {}\nprediction: {}, gold: {}\n\n'.format(
+                    self.vectorizer.inverse_transform(x),
+                    prediction, [y[i]]
+                ))
 
 
     def test(self, test_file):
         featurized_queries = []
         answer_types = []
         for query, answer in gq_read(test_file):
-            featurized_query = extract_features(query)
-            answer_type = transform_answer(answer)
+            featurized_query = self.extract_features(query)
+            answer_type = self.transform_answer(answer)
 
             featurized_queries.append(featurized_query)
             answer_types.append(answer_type)
@@ -193,11 +229,15 @@ class AnswerTypeIdentifier:
         y = np.asarray(answer_types)
         train_error = self.clf.score(X, y)
         print("Subset accuracy on test data:", train_error)
+        print("Some predictions:")
+        self.test_predictions(X, y)
+
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('train_file')
+    parser.add_argument('--load_model', action='store_true')
     parser.add_argument('--test_file', default=None)
     parser.add_argument('--entity_types', default='data/entity_types_clean.tsv')
     parser.add_argument('--model_file', default=None)
@@ -206,7 +246,14 @@ def main():
     guesser = AnswerTypeIdentifier()
     args = parser.parse_args()
 
-    guesser.train(args.train_file)
+    if args.load_model and args.model_file:
+        guesser.load_model(args.model_file)
+    else:
+        guesser.train(args.train_file)
+
+    if args.model_file and not args.load_model:
+        guesser.save_model(args.model_file)
+
 
     if args.test_file:
         guesser.test(args.test_file)
