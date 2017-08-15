@@ -63,7 +63,7 @@ def freebasesize_mention(mention, name_to_mid, entity_types_map, position=0):
     splits = mention.split('|')
     name = splits[0]
     easy_type = splits[1]
-    mid = name_to_mid[name]
+    mid = name_to_mid[name.replace('_', ' ')]
     return EntityMention(name, easy_type, mid,
             entity_types_map[mid], position)
 

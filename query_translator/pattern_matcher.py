@@ -729,19 +729,16 @@ class QueryCandidateExtender:
         :param query_candidate:
         :return:
         """
-        matches_answer_type = True
-        if self.relation_has_date_target(relation):
-            if 'date' not in query_candidate.query.target_type.target_classes:
-                matches_answer_type = False
-        # Relations that have a date as target are not welcome here.
-        else:
-            matches_answer_type = False
-            for target_class in query_candidate.query.target_type.target_classes:
-                if self.relation_answers_target_class(relation,
-                                                      target_class):
-                    matches_answer_type = True
-                    break
-        # Only return a date if we know it is requested.
+        matches_answer_type = False
+        for target_class, prob in query_candidate.query.target_type.target_classes:
+
+            if target_class == 'date':
+                matches_answer_type = self.relation_has_date_target(relation)
+                break
+            elif self.relation_answers_target_class(relation,
+                                                  target_class):
+                matches_answer_type = True
+                break
         return matches_answer_type
 
     def get_relation_suggestions(self, query_candidate):

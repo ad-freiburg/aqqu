@@ -170,7 +170,7 @@ class AnswerTypeIdentifier:
         return features
 
     def train_model(self, X, y):
-        self.clf = SGDClassifier(loss='modified_huber')
+        self.clf = SGDClassifier(loss='log')
 
         kf = KFold()
         for train_indices, test_indices in kf.split(X):
@@ -199,10 +199,11 @@ class AnswerTypeIdentifier:
     def predict_best(self, X, best_n=3):
         probs = self.clf.predict_proba(X)
         best_n_indices = np.argsort(probs, axis=1)[0, -best_n:]
-        return self.clf.classes_[best_n_indices].tolist()
+        return sorted(zip(self.clf.classes_[best_n_indices].tolist(),
+            probs[0, best_n_indices].tolist()), key=itemgetter(1), reverse=True)
 
 
-    def test_predictions(self, X, y, num=25, best_n=3):
+    def test_predictions(self, X, y, num=100, best_n=3):
         X_subset = X[:num]
         y_subset = y[:num]
         for i, x in enumerate(X_subset):
