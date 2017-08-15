@@ -150,9 +150,9 @@ class AnswerTypeIdentifier:
     def extract_features(self, query):
         features = {}
         toks = query.query_tokens
-        features['tok_0'] = toks[0].token if len(toks) > 0 else PAD
-        features['tok_1'] = toks[1].token if len(toks) > 1 else PAD
-        features['tok_2'] = toks[2].token if len(toks) > 2 else PAD
+        features['tok_0'] = toks[0].token.lower() if len(toks) > 0 else PAD
+        features['tok_1'] = toks[1].token.lower() if len(toks) > 1 else PAD
+        features['tok_2'] = toks[2].token.lower() if len(toks) > 2 else PAD
 
         mentions = query.identified_entities
         features['mtype_0']  = mentions[0].types[0] if len(mentions) > 0 else PAD
