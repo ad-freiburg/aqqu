@@ -12,6 +12,7 @@ import copy
 import logging
 import itertools
 from . import translator
+from .deep_relscorer import DeepCNNAqquRelScorer
 import random
 import globals
 import numpy as np
@@ -230,7 +231,7 @@ class AqquModel(MLModel, Ranker):
                  top_ngram_percentile=5,
                  rel_regularization_C=None,
                  load_ds_model=False,
-                 learn_deep_rel_model=False,
+                 learn_deep_rel_model=True,
                  **kwargs):
         MLModel.__init__(self, name, train_dataset)
         Ranker.__init__(self, name, **kwargs)
@@ -298,12 +299,10 @@ class AqquModel(MLModel, Ranker):
 
     def learn_deep_rel_score_model(self, queries, test_queries):
         rel_model = DeepCNNAqquRelScorer(self.get_model_name(),
-                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences.txt_model_256_hs1_neg10_win5.pruned")
-                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences_full.txt.gz_model_128_hs1_neg20_win5")
-                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences_medium.txt_model_128_hs1_neg20_win5")
-                                         "/home/haussmae/qa-completion/data/vectors/entity_sentences_medium.txt_model_128_hs1_sg1_neg20_win5")
-                                         #"/home/haussmae/qa-completion/data/vectors/entity_sentences_medium.txt_model_256_hs1_neg20_win5")
-                                         #"/home/haussmae/imdb_cnn/vectors/GoogleNews-vectors-negative300")
+                                        # TODO(schnelle) this was an absolute path
+                                        # make it relative to test then fix this ugly s.*t
+                                        # by putting it in the config
+                                         "data/entity_sentences_medium.txt_model_128_hs1_sg1_neg20_win5")
         rel_model.learn_model(queries, test_queries)
         return rel_model
 
