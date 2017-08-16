@@ -17,27 +17,50 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import mmap
 import logging
+import pickle
+from collections import defaultdict
+import marshal
 import os
 from .util import normalize_entity_name
 import array
-import marshal
 from . import entity_linker
 import globals
 
 logger = logging.getLogger(__name__)
 
+# TODO(schnelle) marshal doesn't support class types, but pickle is super
+# super slow so instead of using this nice class we have to resolve to tuples
+#class MIDOffsets:
+#    """
+#    Holds offset information associated with an MID, using __slots__
+#    immensely reduces memory consumption
+#    """
+#    __slots__ = ['entity_offset', 'types_offset']
+#    def __init__(self, entity_offset=None, types_offset=None):
+#        self.entity_offset = entity_offset
+#        self.types_offset = types_offset
+ENTITY_OFFSET = 0
+TYPES_OFFSET = 1
 
 class EntityIndex(object):
-    """A memory based index for finding entities."""
+    """
+    A memory based index for finding entities by their surface form,
+    their name and their types ordered by relevance.
+    """
 
     def __init__(self,
                  entity_list_file,
                  surface_map_file,
-                 entity_index_prefix):
+                 entity_index_prefix_file,
+                 entity_types_map_file):
         self.entity_list_file = entity_list_file
         self.surface_map_file = surface_map_file
-        self.mid_vocabulary = self._get_entity_vocabulary(entity_index_prefix)
-        self.surface_index = self._get_surface_index(entity_index_prefix)
+        self.entity_types_map_file = entity_types_map_file
+        self.mid_vocabulary = self._get_entity_vocabulary(entity_index_prefix_file)
+        self.surface_index = self._get_surface_index(entity_index_prefix_file)
+        self.types_mm_f = open(entity_types_map_file, 'rb')
+        self.types_mm = mmap.mmap(self.types_mm_f.fileno(), 0,
+                                     prot=mmap.PROT_READ)
         self.entities_mm_f = open(entity_list_file, 'rb')
         self.entities_mm = mmap.mmap(self.entities_mm_f.fileno(), 0,
                                      prot=mmap.PROT_READ)
@@ -91,22 +114,12 @@ class EntityIndex(object):
             surface_form_entries = array.array('d')
             for line in f:
                 n_lines += 1
+                cols = line.rstrip().split(b'\t')
+                surface_form = cols[0]
+                score = float(cols[1])
+                mid = cols[2]
                 try:
-                    cols = line.rstrip().split(b'\t')
-                    surface_form = cols[0]
-                    score = float(cols[1])
-                    mid = cols[2]
-                    entity_id = self.mid_vocabulary[mid]
-                    if surface_form != last_surface_form:
-                        if surface_form_entries:
-                            surface_index[
-                                last_surface_form] = surface_form_entries
-                        last_surface_form = surface_form
-                        surface_form_entries = array.array('d')
-                    #TODO(schnelle) saving an entity_id in a double
-                    #               is suuuper ugly
-                    surface_form_entries.append(entity_id)
-                    surface_form_entries.append(score)
+                    entity_offset = self.mid_vocabulary[mid][ENTITY_OFFSET]
                 except KeyError:
                     num_not_found += 1
                     if num_not_found < 100:
@@ -115,6 +128,17 @@ class EntityIndex(object):
                     elif num_not_found == 100:
                         logger.warn("Suppressing further warnings about "
                                     "unfound mids.")
+                    continue
+                if surface_form != last_surface_form:
+                    if surface_form_entries:
+                        surface_index[
+                            last_surface_form] = surface_form_entries
+                    last_surface_form = surface_form
+                    surface_form_entries = array.array('d')
+                #TODO(schnelle) saving an entity_id in a double
+                #               is suuuper ugly
+                surface_form_entries.append(entity_offset)
+                surface_form_entries.append(score)
                 if n_lines % 1000000 == 0:
                     logger.info('Stored %s surface-forms.' % n_lines)
 
@@ -133,9 +157,10 @@ class EntityIndex(object):
         mid_vocab = dict()
         num_lines = 0
         # Remember the offset for each entity.
+        logger.info("Reading entity list")
         with open(self.entity_list_file, 'rb') as f:
             mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
-            offset = mm.tell()
+            entity_offset = mm.tell()
             line = mm.readline()
             while line:
                 num_lines += 1
@@ -143,8 +168,28 @@ class EntityIndex(object):
                     logger.info('Read %s lines' % num_lines)
                 cols = line.strip().split(b'\t')
                 mid = cols[0]
-                mid_vocab[mid] = offset
-                offset = mm.tell()
+                # in a defaultdict access always works
+                mid_vocab[mid] = (entity_offset, None)
+                entity_offset = mm.tell()
+                line = mm.readline()
+
+        # Remember the offset for each type list
+        logger.info("Reading entity -> types map")
+        with open(self.entity_types_map_file, 'rb') as f:
+            mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
+            types_offset = mm.tell()
+            line = mm.readline()
+            while line:
+                num_lines += 1
+                if num_lines % 1000000 == 0:
+                    logger.info('Read %s lines' % num_lines)
+                cols = line.strip().split(b'\t')
+                mid = cols[0]
+                # in a defaultdict access always works
+                entity_offset = mid_vocab[mid][ENTITY_OFFSET] \
+                        if mid in mid_vocab else None
+                mid_vocab[mid] = (entity_offset, types_offset)
+                types_offset = mm.tell()
                 line = mm.readline()
         return mid_vocab
 
@@ -162,8 +207,10 @@ class EntityIndex(object):
                                                 'entity-surface-map')
         entity_index_prefix = config_options.get('EntityIndex',
                                                  'entity-index-prefix')
+        entity_types_map = config_options.get('EntityIndex',
+                                                      'entity-types-map')
         return EntityIndex(entity_list_file, entity_surface_map,
-                                        entity_index_prefix)
+                                        entity_index_prefix, entity_types_map)
 
     def get_entity_for_mid(self, mid):
         """Returns the entity object for the MID or None if the MID is unknown.
@@ -173,12 +220,32 @@ class EntityIndex(object):
         """
         mid = mid.encode('utf-8')
         try:
-            offset = self.mid_vocabulary[mid]
-            entity = self._read_entity_from_offset(int(offset))
-            return entity
+            offset = self.mid_vocabulary[mid][ENTITY_OFFSET]
         except KeyError:
             logger.warn("Unknown entity mid: '%s'." % mid)
             return None
+
+        entity = self._read_entity_from_offset(int(offset))
+        return entity
+
+    def get_types_for_mid(self, mid, max_len=None):
+        """
+        Returns a list of types of the entity with the given mid, ordered
+        by relevance on a best effort bases.
+        :param mid: mid to look up
+        :return: list of types (as strings), if no types are found ['UNK']
+        """
+        mid = mid.encode('utf-8')
+        try:
+            offset = self.mid_vocabulary[mid][TYPES_OFFSET]
+        except KeyError:
+            logger.warn("Unknown entity mid: '%s'." % mid)
+            return ['UNK']
+
+        types = self._read_types_from_offset(offset)
+        # TODO(schnelle) we may want to only read max_len entries
+        # Note: list[:None] == list[:]
+        return types[:max_len]
 
     def get_entities_for_surface(self, surface):
         """Return all entities for the surface form.
@@ -229,6 +296,18 @@ class EntityIndex(object):
         self.entities_mm.seek(offset)
         l = self.entities_mm.readline()
         return self._string_to_entity(l)
+
+    def _read_types_from_offset(self, offset):
+        """
+        Read a list of types from the given offset. Note that the
+        offset points to the whole line beginning with the mid
+        """
+        self.types_mm.seek(offset)
+        line = self.types_mm.readline()
+        _, types_all = line.split(b'\t')
+        types = [t.decode('utf-8') for t in types_all.strip().split(b' ')]
+        return types
+
 
 
 def main():
