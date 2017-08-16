@@ -170,9 +170,11 @@ def get_value_for_year(year):
 class EntityLinker:
 
     def __init__(self, entity_index,
-                 max_entities_per_tokens=4):
+                 max_entities_per_tokens=4,
+                 max_types=3):
         self.entity_index = entity_index
         self.max_entities_per_tokens = max_entities_per_tokens
+        self.max_types = max_types
         # Entities are a mix of nouns, adjectives and numbers and
         # a LOT of other stuff as it turns out:
         # UH, . for: hey arnold!
@@ -200,7 +202,8 @@ class EntityLinker:
 
 
         return EntityLinker(entity_index,
-                            max_entities_per_tokens=max_entities_per_tokens)
+                            max_entities_per_tokens=max_entities_per_tokens,
+                            max_types = max_types)
 
 
 
@@ -304,7 +307,7 @@ class EntityLinker:
                     # Check if the main name of the entity exactly matches the text.
                     if self._text_matches_main_name(e, entity_str):
                         perfect_match = True
-                    types = self.entity_index.get_types_for_mid(e.id)
+                    types = self.entity_index.get_types_for_mid(e.id, self.max_types)
                     ie = IdentifiedEntity(tokens[start:end],
                                           e.name, e, e.score, surface_score,
                                           perfect_match, entity_types=types)

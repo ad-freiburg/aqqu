@@ -222,8 +222,11 @@ class EntityIndex(object):
         try:
             offset = self.mid_vocabulary[mid][ENTITY_OFFSET]
         except KeyError:
-            logger.warn("Unknown entity mid: '%s'." % mid)
-            return None
+            offset = None
+
+        if offset == None:
+            logger.warn("No type entity for mid: '%s'." % mid)
+            return ['UNK']
 
         entity = self._read_entity_from_offset(int(offset))
         return entity
@@ -239,8 +242,12 @@ class EntityIndex(object):
         try:
             offset = self.mid_vocabulary[mid][TYPES_OFFSET]
         except KeyError:
-            logger.warn("Unknown entity mid: '%s'." % mid)
+            offset = None
+
+        if offset == None:
+            logger.warn("No type known for mid: '%s'." % mid)
             return ['UNK']
+
 
         types = self._read_types_from_offset(offset)
         # TODO(schnelle) we may want to only read max_len entries
