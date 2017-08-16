@@ -27,7 +27,7 @@ import globals
 logger = logging.getLogger(__name__)
 
 
-class EntitySurfaceIndexMemory(object):
+class EntityIndex(object):
     """A memory based index for finding entities."""
 
     def __init__(self,
@@ -156,13 +156,13 @@ class EntitySurfaceIndexMemory(object):
         :return:
         """
         config_options = globals.config
-        entity_list_file = config_options.get('EntitySurfaceIndex',
+        entity_list_file = config_options.get('EntityIndex',
                                               'entity-list')
-        entity_surface_map = config_options.get('EntitySurfaceIndex',
+        entity_surface_map = config_options.get('EntityIndex',
                                                 'entity-surface-map')
-        entity_index_prefix = config_options.get('EntitySurfaceIndex',
+        entity_index_prefix = config_options.get('EntityIndex',
                                                  'entity-index-prefix')
-        return EntitySurfaceIndexMemory(entity_list_file, entity_surface_map,
+        return EntityIndex(entity_list_file, entity_surface_map,
                                         entity_index_prefix)
 
     def get_entity_for_mid(self, mid):
@@ -235,7 +235,7 @@ def main():
     logging.basicConfig(
         format='%(asctime)s : %(levelname)s : %(module)s : %(message)s',
         level=logging.INFO)
-    index = EntitySurfaceIndexMemory('data/entity-list_cai',
+    index = EntityIndex('data/entity-list_cai',
                                      'data/entity-surface-map_cai',
                                      'iprefix')
     print(index.get_entities_for_surface("albert einstein"))

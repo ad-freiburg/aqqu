@@ -9,7 +9,7 @@ import logging
 from collections import defaultdict
 import re
 import time
-from .surface_index_memory import EntitySurfaceIndexMemory
+from .entity_index import EntityIndex
 from .util import normalize_entity_name, remove_number_suffix,\
     remove_prefixes_from_name, remove_suffixes_from_name
 import globals
@@ -181,10 +181,10 @@ def load_entity_types(entity_types_path, max_len=None):
 
 class EntityLinker:
 
-    def __init__(self, surface_index,
+    def __init__(self, entity_index,
                  max_entities_per_tokens=4,
                  entity_types_map=defaultdict(lambda: ['UNK'])):
-        self.surface_index = surface_index
+        self.entity_index = entity_index
         self.entity_types_map = entity_types_map
         self.max_entities_per_tokens = max_entities_per_tokens
         # Entities are a mix of nouns, adjectives and numbers and
@@ -200,7 +200,7 @@ class EntityLinker:
         self.year_re = re.compile(r'[0-9]{4}')
 
     @staticmethod
-    def init_from_config(ranker_params, surface_index):
+    def init_from_config(ranker_params, entity_index):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -216,7 +216,7 @@ class EntityLinker:
 
         entity_types_map = load_entity_types(entity_types_path, max_types)
 
-        return EntityLinker(surface_index,
+        return EntityLinker(entity_index,
                             max_entities_per_tokens=max_entities_per_tokens,
                             entity_types_map = entity_types_map)
 
@@ -309,7 +309,7 @@ class EntityLinker:
                     continue
                 entity_str = ' '.join([t.token for t in entity_tokens])
                 logger.debug("Checking if '{0}' is an entity.".format(entity_str))
-                entities = self.surface_index.get_entities_for_surface(entity_str)
+                entities = self.entity_index.get_entities_for_surface(entity_str)
                 logger.debug("Found {0} raw entities".format(len(entities)))
                 # No suggestions.
                 if len(entities) == 0:

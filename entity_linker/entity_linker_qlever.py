@@ -14,7 +14,7 @@ import logging
 import re
 import time
 import globals
-from .surface_index_memory import EntitySurfaceIndexMemory
+from .entity_index import EntityIndex
 from .entity_linker import EntityLinker, Entity, KBEntity, Value, DateValue,\
                             IdentifiedEntity
 import sparql_backend.loader
@@ -24,16 +24,16 @@ logger = logging.getLogger(__name__)
 
 class EntityLinkerQlever(EntityLinker):
 
-    def __init__(self, surface_index, qlever_backend, stopwords,
+    def __init__(self, entity_index, qlever_backend, stopwords,
             max_entities_per_tokens=4, max_text_entities = 5):
-        super().__init__(surface_index, max_entities_per_tokens)
+        super().__init__(entity_index, max_entities_per_tokens)
         self.qlever_backend = qlever_backend
         self.stopwords = stopwords
         self.max_text_entities = max_text_entities
         self.min_subrange = 3
 
     @staticmethod
-    def init_from_config(ranker_params, surface_index):
+    def init_from_config(ranker_params, entity_index):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -46,7 +46,7 @@ class EntityLinkerQlever(EntityLinker):
         max_entities_per_tokens = int(config_options.get('EntityLinker',
                                                       'max-entites-per-tokens'))
         qlever_backend = sparql_backend.loader.get_backend('qlever')
-        return EntityLinkerQlever(surface_index, qlever_backend, stopwords,
+        return EntityLinkerQlever(entity_index, qlever_backend, stopwords,
                 max_entities_per_tokens=max_entities_per_tokens)
 
     def textEntityQuery(self, tokens, limit):
