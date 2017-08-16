@@ -18,7 +18,7 @@ Setup is easy if all pre-requisites are met.
 ## Commands to run training in nvidia-docker
 
     nvidia-docker build -t tf_aqqu_learner .
-    nvidia-docker run -it --name tf_aqqu_learner_inst -v $(pwd)/data/:/app/data tf_aqqu_learner
+    nvidia-docker run --rm -it --name tf_aqqu_learner_inst -v $(pwd)/data/:/app/data tf_aqqu_learner
 
 
 
