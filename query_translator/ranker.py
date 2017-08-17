@@ -267,7 +267,8 @@ class AqquModel(MLModel, Ranker):
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
-                deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
+                rel_model = DeepCNNAqquRelScorer.init_from_config(self.get_model_name(),
+                    load_embeddings=False)
                 deep_relation_scorer.load_model()
                 self.deep_relation_scorer = deep_relation_scorer
             self.load_ds_aqqu_model()
@@ -298,11 +299,8 @@ class AqquModel(MLModel, Ranker):
         return rel_model
 
     def learn_deep_rel_score_model(self, queries, test_queries):
-        rel_model = DeepCNNAqquRelScorer(self.get_model_name(),
-                                        # TODO(schnelle) this was an absolute path
-                                        # make it relative to test then fix this ugly s.*t
-                                        # by putting it in the config
-                                         "data/entity_sentences_medium.txt_model_128_hs1_sg1_neg20_win5")
+        rel_model = DeepCNNAqquRelScorer.init_from_config(self.get_model_name(),
+                load_embeddings=True)
         rel_model.learn_model(queries, test_queries)
         return rel_model
 
@@ -691,7 +689,7 @@ class AqquModel(MLModel, Ranker):
             else:
                 # We only compare i against j, to compare the other direction,
                 # j against i, use 1 - p(i, j)
-                predict = math.fabs(1 - c[pair_index[(j, i)]])
+                predict = 1 - c[pair_index[(j, i)]]
             if predict == 1:
                 return -1
             else:
@@ -861,7 +859,7 @@ class CandidatePruner(MLModel):
         logger.info("Learning prune classifier.")
         logger.info("#of labeled examples: %s" % len(X))
         logger.info("#labels non-zero: %s" % sum(labels))
-        num_labels = float(len(labels))
+        num_labels = len(labels)
         num_pos_labels = sum(labels)
         num_neg_labels = num_labels - num_pos_labels
         pos_class_weight = num_labels / num_pos_labels
@@ -1000,7 +998,7 @@ class RelationNgramScorer(MLModel):
                                                     ngram_features)
         logger.info("#of labeled examples: %s" % len(features))
         logger.info("#labels non-zero: %s" % sum(labels))
-        num_labels = float(len(labels))
+        num_labels = len(labels)
         num_pos_labels = sum(labels)
         num_neg_labels = num_labels - num_pos_labels
         pos_class_weight = num_labels / num_pos_labels

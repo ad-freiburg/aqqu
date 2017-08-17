@@ -40,6 +40,21 @@ class DeepCNNAqquRelScorer():
         self.filter_sizes = (1, 2, 3)
         self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
 
+    @staticmethod
+    def init_from_config(name, load_embeddings=True):
+        """
+        Return an instance with options parsed by a config parser.
+        :param config_options:
+        :return:
+        """
+        config_options = globals.config
+        embedding_file = None
+        if load_embeddings:
+            embeddings_file = config_options.get('DeepRelScorer',
+                                                 'max-entites-per-tokens')
+
+        return DeepCNNAqquRelScorer(name, embedding_file)
+
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
         """
