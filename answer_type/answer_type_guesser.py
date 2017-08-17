@@ -151,9 +151,9 @@ class AnswerTypeIdentifier:
         features = {}
         toks = query.query_tokens
         # TODO(schnelle) make use of spacy's numerical tokens
-        features['tok_0'] = toks[0].orth_.lower() if len(toks) > 0 else PAD
-        features['tok_1'] = toks[1].orth_.lower() if len(toks) > 1 else PAD
-        features['tok_2'] = toks[2].orth_.lower() if len(toks) > 2 else PAD
+        features['tok_0'] = toks[0].lower_ if len(toks) > 0 else PAD
+        features['tok_1'] = toks[1].lower_ if len(toks) > 1 else PAD
+        features['tok_2'] = toks[2].lower_ if len(toks) > 2 else PAD
 
         mentions = query.identified_entities
         features['mtype_0']  = mentions[0].types[0] if len(mentions) > 0 else PAD

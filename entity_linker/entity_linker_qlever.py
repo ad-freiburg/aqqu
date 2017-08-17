@@ -51,7 +51,7 @@ class EntityLinkerQlever(EntityLinker):
 
     def textEntityQuery(self, tokens, limit):
         toks_nostop = [t for t in tokens 
-                if t.orth_.lower() not in self.stopwords]
+                if t.lower_ not in self.stopwords]
         entities = []
         max_start = min(len(toks_nostop), max(0, len(toks_nostop)-self.min_subrange))
         for start in range(max_start+1):
@@ -63,7 +63,7 @@ class EntityLinkerQlever(EntityLinker):
 
 
     def simpleTextEntityQuery(self, tokens, limit):
-        text = ' '.join([t.orth_.lower() for t in tokens])
+        text = ' '.join([t.lower_ for t in tokens])
         text_query = """
         PREFIX fb: <http://rdf.freebase.com/ns/>
         SELECT ?0e ?1ename SCORE(?t) WHERE {{
