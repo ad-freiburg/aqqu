@@ -11,6 +11,7 @@ cytoolz==0.8.2
 dill==0.2.7
 Flask==0.12.2
 Flask-Compress==1.4.0
+ftfy==4.4.3
 gensim==2.2.0
 html5lib==0.9999999
 idna==2.5
@@ -32,12 +33,15 @@ scikit-learn==0.18.1
 scipy==0.19.1
 six==1.10.0
 smart-open==1.5.3
+spacy==1.8.2
+tensorflow==1.2.1
 termcolor==1.1.0
 thinc==6.5.2
 toolz==0.8.2
 tqdm==4.14.0
 ujson==1.35
 urllib3==1.21.1
+virtualenv==15.1.0
 wcwidth==0.1.7
 webencodings==0.5.1
 Werkzeug==0.12.2
