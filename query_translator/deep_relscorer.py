@@ -6,6 +6,7 @@ import joblib
 from sklearn import utils
 import numpy as np
 import os
+import globals
 import time
 import datetime
 import tensorflow as tf
