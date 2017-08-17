@@ -267,9 +267,8 @@ class AqquModel(MLModel, Ranker):
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
-                deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
-                deep_relation_scorer.load_model()
-                self.deep_relation_scorer = deep_relation_scorer
+                self.deep_relation_scorer = DeepCNNAqquRelScorer(self.get_model_name(), None)
+                self.deep_relation_scorer.load_model()
             self.load_ds_aqqu_model()
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
