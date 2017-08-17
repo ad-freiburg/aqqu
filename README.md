@@ -14,3 +14,12 @@ Setup is easy if all pre-requisites are met.
   QUICKSTART.md for more details.
 * RAM: 40 GB for training the large WebQuestions models
 * Disk: about 40 GB for all pre-requisite data
+
+## Commands to run training in nvidia-docker
+
+    nvidia-docker build -t tf_aqqu_learner .
+    nvidia-docker run --rm -it --name tf_aqqu_learner_inst -v $(pwd)/data/:/app/data tf_aqqu_learner
+
+
+
+
