@@ -74,7 +74,7 @@ def get_query_text_tokens(candidate, include_mid=False):
                 else:
                     query_text_tokens.append('<entity>')
         else:
-            query_text_tokens.append(t.token)
+            query_text_tokens.append(t.orth_)
     return query_text_tokens
 
 

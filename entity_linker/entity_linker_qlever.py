@@ -14,11 +14,11 @@ import logging
 import re
 import time
 import globals
+import spacy
 from .entity_index import EntityIndex
 from .entity_linker import EntityLinker, Entity, KBEntity, Value, DateValue,\
                             IdentifiedEntity
 import sparql_backend.loader
-from corenlp_parser.parser import Token
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class EntityLinkerQlever(EntityLinker):
 
     def textEntityQuery(self, tokens, limit):
         toks_nostop = [t for t in tokens 
-                if t.token.lower() not in self.stopwords]
+                if t.orth_.lower() not in self.stopwords]
         entities = []
         max_start = min(len(toks_nostop), max(0, len(toks_nostop)-self.min_subrange))
         for start in range(max_start+1):
@@ -63,7 +63,7 @@ class EntityLinkerQlever(EntityLinker):
 
 
     def simpleTextEntityQuery(self, tokens, limit):
-        text = ' '.join([t.token for t in tokens])
+        text = ' '.join([t.orth_.lower() for t in tokens])
         text_query = """
         PREFIX fb: <http://rdf.freebase.com/ns/>
         SELECT ?0e ?1ename SCORE(?t) WHERE {{
@@ -124,9 +124,11 @@ def main():
     query = [('what', 'WP'), ('\'s', 'VBZ'), ('the', 'DT'), ('fastest', 'JJS'), 
             ('airplane', 'NN')]
     tokens = [Token(t, pos) for t, pos in query]
+    nlp = spacy.load('en')
+    doc = nlp("What's the fastest airplane?")
 
 
-    identified = elq.identify_entities_in_tokens(tokens)
+    identified = elq.identify_entities_in_tokens(doc)
     print('Tokens:', query)
     print([ie.sparql_name() for ie in identified])
 
