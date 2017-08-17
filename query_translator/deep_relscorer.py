@@ -146,8 +146,7 @@ class DeepCNNAqquRelScorer():
         return all_f1 / num_queries, all_oracle_f1 / num_queries
 
     def random_sample(self, n, labels, word_features, rel_features):
-        indices = np.arange(len(labels))
-        indices = np.random.permutation(indices)[:n]
+        indices = np.random.permutation(len(labels))[:n]
         return labels[indices], word_features[indices], rel_features[indices]
 
 
@@ -193,7 +192,9 @@ class DeepCNNAqquRelScorer():
                     global_step = tf.Variable(0, name="global_step", trainable=False)
                     #train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
                     train_op = optimizer.minimize(self.loss)
-                    self.sess.run(tf.initialize_all_variables())
+
+                    #self.sess.run(tf.initialize_all_variables())
+                    self.sess.run(tf.global_variables_initializer())
                     self.saver = tf.train.Saver()
                     tf.set_random_seed(42)
 
@@ -257,7 +258,7 @@ class DeepCNNAqquRelScorer():
                         # Need to shuffle the batches in each epoch.
                         logger.info("Starting epoch %d" % (n + 1))
 
-                        n_labels, n_wf, n_rf = self.random_sample(1.0 * len(train_pos_labels), train_neg_labels, train_neg_word_features, train_neg_rel_features)
+                        n_labels, n_wf, n_rf = self.random_sample(len(train_pos_labels), train_neg_labels, train_neg_word_features, train_neg_rel_features)
                         train_labels = np.vstack([n_labels, train_pos_labels])
                         train_word_features = np.vstack([n_wf, train_pos_word_features])
                         train_rel_featuers = np.vstack([n_rf, train_pos_rel_features])
@@ -460,7 +461,7 @@ class DeepCNNAqquRelScorer():
                 saver.restore(sess, ckpt.model_checkpoint_path)
 
     def score(self, candidate):
-        from ranker import RankScore
+        from .ranker import RankScore
         words, rel_features = self.create_batch_features([candidate])
         feed_dict = {
           self.input_s: words,
@@ -484,7 +485,7 @@ class DeepCNNAqquRelScorer():
         :param candidates:
         :return:
         """
-        from ranker import RankScore
+        from .ranker import RankScore
         result = []
         batch = 0
         while True:
@@ -587,7 +588,7 @@ class DeepCNNAqquRelScorer():
 
         # Combine all the pooled features
         num_filters_total = num_filters * len(filter_sizes)
-        self.h_pool = tf.concat(3, pooled_outputs)
+        self.h_pool = tf.concat(pooled_outputs, 3)
         self.h_pool_flat = tf.reshape(self.h_pool, [-1, num_filters_total])
 
         # Add dropout
@@ -666,7 +667,7 @@ class DeepCNNAqquRelScorer():
         #a_2 = self.a_2 /norm_a_1
         a_1 = tf.nn.l2_normalize(self.a_1, 1)
         a_2 = tf.nn.l2_normalize(self.a_2, 1)
-        scores = tf.mul(a_1, a_2)
+        scores = tf.multiply(a_1, a_2)
         self.scores = tf.reduce_sum(scores, 1, keep_dims=True)
         #self.scores = tf.exp(- tf.reduce_sum(tf.abs(a_1 - a_2), 1, keep_dims=True))
         #self.scores = scores
