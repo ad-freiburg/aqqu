@@ -136,9 +136,6 @@ $(DATA)/word-entity-type-counts: $(DATA)/entity-scores $(DATA)/entity-types
 fix-freebase:
 	$(PYTHON) scripts/fix_freebase.py
 
-start-parser:
-	cd corenlp-frontend; ant run
-
 start-webserver:
 	$(PYTHON) webserver/translation_webserver.py --config-file $(WEBSERVER_CONFIG)
 
@@ -171,11 +168,6 @@ $(DATA)/mediator-names:
 #data/expected-types:
 #	python query_sparql.py "PREFIX fb: <http://rdf.freebase.com/ns/> SELECT DISTINCT ?x1 ?x2 WHERE { ?x1 fb:type.property.expected_type ?x2 }"  $(SPARQL_ENDPOINT) > $@
 
-# For scaling out parsing
-# Start a central proxy loadbalancing to the parsers
-start-haproxy:
-	$(HAPROXY_BIN) -f $(HAPROXY_CFG)
-
 # Varnish cashes all HTTP requests in front of Virtuoso.
 # Speeds up evaluation.
 start-varnish:
@@ -184,10 +176,6 @@ start-varnish:
 start-varnish-ha:
 	LD_LIBRARY_DIR=$(VARNISH_LIB_DIR) $(VARNISH_BIN) -a $(VARNISH_HABIND) -f $(VARNISH_HACFG) -n varnish_ha -s malloc,30G -p http_resp_size=10000000 -p http_req_size=1000000 -p http_resp_hdr_len=1000000 -p http_req_hdr_len=1000000
 
-
-# Start a set of parsers listening on ports 4000-4004
-start-parser-parallel:
-	cd corenlp-frontend; ant run-parallel
 
 %_filtered: %
 	$(PYPY) scripts/filter_freebase.py $^ > $@
