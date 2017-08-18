@@ -8,6 +8,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import logging
 from collections import defaultdict
 import re
+import copy
 import time
 from .entity_index import EntityIndex
 from .util import normalize_entity_name, remove_number_suffix,\
@@ -139,7 +140,7 @@ class IdentifiedEntity():
         self.types = entity_types
 
     def as_string(self):
-        t = ','.join(["%s" % t.token
+        t = ','.join(["%s" % t.orth_
                       for t in self.tokens])
         return "%s: tokens:%s prob:%.3f score:%s perfect_match:%s text_match:%s text_query:%s" % \
                (self.name, t,
@@ -158,6 +159,19 @@ class IdentifiedEntity():
 
     def prefixed_sparql_name(self, prefix):
         return self.entity.prefixed_sparql_name(prefix)
+
+    def __deepcopy__(self, memo):
+        # Don't copy tokens, name they are immutable
+        res = IdentifiedEntity(
+                self.tokens,
+                self.name,
+                copy.deepcopy(self.entity, memo),
+                copy.deepcopy(self.score, memo),
+                copy.deepcopy(self.surface_score, memo),
+                copy.deepcopy(self.perfect_match, memo),
+                copy.deepcopy(self.text_match, memo),
+                copy.deepcopy(self.types, memo))
+        return res
 
 
 def get_value_for_year(year):
@@ -235,7 +249,7 @@ class EntityLinker:
         '''
         # Concatenate POS-tags
         token_list = tokens[start:end]
-        pos_list = [t.pos for t in token_list]
+        pos_list = [t.tag_ for t in token_list]
         pos_str = ''.join(pos_list)
         # Check if all tokens are in the ignore list.
         if all((t.lemma in self.ignore_lemmas for t in token_list)):
@@ -248,10 +262,10 @@ class EntityLinker:
             # if it is a single token.
             if len(pos_list) == 1:
                 if pos_list[0].startswith('NNP') and start > 0 \
-                        and tokens[start - 1].pos.startswith('NNP'):
+                        and tokens[start - 1].tag_.startswith('NNP'):
                     return False
                 elif pos_list[-1].startswith('NNP') and end < len(tokens) \
-                        and tokens[end].pos.startswith('NNP'):
+                        and tokens[end].tag_.startswith('NNP'):
                     return False
             return True
         return False
@@ -266,10 +280,10 @@ class EntityLinker:
         # Very simplistic for now.
         identified_dates = []
         for t in tokens:
-            if t.pos == 'CD':
+            if t.tag_ == 'CD':
                 # A simple match for years.
-                if re.match(self.year_re, t.token):
-                    year = t.token
+                if re.match(self.year_re, t.orth_):
+                    year = t.orth_
                     e = DateValue(year, get_value_for_year(year))
                     #TODO(schnelle) the year is currently used in training but should be more specific
                     ie = IdentifiedEntity([t], e.name, e, perfect_match=True, entity_types=['Year'])
@@ -284,15 +298,16 @@ class EntityLinker:
         '''
         n_tokens = len(tokens)
         logger.info("Starting entity identification.")
-        start_time = time.time()
+        tag_rt_time = time.time()
         # First find all candidates.
         identified_entities = []
+        start_time = time.time()
         for start in range(n_tokens):
             for end in range(start + 1, n_tokens + 1):
                 entity_tokens = tokens[start:end]
                 if not self.is_entity_occurrence(tokens, start, end):
                     continue
-                entity_str = ' '.join([t.token for t in entity_tokens])
+                entity_str = ' '.join([t.orth_ for t in entity_tokens])
                 logger.debug("Checking if '{0}' is an entity.".format(entity_str))
                 entities = self.entity_index.get_entities_for_surface(entity_str)
                 logger.debug("Found {0} raw entities".format(len(entities)))

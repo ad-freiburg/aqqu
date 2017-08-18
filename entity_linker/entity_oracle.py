@@ -57,7 +57,7 @@ class EntityOracle:
         for i in range(1, len(tokens) + 1):
             for j in range(i):
                 span = tokens[j:i]
-                span_str = ''.join([t.token for t in span])
+                span_str = ''.join([t.orth_ for t in span])
                 if span_str in self.tokens_mid_map:
                     mids = self.tokens_mid_map[span_str]
                     for mid in mids:

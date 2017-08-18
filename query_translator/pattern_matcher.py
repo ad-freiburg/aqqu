@@ -10,7 +10,7 @@ from entity_linker.mediator_index_fast import MediatorIndexFast
 from entity_linker.entity_linker import Value, DateValue
 import time
 from . import data
-from answer_type.answer_type_guesser import AnswerType
+from answer_type.answer_type_identifier import AnswerType
 from .alignment import WordembeddingSynonyms, WordDerivations
 import globals
 import math
@@ -69,9 +69,9 @@ def get_content_tokens(tokens):
     :param tokens:
     :return:
     """
-    content_tokens = [t for t in tokens if t.pos in CONTENT_POS_TAGS
-                      and t.lemma != 'be' and t.lemma != 'do'
-                      and t.lemma != 'go']
+    content_tokens = [t for t in tokens if t.tag_ in CONTENT_POS_TAGS
+                      and t.lemma_ != 'be' and t.lemma_ != 'do'
+                      and t.lemma_ != 'go']
     return content_tokens
 
 
@@ -507,9 +507,9 @@ class QueryCandidateExtender:
             relation_words = self.relation_words[relation]
         match = qc.RelationMatch(relation)
         for t in tokens:
-            lemmas = [t.lemma]
-            if len(t.lemma.split('-')) > 1:
-                lemmas.extend(t.lemma.split('-'))
+            lemmas = [t.lemma_]
+            if len(t.lemma_.split('-')) > 1:
+                lemmas.extend(t.lemma_.split('-'))
             for l in lemmas:
                 # Ignore single word lemmas, e.g. from "nintendo ds":
                 # "ds" -> "d".
@@ -600,7 +600,7 @@ class QueryCandidateExtender:
                 rel_b_name_words = get_relation_name_words(
                     get_relation_suffix(lemma_rel_b, suffix_length=2))
             for t in tokens:
-                lemma = t.lemma.replace('-', '_')
+                lemma = t.lemma_.replace('-', '_')
                 # Ignore single word lemmas, e.g. from "dintendo ds":
                 # "ds" -> "d".
                 if len(lemma) == 1:

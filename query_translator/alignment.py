@@ -56,12 +56,12 @@ class WordDerivations(object):
         :param token:
         :return:
         """
-        word = token.lemma
-        if token.pos == "JJ" or token.pos == "JJS" or token.pos == "RB":
+        word = token.lemma_
+        if token.tag_ == "JJ" or token.tag_ == "JJS" or token.tag_ == "RB":
             word += ".a"
-        elif token.pos.startswith('V'):
+        elif token.tag_.startswith('V'):
             word += ".v"
-        elif token.pos.startswith('N'):
+        elif token.tag_.startswith('N'):
             word += ".n"
         return word
 

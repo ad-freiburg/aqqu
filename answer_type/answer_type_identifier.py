@@ -58,7 +58,8 @@ class DummyToken:
     Token class used as stand-in for parser.Tokens during training.
     """
     def __init__(self, token):
-        self.token = token
+        self.orth_ = token
+        self.lower_ = token.lower()
 
 def dumb_tokenize(text):
     toks_split = text.split(' ')
@@ -89,7 +90,7 @@ def gq_read(gq_file_path):
             query.query_tokens = []
             query.identified_entities = []
             for position, tok in enumerate(dumb_tokenize(query_str)):
-                match = mentionregex.match(tok.token)
+                match = mentionregex.match(tok.orth_)
                 if match:
                     em = EntityMention.fromString(match.string, position)
                     query.query_tokens.extend([DummyToken(t) for t in em.tokens])
@@ -150,9 +151,10 @@ class AnswerTypeIdentifier:
     def extract_features(self, query):
         features = {}
         toks = query.query_tokens
-        features['tok_0'] = toks[0].token.lower() if len(toks) > 0 else PAD
-        features['tok_1'] = toks[1].token.lower() if len(toks) > 1 else PAD
-        features['tok_2'] = toks[2].token.lower() if len(toks) > 2 else PAD
+        # TODO(schnelle) make use of spacy's numerical tokens
+        features['tok_0'] = toks[0].lower_ if len(toks) > 0 else PAD
+        features['tok_1'] = toks[1].lower_ if len(toks) > 1 else PAD
+        features['tok_2'] = toks[2].lower_ if len(toks) > 2 else PAD
 
         mentions = query.identified_entities
         features['mtype_0']  = mentions[0].types[0] if len(mentions) > 0 else PAD

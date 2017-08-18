@@ -6,16 +6,16 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
-from answer_type.answer_type_guesser import AnswerTypeIdentifier
+from answer_type.answer_type_identifier import AnswerTypeIdentifier
 from .pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
 from entity_linker.entity_index import EntityIndex
 import logging
 from . import ranker
 import time
-from corenlp_parser.parser import CoreNLPParser
 import globals
 import collections
 import sparql_backend.loader
+import spacy
 
 logger = logging.getLogger(__name__)
 
@@ -51,14 +51,14 @@ class QueryTranslator(object):
     def __init__(self, backend,
                  query_extender,
                  entity_linker,
-                 parser,
+                 nlp,
                  scorer,
                  entity_index,
                  answer_type_identifier):
         self.backend = backend
         self.query_extender = query_extender
         self.entity_linker = entity_linker
-        self.parser = parser
+        self.nlp = nlp
         self.scorer = scorer
         self.entity_index = entity_index
         self.answer_type_identifier = answer_type_identifier
@@ -70,7 +70,7 @@ class QueryTranslator(object):
         backend_module_name = config_params.get("Backend", "backend")
         backend = sparql_backend.loader.get_backend(backend_module_name)
         query_extender = QueryCandidateExtender.init_from_config()
-        parser = CoreNLPParser.init_from_config()
+        nlp = spacy.load('en')
         scorer = ranker.SimpleScoreRanker('DefaultScorer')
         entity_index = EntityIndex.init_from_config()
         entity_linker = scorer.parameters.\
@@ -79,7 +79,7 @@ class QueryTranslator(object):
                         entity_index)
         answer_type_identifier = AnswerTypeIdentifier.init_from_config()
         return QueryTranslator(backend, query_extender,
-                               entity_linker, parser, scorer, entity_index,
+                               entity_linker, nlp, scorer, entity_index,
                                answer_type_identifier)
 
     def set_scorer(self, scorer):
@@ -142,11 +142,10 @@ class QueryTranslator(object):
         :return:
         """
         # Parse query.
-        parse_result = self.parser.parse(query_text)
-        tokens = parse_result.tokens
+        query_doc = self.nlp(query_text)
         # Create a query object.
-        query = Query(query_text)
-        query.query_tokens = tokens
+        query = Query(query_doc.text)
+        query.query_tokens = query_doc
         entities = self.entity_linker.identify_entities_in_tokens(
             query.query_tokens)
         query.identified_entities = entities
