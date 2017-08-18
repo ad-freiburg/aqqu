@@ -6,7 +6,7 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
-from answer_type.answer_type_guesser import AnswerTypeIdentifier
+from answer_type.answer_type_identifier import AnswerTypeIdentifier
 from .pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
 from entity_linker.entity_index import EntityIndex
 import logging

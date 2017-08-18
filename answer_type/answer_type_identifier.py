@@ -59,6 +59,7 @@ class DummyToken:
     """
     def __init__(self, token):
         self.orth_ = token
+        self.lower_ = token.lower()
 
 def dumb_tokenize(text):
     toks_split = text.split(' ')

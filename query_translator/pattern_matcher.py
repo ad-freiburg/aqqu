@@ -10,7 +10,7 @@ from entity_linker.mediator_index_fast import MediatorIndexFast
 from entity_linker.entity_linker import Value, DateValue
 import time
 from . import data
-from answer_type.answer_type_guesser import AnswerType
+from answer_type.answer_type_identifier import AnswerType
 from .alignment import WordembeddingSynonyms, WordDerivations
 import globals
 import math
