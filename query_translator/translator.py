@@ -26,34 +26,25 @@ class Query:
 
     def __init__(self, text):
         self.query_text = text.lower()
-        self.original_query = self.query_text
         self.target_type = None
         self.query_tokens = None
         self.query_content_tokens = None
         self.identified_entities = None
         self.relation_oracle = None
         self.is_count_query = False
-        self.transform_query(self.query_text)
+        self.identify_count_query(self.query_text)
 
-    def transform_query(self, text):
+    def identify_count_query(self, text):
         """
-        For some questions we want to transform the query text
-        before processing, e.g. when asking "how many ..." queries.
+        Simple check for determining if we are asked for a count
+        TODO(schnelle) this should probably be handled by the AnswerTypeIdentifier
         """
         how_many = "how many"
         in_how_many = "in how many"
         if text.startswith(how_many):
             self.is_count_query = True
-            # Replace "how many" with "what"
-            self.query = "what" + text[len(how_many):]
-            self.original_query = text
         elif text.startswith(in_how_many):
             self.is_count_query = True
-            # Replace "how many" with "what"
-            self.query = "in what" + text[len(in_how_many):]
-            self.original_query = text
-
-
 
 class QueryTranslator(object):
 

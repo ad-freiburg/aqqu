@@ -241,9 +241,9 @@ class EntityLinker:
         if all((t.lemma in self.ignore_lemmas for t in token_list)):
             return False
         # For length 1 only allows nouns
-        elif len(pos_list) == 1 and (pos_list[0].startswith('N') or pos_list[0].startswith('J')) or \
+        elif len(pos_list) == 1 and pos_list[0].startswith('NN') or \
                                 len(pos_list) > 1 and \
-                        self.valid_entity_tag.match(pos_str):
+                                self.valid_entity_tag.match(pos_str):
             # It is not allowed to split a consecutive NNP
             # if it is a single token.
             if len(pos_list) == 1:
