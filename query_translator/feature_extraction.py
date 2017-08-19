@@ -200,7 +200,7 @@ def simple_features(candidate,
     result_size_0 = 1 if result_size == 0 else 0
     result_size_1_to_20 = 1 if 1 <= result_size <= 20 else 0
     result_size_gt_20 = 1 if result_size >= 20 else 0
-    matches_answer_type = 1 if candidate.matches_answer_type else 0
+    matches_answer_type = candidate.matches_answer_type
     if generic_features:
         if entity_features:
             features.update({

@@ -729,15 +729,17 @@ class QueryCandidateExtender:
         :param query_candidate:
         :return:
         """
-        matches_answer_type = False
+        matches_answer_type = 0.0
         for target_class, prob in query_candidate.query.target_type.target_classes:
 
-            if target_class == 'date':
-                matches_answer_type = self.relation_has_date_target(relation)
+            if target_class == 'UNK':
+                continue
+            if target_class == 'date' and self.relation_has_date_target(relation):
+                matches_answer_type += prob
                 break
             elif self.relation_answers_target_class(relation,
                                                   target_class):
-                matches_answer_type = True
+                matches_answer_type = prob
                 break
         return matches_answer_type
 
@@ -782,7 +784,7 @@ class QueryCandidateExtender:
             # logger.info((rel, match))
             at_match = self.relation_matches_answer_type(rel, query_candidate)
             # Do we require an answer type match?
-            if self.parameters.restrict_answer_type and not at_match:
+            if self.parameters.restrict_answer_type and at_match <  0.05:
                 continue
 
             # Try to match remaining token to the relation.
@@ -955,7 +957,7 @@ class QueryCandidateExtender:
             # Only consider unused relations that have correct type.
             relations = [r for r in relations
                          if
-                         self.relation_matches_answer_type(r, query_candidate)
+                         self.relation_matches_answer_type(r, query_candidate) > 0.5
                          and r not in filled_relation_slots]
         else:
             relations = [r for r in relations
