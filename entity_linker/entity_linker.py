@@ -247,13 +247,22 @@ class EntityLinker:
         :param end:
         :return:
         '''
-        # Concatenate POS-tags
+
         token_list = tokens[start:end]
+        # Entity mentions cannot be empty
+        if len(token_list) < 1:
+            return False
+        # Concatenate POS-tags
         pos_list = [t.tag_ for t in token_list]
         pos_str = ''.join(pos_list)
         # Check if all tokens are in the ignore list.
-        if all((t.lemma in self.ignore_lemmas for t in token_list)):
+        if all([t.lemma_ in self.ignore_lemmas for t in token_list]):
             return False
+
+        # Entity mentions cannot start with an ignored lemma
+        if token_list[0].lemma_ in self.ignore_lemmas:
+            return False
+
         # For length 1 only allows nouns
         elif len(pos_list) == 1 and (pos_list[0].startswith('N') or pos_list[0].startswith('J')) or \
                 (len(pos_list) > 1 and self.valid_entity_tag.match(pos_str)):
@@ -306,7 +315,7 @@ class EntityLinker:
                 entity_tokens = tokens[start:end]
                 if not self.is_entity_occurrence(tokens, start, end):
                     continue
-                entity_str = ' '.join([t.orth_ for t in entity_tokens])
+                entity_str = entity_tokens.text # it's a spaCy span so we can get the proper text
                 logger.debug("Checking if '{0}' is an entity.".format(entity_str))
                 entities = self.entity_index.get_entities_for_surface(entity_str)
                 logger.debug("Found {0} raw entities".format(len(entities)))
