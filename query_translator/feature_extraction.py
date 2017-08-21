@@ -198,8 +198,6 @@ def simple_features(candidate,
     features = {}
     relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0
-    result_size_1_to_20 = 1 if 1 <= result_size <= 20 else 0
-    result_size_gt_20 = 1 if result_size >= 20 else 0
     matches_answer_type = candidate.matches_answer_type
     if generic_features:
         if entity_features:
@@ -237,8 +235,6 @@ def simple_features(candidate,
             'coverage': coverage,
             'matches_answer_type': matches_answer_type,
             'result_size_0': result_size_0,
-            'result_size_1_to_20': result_size_1_to_20,
-            'result_size_gt_20': result_size_gt_20,
         })
     return features
 
