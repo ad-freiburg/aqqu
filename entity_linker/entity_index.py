@@ -129,6 +129,10 @@ class EntityIndex(object):
                         logger.warn("Suppressing further warnings about "
                                     "unfound mids.")
                     continue
+                if entity_offset == None:
+                    logger.warn("mid %s has type offset but no entity offset"%mid)
+                    continue
+
                 if surface_form != last_surface_form:
                     if surface_form_entries:
                         surface_index[
@@ -137,7 +141,7 @@ class EntityIndex(object):
                     surface_form_entries = array.array('d')
                 #TODO(schnelle) saving an entity_id in a double
                 #               is suuuper ugly
-                surface_form_entries.append(entity_offset)
+                surface_form_entries.append(float(entity_offset))
                 surface_form_entries.append(score)
                 if n_lines % 1000000 == 0:
                     logger.info('Stored %s surface-forms.' % n_lines)
