@@ -18,7 +18,7 @@ from .evaluation import EvaluationQuery, load_eval_queries, \
     evaluate_translator, evaluate
 import os
 from . import ranker
-import pickle as pickle
+import pickle
 import functools
 import random
 from joblib import Parallel, delayed

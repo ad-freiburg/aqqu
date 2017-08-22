@@ -85,6 +85,10 @@ def filter_relation_suggestions(relation_suggestions):
             # Cannot ignore base here because it is needed
             # for dinosaurs and vulcanos.
             continue
+        if relation == 'type.object.name':
+            # We use type.object.name to get the display name anyway
+            # so this relation doesn't add information
+            continue
         if '..' in relation:
             # Old frebase dump contain concatenated relations:
             # people.person.spouse_s..people.marriage.from.

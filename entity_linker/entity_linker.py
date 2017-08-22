@@ -298,24 +298,19 @@ class EntityLinker:
                     identified_dates.append(ie)
         return identified_dates
 
-    def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):
+    def identify_in_tokens(self, tokens, min_surface_score=0.1, lax_mode=False):
         '''
-        Identify instances in the tokens.
-        :param tokens: A list of string tokens.
-        :return: A list of IdentifiedEntity
+        Actual entity identification function with a special lax mode where we are less
+        strict
         '''
         n_tokens = len(tokens)
-        logger.info("Starting entity identification.")
-        tag_rt_time = time.time()
-        # First find all candidates.
         identified_entities = []
-        start_time = time.time()
         for start in range(n_tokens):
             for end in range(start + 1, n_tokens + 1):
                 entity_tokens = tokens[start:end]
-                if not self.is_entity_occurrence(tokens, start, end):
+                if not lax_mode and not self.is_entity_occurrence(tokens, start, end):
                     continue
-                entity_str = entity_tokens.text # it's a spaCy span so we can get the proper text
+                entity_str = entity_tokens.text 
                 logger.debug("Checking if '{0}' is an entity.".format(entity_str))
                 entities = self.entity_index.get_entities_for_surface(entity_str)
                 logger.debug("Found {0} raw entities".format(len(entities)))
@@ -336,7 +331,27 @@ class EntityLinker:
                                           perfect_match, entity_types=types)
                     # self.boost_entity_score(ie)
                     identified_entities.append(ie)
+        return identified_entities
+
+    def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):
+        '''
+        Identify instances in the tokens.
+        :param tokens: A list of string tokens.
+        :return: A list of IdentifiedEntity
+        '''
+        logger.info("Starting entity identification.")
+        # First find all candidates.
+        identified_entities = []
+        start_time = time.time()
+        identified_entities.extend(self.identify_in_tokens(tokens, min_surface_score))
+        if len(identified_entities) == 0:
+            # Without any identified entities we would be unable to find anything for
+            # the query so retry this time ignoring POS tags
+            logger.info("No entities were found, retry in lax mode")
+            identified_entities.extend(self.identify_in_tokens(tokens, min_surface_score/2, lax_mode=True))
+
         identified_entities.extend(self.identify_dates(tokens))
+
         duration = (time.time() - start_time) * 1000
         identified_entities = self._filter_identical_entities(identified_entities)
         identified_entities = EntityLinker.prune_entities(identified_entities,

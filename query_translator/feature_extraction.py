@@ -111,8 +111,6 @@ def simple_features(candidate,
     n_weak_relation_tokens = 0
     # The number of tokens that match via derivation in a relation.
     n_derivation_relation_tokens = 0
-    # The number of tokens that match via relation context in a relation.
-    n_context_relation_tokens = 0
     # The sum of all weak match scores.
     sum_weak_relation_tokens = 0
     # The sum of all weak match scores.
