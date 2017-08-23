@@ -287,14 +287,15 @@ class EntityLinker:
         '''
         # Very simplistic for now.
         identified_dates = []
-        for t in tokens:
+        for i, t in enumerate(tokens):
             if t.tag_ == 'CD':
                 # A simple match for years.
                 if re.match(self.year_re, t.orth_):
                     year = t.orth_
                     e = DateValue(year, get_value_for_year(year))
-                    #TODO(schnelle) the year is currently used in training but should be more specific
-                    ie = IdentifiedEntity([t], e.name, e, perfect_match=True, entity_types=['Year'])
+                    # TODO(schnelle) the year is currently used in training but should be more specific
+                    # tokens[i:i+1] gives us a span so it's consistent with other entities
+                    ie = IdentifiedEntity(tokens[i:i+1], e.name, e, perfect_match=True, entity_types=['Year'])
                     identified_dates.append(ie)
         return identified_dates
 
