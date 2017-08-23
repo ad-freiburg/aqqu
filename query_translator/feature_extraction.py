@@ -129,12 +129,12 @@ def simple_features(candidate,
         n_entity_tokens += len(em.entity.tokens)
         if em.entity.perfect_match or em.entity.surface_score > threshold:
             n_literal_entities += 1
-            literal_entities_length += len(em.entity.tokens)
+            literal_entities_length += len(em.entity.tokens.text)
         if em.entity.text_match:
             n_text_and_question_entities += 1
         em_surface_scores.append(em.entity.surface_score)
         em_score = em.entity.surface_score
-        em_score *= len(em.entity.tokens)
+        em_score *= len(em.entity.tokens.text)
         em_token_score += em_score
         if em.entity.score > 0:
             em_pop_scores.append(math.log(em.entity.score))
