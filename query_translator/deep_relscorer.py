@@ -53,7 +53,7 @@ class DeepCNNAqquRelScorer():
         embedding_file = None
         if load_embeddings:
             embeddings_file = config_options.get('DeepRelScorer',
-                                                 'max-entites-per-tokens')
+                                                 'word-embeddings')
 
         return DeepCNNAqquRelScorer(name, embedding_file)
 
