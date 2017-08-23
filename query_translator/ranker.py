@@ -299,11 +299,7 @@ class AqquModel(MLModel, Ranker):
         return rel_model
 
     def learn_deep_rel_score_model(self, queries, test_queries):
-        rel_model = DeepCNNAqquRelScorer(self.get_model_name(),
-                                        # TODO(schnelle) this was an absolute path
-                                        # make it relative to test then fix this ugly s.*t
-                                        # by putting it in the config
-                                         "data/entity_sentences_medium.txt_model_128_hs1_sg1_neg20_win5")
+        rel_model = DeepCNNAqquRelScorer.init_from_config(self.get_model_name())
         rel_model.learn_model(queries, test_queries)
         return rel_model
 
