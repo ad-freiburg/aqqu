@@ -32,19 +32,6 @@ class Query:
         self.identified_entities = None
         self.relation_oracle = None
         self.is_count_query = False
-        self.identify_count_query(self.query_text)
-
-    def identify_count_query(self, text):
-        """
-        Simple check for determining if we are asked for a count
-        TODO(schnelle) this should probably be handled by the AnswerTypeIdentifier
-        """
-        how_many = "how many"
-        in_how_many = "in how many"
-        if text.startswith(how_many):
-            self.is_count_query = True
-        elif text.startswith(in_how_many):
-            self.is_count_query = True
 
 class QueryTranslator(object):
 
