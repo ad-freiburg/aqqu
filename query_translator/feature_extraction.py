@@ -77,6 +77,13 @@ def get_query_text_tokens(candidate, include_mid=False):
             query_text_tokens.append(t.orth_)
     return query_text_tokens
 
+def pattern_complexity(candidate):
+    """
+    Determines the complexity of a pattern for which
+    we use the number of relations in the pattern.
+    """
+    return candidate.pattern.count('R')
+
 
 def simple_features(candidate):
     """Extract features from the a single candidate.
@@ -193,7 +200,7 @@ def simple_features(candidate):
     matches_answer_type = candidate.matches_answer_type
     features.update({
         # "General Features
-        'pattern': candidate.pattern,
+        'pattern_complexity': pattern_complexity(candidate),
         'coverage': coverage,
         'matches_answer_type': matches_answer_type,
         'result_size_0': result_size_0,
