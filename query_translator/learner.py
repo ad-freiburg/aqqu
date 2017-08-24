@@ -295,10 +295,10 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description='Learn or test a'
                                                  ' scorer model.')
-    parser.add_argument('--no-cached',
+    parser.add_argument('--cached',
                         default=False,
                         action='store_true',
-                        help='Don\'t use cached data if available.')
+                        help='Use cached data if available.')
     parser.add_argument('--config',
                         default='config.cfg',
                         help='The configuration file to use.')
@@ -337,7 +337,7 @@ def main():
     globals.read_configuration(args.config)
     # Fix randomness.
     random.seed(999)
-    use_cache = not args.no_cached
+    use_cache = args.cached
     if args.which == 'train':
         train(args.scorer_name, use_cache)
     elif args.which == 'test':
