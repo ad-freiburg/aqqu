@@ -136,13 +136,20 @@ class AnswerTypeIdentifier:
 
     def identify_target(self, query):
         query.target_type = AnswerType(AnswerType.CLASS)
-        query_features = self.extract_features(query)
-        logger.info("Query AnswerType Features: {}".format(
-            repr(query_features)))
-        prediction = self.predict_best(self.vectorizer.transform(
-            query_features))
-        logger.info("predict: {}".format(repr(prediction)))
-        query.target_type.target_classes = prediction
+        # TODO(schnelle): currently the training set has no count questions
+        # when it has this hack should be removed
+        text = query.query_text
+        if text.startswith('in how many') or text.startswith('how many'):
+            query.target_type.target_classes = [('count', 0.9)]
+            query.is_count_query = True
+        else:
+            query_features = self.extract_features(query)
+            logger.info("Query AnswerType Features: {}".format(
+                repr(query_features)))
+            prediction = self.predict_best(self.vectorizer.transform(
+                query_features))
+            query.target_type.target_classes = prediction
+        logger.info("predict: {}".format(repr(query.target_type.target_classes)))
 
 
     def transform_answer(self, answer):

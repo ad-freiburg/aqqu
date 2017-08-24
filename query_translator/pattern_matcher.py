@@ -740,11 +740,14 @@ class QueryCandidateExtender:
                 continue
             if target_class == 'date' and self.relation_has_date_target(relation):
                 matches_answer_type += prob
-                break
+                continue
+            if target_class == 'count' and self.relation_points_to_count(relation):
+                matches_answer_type += prob
+                continue
             elif self.relation_answers_target_class(relation,
-                                                  target_class):
-                matches_answer_type = prob
-                break
+                                                    target_class):
+                matches_answer_type += prob
+                continue
         return matches_answer_type
 
     def get_relation_suggestions(self, query_candidate):
