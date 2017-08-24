@@ -4,10 +4,8 @@ import random
 import numpy as np
 import joblib
 from sklearn import utils
-import numpy as np
 import globals
 import os
-import globals
 import time
 import datetime
 import tensorflow as tf
@@ -50,12 +48,11 @@ class DeepCNNAqquRelScorer():
         :return:
         """
         config_options = globals.config
-        embedding_file = None
+        embeddings_file = None
         if load_embeddings:
             embeddings_file = config_options.get('DeepRelScorer',
                                                  'word-embeddings')
-
-        return DeepCNNAqquRelScorer(name, embedding_file)
+        return DeepCNNAqquRelScorer(name, embeddings_file)
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -80,7 +77,7 @@ class DeepCNNAqquRelScorer():
         vocab = {}
         # +1 for UNK +1 for PAD, + 1 for ENTITY, + 1 for STRTS
         num_words = len(gensim_model.vocab) + 3
-        logger.info("#words: %d" % num_words)
+        logger.info("#words: %d", num_words)
         vectors = np.zeros(shape=(num_words, vector_size), dtype=np.float32)
         # Vector for UNK, 0 is reserved for PAD
         PAD_ID = 0
@@ -111,7 +108,7 @@ class DeepCNNAqquRelScorer():
             #tmax += max
             #tavg += avg
         #print(tmin/len(vocab), tmax/len(vocab), tavg/len(vocab))
-        logger.info("Done. Final vocabulary size: %d" % (len(vocab)))
+        logger.info("Done. Final vocabulary size: %d", len(vocab))
         #vectors = normalize(vectors, norm='l2', axis=1)
         return vector_size, vocab, vectors
 
@@ -137,8 +134,8 @@ class DeepCNNAqquRelScorer():
         self.embeddings = np.vstack((self.embeddings, np.array(new_vectors)))
         self.embeddings = self.embeddings.astype(np.float32)
         #self.embeddings = normalize(self.embeddings, norm='l2', axis=1)
-        logger.info("Added the following words: %s" % str(new_words))
-        logger.info("Final final vocabulary size: %d." % len(self.vocab))
+        logger.info("Added the following words: %s", str(new_words))
+        logger.info("Final final vocabulary size: %d.", len(self.vocab))
 
     def evaluate_dev(self, qids, f1s, probs):
         qids, f1s, probs = utils.shuffle(qids, f1s, probs,
@@ -446,7 +443,7 @@ class DeepCNNAqquRelScorer():
         #except OSError:
         #    pass
         if not os.path.exists(filename):
-           os.makedirs(filename)
+            os.makedirs(filename)
 
         logger.info("Writing model to %s." % filename)
         self.saver.save(self.sess, filename, global_step=100)
