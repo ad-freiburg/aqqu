@@ -244,7 +244,6 @@ class AqquModel(MLModel, Ranker):
         self.cmp_cache = dict()
         self.relation_scorer = None
         self.deep_relation_scorer = None
-        self.ds_deep_relation_scorer = None
         self.load_ds_model = load_ds_model
         self.learn_deep_rel_model = learn_deep_rel_model
         self.pruner = None
@@ -284,13 +283,6 @@ class AqquModel(MLModel, Ranker):
             logger.warn("Model file %s could not be loaded." % model_file)
             raise
 
-    def load_ds_aqqu_model(self):
-        if self.load_ds_model:
-            ds_deep_relation_scorer = DeepCNNAqquDSScorer(None)
-            ds_deep_relation_scorer.load_model()
-            self.ds_deep_relation_scorer = ds_deep_relation_scorer
-
-
     def learn_rel_score_model(self, queries, ngrams_dict=None):
         rel_model = RelationNgramScorer(self.get_model_name(),
                                         self.rel_regularization_C,
@@ -310,9 +302,8 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
-
         self.load_ds_aqqu_model()
-        f_extract = partial(f_ext.extract_features, ds_deep_rel_score_model=self.ds_deep_relation_scorer)
+        f_extract = partial(f_ext.extract_features)
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate onc
         labels, features = construct_train_examples(train_queries,
@@ -724,8 +715,7 @@ class AqquModel(MLModel, Ranker):
         candidates = [key(q) for q in query_candidates]
         features = f_ext.extract_features(candidates,
                                           rel_score_model=self.relation_scorer,
-                                          deep_rel_score_model=self.deep_relation_scorer,
-                                          ds_deep_rel_score_model=self.ds_deep_relation_scorer)
+                                          deep_rel_score_model=self.deep_relation_scorer)
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
