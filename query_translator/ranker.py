@@ -230,7 +230,6 @@ class AqquModel(MLModel, Ranker):
                  train_dataset,
                  top_ngram_percentile=5,
                  rel_regularization_C=None,
-                 load_ds_model=False,
                  learn_deep_rel_model=True,
                  **kwargs):
         MLModel.__init__(self, name, train_dataset)
@@ -244,7 +243,6 @@ class AqquModel(MLModel, Ranker):
         self.cmp_cache = dict()
         self.relation_scorer = None
         self.deep_relation_scorer = None
-        self.load_ds_model = load_ds_model
         self.learn_deep_rel_model = learn_deep_rel_model
         self.pruner = None
         self.scaler = None
@@ -270,7 +268,6 @@ class AqquModel(MLModel, Ranker):
                     load_embeddings=False)
                 self.deep_relation_scorer.load_model()
 
-            self.load_ds_aqqu_model()
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
             pruner = CandidatePruner(self.get_model_name(),
@@ -302,7 +299,6 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
-        self.load_ds_aqqu_model()
         f_extract = partial(f_ext.extract_features)
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate onc
