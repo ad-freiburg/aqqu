@@ -13,7 +13,7 @@ import time
 from .entity_index import EntityIndex
 from .util import normalize_entity_name, remove_number_suffix,\
     remove_prefixes_from_name, remove_suffixes_from_name
-import globals
+import config_helper
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +208,7 @@ class EntityLinker:
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         max_entities_per_tokens = int(config_options.get('EntityLinker',
                                                       'max-entites-per-tokens'))
         max_types = int(config_options.get('EntityLinker',

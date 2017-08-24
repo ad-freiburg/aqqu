@@ -12,7 +12,7 @@ from entity_linker.entity_index import EntityIndex
 import logging
 from . import ranker
 import time
-import globals
+import config_helper
 import collections
 import sparql_backend.loader
 import spacy
@@ -53,7 +53,7 @@ class QueryTranslator(object):
 
     @staticmethod
     def init_from_config():
-        config_params = globals.config
+        config_params = config_helper.config
         backend_module_name = config_params.get("Backend", "backend")
         backend = sparql_backend.loader.get_backend(backend_module_name)
         query_extender = QueryCandidateExtender.init_from_config()

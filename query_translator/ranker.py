@@ -14,7 +14,7 @@ import itertools
 from . import translator
 from .deep_relscorer import DeepCNNAqquRelScorer
 import random
-import globals
+import config_helper
 import numpy as np
 from functools import partial
 from random import Random
@@ -189,7 +189,7 @@ class MLModel(object):
     def get_model_filename(self):
         """Return the model file name."""
         model_filename = self.get_model_name()
-        model_base_dir = globals.config.get('Ranker', 'model-dir')
+        model_base_dir = config_helper.config.get('Ranker', 'model-dir')
         model_file = "%s/%s.model" % (model_base_dir, model_filename)
         return model_file
 

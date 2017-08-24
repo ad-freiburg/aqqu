@@ -4,7 +4,7 @@ import random
 import numpy as np
 import joblib
 from sklearn import utils
-import globals
+import config_helper
 import os
 import time
 import datetime
@@ -47,7 +47,7 @@ class DeepCNNAqquRelScorer():
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         embeddings_file = None
         if load_embeddings:
             embeddings_file = config_options.get('DeepRelScorer',

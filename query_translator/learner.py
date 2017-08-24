@@ -10,7 +10,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 import logging
-import globals
+import config_helper
 from query_translator.ranker import MLModel
 import scorer_globals
 from query_translator.translator import QueryTranslator
@@ -334,7 +334,7 @@ def main():
 
     args = parser.parse_args()
     # Read global config.
-    globals.read_configuration(args.config)
+    config_helper.read_configuration(args.config)
     # Fix randomness.
     random.seed(999)
     use_cache = args.cached

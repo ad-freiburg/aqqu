@@ -3,11 +3,6 @@ Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-from configparser import ConfigParser
-from itertools import tee
-import logging
-
-logger = logging.getLogger(__name__)
 
 FREEBASE_NS_PREFIX = "http://rdf.freebase.com/ns/"
 FREEBASE_NS_PREFIX_BYTES = FREEBASE_NS_PREFIX.encode('utf-8')
@@ -15,24 +10,9 @@ FREEBASE_SPARQL_PREFIX = "fb"
 FREEBASE_NAME_RELATION = "type.object.name"
 FREEBASE_KEY_PREFIX = "http://rdf.freebase.com/key/"
 
-# When a configuration is read, store it here to make it accessible.
-config = None
 
 def get_prefixed_qualified_mid(mid, prefix):
     return "%s:%s" % (prefix, mid)
-
-
-def read_configuration(configfile):
-    """Read configuration and set variables.
-
-    :return:
-    """
-    global config
-    logger.info("Reading configuration from: " + configfile)
-    parser = ConfigParser()
-    parser.read(configfile)
-    config = parser
-    return parser
 
 def get_qualified_mid(mid):
     '''
@@ -73,18 +53,3 @@ def remove_freebase_ns_bytes(mid):
         return mid[len(FREEBASE_NS_PREFIX_BYTES):]
     return mid
 
-def pairwise(iterable):
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
-
-
-def get_freebase_easy_name_for_freebase_relation_suffix(fb_suffix):
-    '''
-    Return the Freebase easy name for a freebase relation suffix,
-    e.g. people.person.born_in -> people/person/born_in
-    :param fb_suffix:
-    :return:
-    '''
-    fb_suffix = fb_suffix.replace('.', '/')
-    return fb_suffix

@@ -12,7 +12,7 @@ import time
 from . import data
 from answer_type.answer_type_identifier import AnswerType
 from .alignment import WordembeddingSynonyms, WordDerivations
-import globals
+import config_helper
 import math
 import sparql_backend.loader
 
@@ -413,7 +413,7 @@ class QueryCandidateExtender:
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         backend_module_name = config_options.get("Backend", "backend")
         backend = sparql_backend.loader.get_backend(backend_module_name)
         relation_counts_file = config_options.get('QueryCandidateExtender',

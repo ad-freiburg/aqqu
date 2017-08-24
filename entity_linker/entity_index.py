@@ -24,7 +24,7 @@ import os
 from .util import normalize_entity_name
 import array
 from . import entity_linker
-import globals
+import config_helper
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ class EntityIndex(object):
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         entity_list_file = config_options.get('EntityIndex',
                                               'entity-list')
         entity_surface_map = config_options.get('EntityIndex',

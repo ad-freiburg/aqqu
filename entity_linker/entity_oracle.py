@@ -7,7 +7,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 import logging
-import globals
+import config_helper
 from .entity_index import EntityIndex
 from .entity_linker import IdentifiedEntity, get_value_for_year, \
     DateValue
@@ -39,7 +39,7 @@ class EntityOracle:
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         return EntityOracle(ranker_params.entity_oracle_file, entity_index)
 
     def _read_oracle_entities(self, oracle_entities_file):

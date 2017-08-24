@@ -4,7 +4,7 @@ import re
 import logging
 import sys
 import numpy as np
-import globals
+import config_helper
 from collections import Counter, defaultdict
 from operator import itemgetter
 
@@ -120,7 +120,7 @@ class AnswerTypeIdentifier:
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         answer_type_identifier = AnswerTypeIdentifier()
         model_file = config_options.get('AnswerTypeIdentifier',
                                                       'model')

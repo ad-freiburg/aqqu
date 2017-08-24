@@ -6,7 +6,7 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 __author__ = 'haussmae'
-import globals
+import freebase
 import re
 import logging
 
@@ -204,10 +204,6 @@ def read_reverse_relations(reverse_relations_file):
             cols = line.strip().split('\t')
             name = cols[0]
             reverse = cols[1]
-            # name = globals.get_mid_from_qualified_string(cols[0])
-            # reverse = globals.get_mid_from_qualified_string(cols[1])
-            # name = name.replace('/', '.')
-            # reverse = reverse.replace('/', '.')
             reverse_relations[name] = reverse
             reverse_relations[reverse] = name
     return reverse_relations
@@ -229,7 +225,7 @@ def read_relation_counts(name_mapping_file):
             # Some weird 1-character relations...
             if len(name) > 1:
                 # Ignore counts of key relations
-                if name.startswith(globals.FREEBASE_KEY_PREFIX):
+                if name.startswith(freebase.FREEBASE_KEY_PREFIX):
                     continue
                 # name = name[1:].replace('/', '.')
                 counts = (int(cols[1]), int(cols[2]), int(cols[3]))

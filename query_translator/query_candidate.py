@@ -12,7 +12,8 @@ import logging
 import sys
 from .util import *
 import copy
-import globals
+import config_helper
+import freebase
 from entity_linker.entity_linker import KBEntity
 import weakref
 
@@ -548,13 +549,13 @@ class QueryCandidate:
         """
         # A set of nodes we visited.
         visited = set()
-        query_prefix = "PREFIX %s: <%s>\n" % (globals.FREEBASE_SPARQL_PREFIX,
-                                              globals.FREEBASE_NS_PREFIX)
+        query_prefix = "PREFIX %s: <%s>\n" % (freebase.FREEBASE_SPARQL_PREFIX,
+                                              freebase.FREEBASE_NS_PREFIX)
         sparql_triples = self.root_node.to_sparql_query_triples(visited)
         triples_string = ' .\n '.join(["%s %s %s" % (
-        s.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        p.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        o.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX))
+        s.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        p.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        o.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX))
                                        for s, p, o in sparql_triples])
         query_vars = []
         if self.target_nodes:
@@ -581,10 +582,10 @@ class QueryCandidate:
             query_vars_str_names = ' '.join("%sname" % var for
                                             var in query_vars)
             query_vars_str += ' ' + query_vars_str_names
-            name_relation = globals.FREEBASE_NAME_RELATION if not self.backend.lang_in_relations else \
-                globals.FREEBASE_NAME_RELATION+".en"
+            name_relation = freebase.FREEBASE_NAME_RELATION if not self.backend.lang_in_relations else \
+                freebase.FREEBASE_NAME_RELATION+".en"
             query_var_triples = ' .\n '.join("%s %s:%s %sname" % (var,
-                                                                  globals.FREEBASE_SPARQL_PREFIX,
+                                                                  freebase.FREEBASE_SPARQL_PREFIX,
                                                                   name_relation,
                                                                   var)
                                              for var in query_vars)
@@ -602,10 +603,10 @@ class QueryCandidate:
             for s, p, o in sparql_triples:
                 if not isinstance(s, QueryCandidateVariable):
                     node_strs.add(s.get_prefixed_sparql_name(
-                        globals.FREEBASE_SPARQL_PREFIX))
+                        freebase.FREEBASE_SPARQL_PREFIX))
                 if not isinstance(o, QueryCandidateVariable):
                     node_strs.add(o.get_prefixed_sparql_name(
-                        globals.FREEBASE_SPARQL_PREFIX))
+                        freebase.FREEBASE_SPARQL_PREFIX))
             for var in query_vars:
                 for node_str in node_strs:
                     filters.append('%s != %s' % (var, node_str))
@@ -650,18 +651,18 @@ class QueryCandidate:
         """
         # A set of nodes we visited.
         visited = set()
-        query_prefix = "PREFIX %s: <%s>\n" % (globals.FREEBASE_SPARQL_PREFIX,
-                                              globals.FREEBASE_NS_PREFIX)
+        query_prefix = "PREFIX %s: <%s>\n" % (freebase.FREEBASE_SPARQL_PREFIX,
+                                              freebase.FREEBASE_NS_PREFIX)
         sparql_triples = self.root_node.to_sparql_query_triples(visited)
         triples_string = ' .\n '.join(["%s %s %s" % (
-        s.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        p.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        o.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX))
+        s.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        p.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        o.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX))
                                        for s, p, o in sparql_triples])
         extension_triple = "%s %s %s" % (
-        subject.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        predicate.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        object.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX))
+        subject.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        predicate.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        object.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX))
         if triples_string:
             triples_string += " .\n " + extension_triple
         else:

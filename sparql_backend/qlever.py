@@ -9,7 +9,7 @@
 
 from urllib3 import HTTPConnectionPool, Retry, make_headers
 import logging
-import globals
+import freebase
 import io
 import json
 import time
@@ -31,7 +31,7 @@ def normalize_freebase_output(text):
 
     if len(text) > 1 and text.startswith('<') and text.endswith('>'):
         text = text[1:-1]
-    return globals.remove_freebase_ns(text)
+    return freebase.remove_freebase_ns(text)
 
 
 def filter_results_language(results, language):

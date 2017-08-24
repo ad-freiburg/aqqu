@@ -13,7 +13,7 @@ Niklas Schnelle <schnelle@informatik.uni-freiburg.de>
 import logging
 import re
 import time
-import globals
+import config_helper
 import spacy
 from .entity_index import EntityIndex
 from .entity_linker import EntityLinker, Entity, KBEntity, Value, DateValue,\
@@ -39,7 +39,7 @@ class EntityLinkerQlever(EntityLinker):
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         stopwords = EntityLinkerQlever.load_stopwords(
                 config_options.get('EntityLinkerQlever',
                 'stopwords'))
@@ -117,7 +117,7 @@ class EntityLinkerQlever(EntityLinker):
 
 
 def main():
-    globals.read_configuration('config.cfg')
+    config_helper.read_configuration('config.cfg')
     backend = sparql_backend.loader.get_backend('qlever')
 
     elq = EntityLinkerQlever.init_from_config()
