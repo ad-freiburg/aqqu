@@ -78,9 +78,7 @@ def get_query_text_tokens(candidate, include_mid=False):
     return query_text_tokens
 
 
-def simple_features(candidate,
-                    generic_features=True,
-                    entity_features=True):
+def simple_features(candidate):
     """Extract features from the a single candidate.
 
     :type candidate: QueryCandidate
@@ -186,54 +184,49 @@ def simple_features(candidate,
                      token_name_match_score,
                      token_word_match_score]
     n_rel_tokens = len(set.union(*[set(x.keys()) for x in token_matches]))
-    # If we ignore entity features we need to compute coverage differently
-    if not entity_features:
-        coverage = (n_rel_tokens /
-                    float(len(candidate.query.query_tokens)))
-    else:
-        coverage = ((n_rel_tokens + n_entity_tokens) /
-                    float(len(candidate.query.query_tokens)))
+
+    coverage = ((n_rel_tokens + n_entity_tokens) /
+                float(len(candidate.query.query_tokens)))
     features = {}
     relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0
     matches_answer_type = candidate.matches_answer_type
-    if generic_features:
-        if entity_features:
-            features.update({
-                'n_literal_entities': n_literal_entities,
-                'n_entity_matches': n_entity_matches,
-                'n_text_and_question_entities': n_text_and_question_entities > 0,
-                'literal_entities_length': literal_entities_length,
-                'avg_em_surface_score': avg_em_surface_score,
-                'sum_em_surface_score': sum_em_surface_score,
-                'avg_em_popularity': avg_em_popularity,
-                'sum_em_popularity': sum_em_popularity,
-                'total_literal_length': (literal_entities_length
-                                         + n_literal_relations),
-            })
-        features.update({
-            # "Relation Features"
-            'n_relations': len(candidate.get_relation_names()),
-            'relation_match': relation_match,
-            'n_literal_relations': n_literal_relations,
-            'n_word_relations': n_word_relations,
-            'n_word_weak_relations': n_word_weak_relations,
-            'n_derivative_relations': n_derivative_relations,
-            'n_literal_relation_tokens': n_literal_relation_tokens,
-            'n_derivation_relation_tokens': n_derivation_relation_tokens,
-            'n_word_relation_tokens': n_word_relation_tokens,
-            'n_weak_relation_tokens': n_weak_relation_tokens,
-            'sum_weak_relation_tokens': sum_weak_relation_tokens,
-            'sum_context_relation_tokens': sum_context_relation_tokens,
-            'cardinality': cardinality,
-            # Changed this
-            # 'is_mediator': is_mediator,
-            # 'em_token_score': em_token_score,
-            # "General Features
-            'coverage': coverage,
-            'matches_answer_type': matches_answer_type,
-            'result_size_0': result_size_0,
-        })
+    features.update({
+        # "General Features
+        'pattern': candidate.pattern,
+        'coverage': coverage,
+        'matches_answer_type': matches_answer_type,
+        'result_size_0': result_size_0,
+    })
+    features.update({
+        # "Entity Features"
+        'n_literal_entities': n_literal_entities,
+        'n_entity_matches': n_entity_matches,
+        'n_text_and_question_entities': n_text_and_question_entities > 0,
+        'literal_entities_length': literal_entities_length,
+        'avg_em_surface_score': avg_em_surface_score,
+        'sum_em_surface_score': sum_em_surface_score,
+        'avg_em_popularity': avg_em_popularity,
+        'sum_em_popularity': sum_em_popularity,
+        'total_literal_length': (literal_entities_length
+                                 + n_literal_relations),
+    })
+    features.update({
+        # "Relation Features"
+        'n_relations': len(candidate.get_relation_names()),
+        'relation_match': relation_match,
+        'n_literal_relations': n_literal_relations,
+        'n_word_relations': n_word_relations,
+        'n_word_weak_relations': n_word_weak_relations,
+        'n_derivative_relations': n_derivative_relations,
+        'n_literal_relation_tokens': n_literal_relation_tokens,
+        'n_derivation_relation_tokens': n_derivation_relation_tokens,
+        'n_word_relation_tokens': n_word_relation_tokens,
+        'n_weak_relation_tokens': n_weak_relation_tokens,
+        'sum_weak_relation_tokens': sum_weak_relation_tokens,
+        'sum_context_relation_tokens': sum_context_relation_tokens,
+        'cardinality': cardinality,
+    })
     return features
 
 
@@ -261,15 +254,6 @@ def ngram_features(candidate, ngram_dict):
     return ngram_features
 
 
-def split_relation(relation):
-    """Split a relation into individual tokens
-
-    :param relation:
-    :return:
-    """
-    return relation.split('.')
-
-
 def extract_ngram_features(candidates, ngram_dict=None):
     features = []
     for c in candidates:
@@ -279,8 +263,7 @@ def extract_ngram_features(candidates, ngram_dict=None):
 
 def extract_features(candidates,
                      rel_score_model=None,
-                     deep_rel_score_model=None,
-                     ds_deep_rel_score_model=None):
+                     deep_rel_score_model=None):
     """Extract features for multiple candidates at once.
 
     :param candidates:
@@ -289,10 +272,6 @@ def extract_features(candidates,
     all_features = []
     for c in candidates:
         all_features.append(simple_features(c))
-    if ds_deep_rel_score_model:
-        ds_deep_rel_scores = ds_deep_rel_score_model.score_multiple(candidates)
-        for i, f in enumerate(all_features):
-            f['ds_deep_relation_scores'] = ds_deep_rel_scores[i].score
     if deep_rel_score_model:
         deep_rel_scores = deep_rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
