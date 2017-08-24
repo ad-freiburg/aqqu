@@ -7,7 +7,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 import logging
-import globals
+import config_helper
 import scorer_globals
 import sys
 from query_translator.translator import QueryTranslator
@@ -29,7 +29,7 @@ def main():
                         default="config.cfg",
                         help="The configuration file to use.")
     args = parser.parse_args()
-    globals.read_configuration(args.config)
+    config_helper.read_configuration(args.config)
     if args.ranker_name not in scorer_globals.scorers_dict:
         logger.error("%s is not a valid ranker" % args.ranker_name)
         logger.error("Valid rankers are: %s " % (" ".join(list(scorer_globals.scorers_dict.keys()))))
