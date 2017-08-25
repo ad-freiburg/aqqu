@@ -25,10 +25,10 @@ class Query:
     """
 
     def __init__(self, text):
-        self.query_text = text.lower()
+        self.text = text.lower()
         self.target_type = None
-        self.query_tokens = None
-        self.query_content_tokens = None
+        self.tokens = None
+        self.content_tokens = None
         self.identified_entities = None
         self.relation_oracle = None
         self.is_count_query = False
@@ -106,7 +106,7 @@ class QueryTranslator(object):
         # Set the relation oracle.
         query.relation_oracle = self.scorer.get_parameters().relation_oracle
         # Get content tokens of the query.
-        query.query_content_tokens = get_content_tokens(query.query_tokens)
+        query.content_tokens = get_content_tokens(query.tokens)
         # Match the patterns.
         pattern_matcher = QueryPatternMatcher(query,
                                               self.query_extender,
@@ -132,9 +132,9 @@ class QueryTranslator(object):
         query_doc = self.nlp(query_text)
         # Create a query object.
         query = Query(query_doc.text)
-        query.query_tokens = query_doc
+        query.tokens = query_doc
         entities = self.entity_linker.identify_entities_in_tokens(
-            query.query_tokens)
+            query.tokens)
         query.identified_entities = entities
         return query
 

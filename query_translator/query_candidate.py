@@ -280,7 +280,7 @@ class QueryCandidate:
         self.matched_relations = set()
         # Sets of matched and unmatched tokens so far.
         self.matched_tokens = set()
-        self.unmatched_tokens = set(query.query_tokens)
+        self.unmatched_tokens = set(query.tokens)
         # The current point where we are trying to extend the pattern.
         self.current_extension = None
         # A history of extensions, needed to move back.
@@ -931,7 +931,7 @@ class QueryCandidateRelation(QueryCandidateNode):
 
 def test():
     query = Query("some test query")
-    query.query_tokens = [1, 2, 3]
+    query.tokens = [1, 2, 3]
     c = QueryCandidate(query)
     root = QueryCandidateNode(':e:Albert_Einstein', 'm.123', c)
     af = QueryCandidateNode(':e:Albert_Flintstein', 'm.234', c)

@@ -7,10 +7,12 @@ Niklas Schnelle <schnelle@cs.uni-freiburg.de>
 
 """
 import logging
+from typing import List, Any
 import config_helper
 import scorer_globals
 import flask
-from query_translator.translator import QueryTranslator
+from spacy.tokens import Token
+from query_translator.translator import QueryTranslator, Query
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
                            ": %(module)s : %(message)s",
@@ -21,47 +23,35 @@ logger = logging.getLogger(__name__)
 
 app = flask.Flask(__name__)
 
-def map_results_list(results):
+
+def map_results_list(results: List[Any]) -> List[dict]:
     """
     Turns the result rows of the SPARQL backend into JSON compatible lists
     """
     query_results = []
-    for r in results:
-        if len(r) > 1:
-            query_results.append({'value': r[1], 'mid': r[0]})
+    for result in results:
+        if len(result) > 1:
+            query_results.append({'value': result[1], 'mid': result[0]})
         else:
-            query_results.append({'value' : r[0]})
+            query_results.append({'value': result[0]})
     return query_results
 
 
-class Query:
-    """
-    A query that is to be translated.
-    """
-
-    def __init__(self, text):
-        self.query_text = text.lower()
-        self.target_type = None
-        self.query_tokens = None
-        self.query_content_tokens = None
-        self.identified_entities = None
-        self.relation_oracle = None
-        self.is_count_query = False
-
-def map_token(tok):
+def map_token(tok: Token) -> dict:
     """
     Turns a spaCy Token into a JSON compatible map
     """
     return {'orth': tok.orth_, 'tag': tok.tag_, 'idx': tok.idx}
 
-def map_query(query):
+
+def map_query(query: Query) -> dict:
     """
     Turns a Query into a JSON compatible map
     """
-    tokens = [map_token(tok) for tok in query.query_tokens]
-    content_tokens = [map_token(tok) for tok in query.query_content_tokens]
+    tokens = [map_token(tok) for tok in query.tokens]
+    content_tokens = [map_token(tok) for tok in query.content_tokens]
 
-    identified_entities = []
+    identified_entities = []  # type: List[dict]
     query_map = {
         'target_type': query.target_type.as_string(),
         'tokens': tokens,
@@ -71,7 +61,8 @@ def map_query(query):
     }
     return query_map
 
-def map_translations(raw_query, results):
+
+def map_translations(raw_query, results) -> dict:
     """
     Turns the final translations into a list of candidate maps suitable
     for json encoding
@@ -93,7 +84,7 @@ def map_translations(raw_query, results):
     return {'raw_query': raw_query, 'candidates': candidates}
 
 
-def main():
+def main() -> None:
     """
     Entry point into the program
     """
@@ -111,7 +102,8 @@ def main():
     config_helper.read_configuration(args.config)
     if args.ranker_name not in scorer_globals.scorers_dict:
         logger.error("%s is not a valid ranker", args.ranker_name)
-        logger.error("Valid rankers are: %s ", " ".join(list(scorer_globals.scorers_dict.keys())))
+        logger.error("Valid rankers are: %s ", " ".join(
+            list(scorer_globals.scorers_dict.keys())))
     logger.info("Using ranker %s", args.ranker_name)
     ranker = scorer_globals.scorers_dict[args.ranker_name]
     translator = QueryTranslator.init_from_config()
@@ -130,9 +122,9 @@ def main():
         logger.info("#candidates: %s", len(translations))
         return flask.jsonify(map_translations(query, translations))
 
-
     app.run(use_reloader=False, host='0.0.0.0', threaded=False,
             port=args.port, debug=False)
+
 
 if __name__ == "__main__":
     main()

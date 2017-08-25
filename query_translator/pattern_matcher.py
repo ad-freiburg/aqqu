@@ -498,7 +498,7 @@ class QueryCandidateExtender:
         if query.relation_oracle:
             if query.relation_oracle.is_relation_in_query(query, relation,
                                                           self.reverse_relations):
-                return query.query_tokens
+                return query.tokens
             else:
                 return []
         lemma_rel = self.get_relation_lemma_name(relation)
@@ -564,7 +564,7 @@ class QueryCandidateExtender:
                         if query.relation_oracle.is_relation_in_query(query,
                                                                       relation_a,
                                                                       self.reverse_relations):
-                            result.append((rel_b, query.query_tokens))
+                            result.append((rel_b, query.tokens))
             return result
         result = []
         relb_words = []

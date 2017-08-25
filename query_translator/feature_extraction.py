@@ -7,7 +7,6 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 
-from .query_candidate import QueryCandidate
 from collections import defaultdict
 import math
 from itertools import chain
@@ -57,7 +56,7 @@ def get_query_text_tokens(candidate, include_mid=False):
             entity_tokens[t] = em
     query_text_tokens = ['<start>']
     # Replace entity tokens with "ENTITY"
-    for t in candidate.query.query_tokens:
+    for t in candidate.query.tokens:
         if t in entity_tokens:
             if include_mid and isinstance(entity_tokens[t].entity.entity, KBEntity):
                 mid = entity_tokens[t].entity.entity.id
@@ -193,7 +192,7 @@ def simple_features(candidate):
     n_rel_tokens = len(set.union(*[set(x.keys()) for x in token_matches]))
 
     coverage = ((n_rel_tokens + n_entity_tokens) /
-                float(len(candidate.query.query_tokens)))
+                float(len(candidate.query.tokens)))
     features = {}
     relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0

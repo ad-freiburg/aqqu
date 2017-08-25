@@ -50,7 +50,7 @@ class DummyQuery:
     This prevents a cyclic dependency
     """
     def __init__(self, text):
-        self.query_tokens = None
+        self.tokens = None
         self.identified_entities = None
 
 class DummyToken:
@@ -87,20 +87,20 @@ def gq_read(gq_file_path):
                                           em_answer.name, em_answer.mid, 0, 0,
                                           True, entity_types=em_answer.types)
             query = DummyQuery(query_str)
-            query.query_tokens = []
+            query.tokens = []
             query.identified_entities = []
             for position, tok in enumerate(dumb_tokenize(query_str)):
                 match = mentionregex.match(tok.orth_)
                 if match:
                     em = EntityMention.fromString(match.string, position)
-                    query.query_tokens.extend([DummyToken(t) for t in em.tokens])
+                    query.tokens.extend([DummyToken(t) for t in em.tokens])
                     ie = IdentifiedEntity(em.tokens,
                                           em.name, em.mid, 0, 0,
                                           True,
                                           entity_types=em.types)
                     query.identified_entities.append(ie)
                 else:
-                    query.query_tokens.append(tok)
+                    query.tokens.append(tok)
             yield query, ie_answer
 
 class AnswerTypeIdentifier:
@@ -138,7 +138,7 @@ class AnswerTypeIdentifier:
         query.target_type = AnswerType(AnswerType.CLASS)
         # TODO(schnelle): currently the training set has no count questions
         # when it has this hack should be removed
-        text = query.query_text
+        text = query.text
         if text.startswith('in how many') or text.startswith('how many'):
             query.target_type.target_classes = [('count', 0.9)]
             query.is_count_query = True
@@ -157,7 +157,7 @@ class AnswerTypeIdentifier:
 
     def extract_features(self, query):
         features = {}
-        toks = query.query_tokens
+        toks = query.tokens
         # TODO(schnelle) make use of spacy's numerical tokens
         features['tok_0'] = toks[0].lower_ if len(toks) > 0 else PAD
         features['tok_1'] = toks[1].lower_ if len(toks) > 1 else PAD
