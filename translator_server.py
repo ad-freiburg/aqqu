@@ -12,8 +12,7 @@ import config_helper
 import scorer_globals
 import flask
 import spacy
-from query_translator.query_candidate import QueryCandidate,\
-        RelationMatch, EntityMatch
+from query_translator.query_candidate import RelationMatch, EntityMatch
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
 import freebase
