@@ -7,11 +7,13 @@ Niklas Schnelle <schnelle@cs.uni-freiburg.de>
 
 """
 import logging
-from typing import List, Union
+from typing import List, Union, Iterable
 import config_helper
 import scorer_globals
 import flask
 import spacy
+from query_translator.query_candidate import QueryCandidate,\
+        RelationMatch, EntityMatch
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
 import freebase
@@ -26,7 +28,7 @@ LOG = logging.getLogger(__name__)
 APP = flask.Flask(__name__)
 
 
-def map_results_list(results: List[List[Union[str, int]]]) -> List[dict]:
+def map_results_list(results: Iterable[List[Union[str, int]]]) -> List[dict]:
     """
     Maps the result rows of the SPARQL backend into JSON compatible lists
     """
@@ -92,26 +94,69 @@ def map_query(query: Query) -> dict:
     return query_map
 
 
-def map_translations(raw_query, results) -> dict:
+def map_relation_matches(rel_matches: Iterable[RelationMatch]) -> List[dict]:
     """
-    Turns the final translations into a list of candidate maps suitable
-    for json encoding
+    Maps RelationMatches to a list of JSON compatible dicts
+    """
+    results = []
+    for rel_match in rel_matches:
+        matches = []  # type: List[str]
+        if rel_match.name_match:
+            matches.append(rel_match.name_match.as_string())
+        if rel_match.derivation_match:
+            matches.append(rel_match.derivation_match.as_string())
+        if rel_match.words_match:
+            matches.append(rel_match.words_match.as_string())
+        if rel_match.name_weak_match:
+            matches.append(rel_match.name_weak_match.as_string())
+        if rel_match.count_match:
+            matches.append(rel_match.count_match.as_string())
+        relation_name = rel_match.relation
+        if isinstance(rel_match.relation, tuple):
+            relation_name = ' -> '.join(rel_match.relation)
+
+        results.append({'name': relation_name, 'matches': matches})
+
+    return results
+
+
+def map_entity_matches(ent_matches: Iterable[EntityMatch]) -> List[dict]:
+    """
+    Maps EntityMatches to a list of JSON compatible dicts
+    """
+    return [em.as_string() for em in ent_matches]
+
+
+def map_translations(raw_query, parsed_query, translations) -> dict:
+    """
+    Turns the final translations which are lists of namedtuple with
+    query_candidate and query_result into a result map suitable for JSON
+    encoding
+
+    Note: All query candidates reference the same Query object so if there
+    is any candiate we can pick it's Query object as the only one
     """
     candidates = []
-    for result in results:
-        candidate = result.query_candidate
-        query_results = map_results_list(result.query_result_rows)
+
+    for translation in translations:
+        candidate = translation.query_candidate
+        query_results = map_results_list(translation.query_result_rows)
+        relation_matches = map_relation_matches(candidate.matched_relations)
+        entity_matches = map_entity_matches(candidate.matched_entities)
 
         candidates.append({
-            'query': map_query(candidate.query),
             'sparql': candidate.to_sparql_query(),
             'matches_answer_type': candidate.matches_answer_type,
+            'relation_matches': relation_matches,
+            'entity_matches': entity_matches,
             'pattern': candidate.pattern,
             'graph': candidate.graph_as_simple_string(indent=1),
             'results': query_results,
             })
 
-    return {'raw_query': raw_query, 'candidates': candidates}
+    return {'raw_query': raw_query,
+            'parsed_query': map_query(parsed_query),
+            'candidates': candidates}
 
 
 def main() -> None:
@@ -145,12 +190,14 @@ def main() -> None:
         """
         REST entry point providing a very simple query interface
         """
-        query = flask.request.args.get('q')
-        LOG.info("Translating query: %s", query)
-        translations = translator.translate_and_execute_query(query)
-        LOG.info("Done translating query: %s", query)
+        raw_query = flask.request.args.get('q')
+        LOG.info("Translating query: %s", raw_query)
+        parsed_query, translations = translator.translate_and_execute_query(
+            raw_query)
+        LOG.info("Done translating query: %s", raw_query)
         LOG.info("#candidates: %s", len(translations))
-        return flask.jsonify(map_translations(query, translations))
+        return flask.jsonify(map_translations(
+            raw_query, parsed_query, translations))
 
     APP.run(use_reloader=False, host='0.0.0.0', threaded=False,
             port=args.port, debug=False)

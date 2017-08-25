@@ -123,7 +123,7 @@ class QueryTranslator(object):
         ermrert_matches = pattern_matcher.match_ERMRERT_pattern()
         duration = (time.time() - start_time) * 1000
         logging.info("Total translation time: %.2f ms." % duration)
-        return ert_matches + ermrt_matches + ermrert_matches
+        return query, ert_matches + ermrt_matches + ermrert_matches
 
     def parse_and_identify_entities(self, query_text):
         """
@@ -154,22 +154,22 @@ class QueryTranslator(object):
                                                     'query_result_rows'],
                                                    verbose=False)
         # Parse query.
-        results = []
+        translations = []
         num_sparql_queries = self.backend.num_queries_executed
         sparql_query_time = self.backend.total_query_time
-        queries_candidates = self.translate_query(query)
+        parsed_query, query_candidates = self.translate_query(query)
         translation_time = (self.backend.total_query_time - sparql_query_time) * 1000
         num_sparql_queries = self.backend.num_queries_executed - num_sparql_queries
         avg_query_time = translation_time / (num_sparql_queries + 0.001)
         logger.info("Translation executed %s queries in %.2f ms."
                     " Average: %.2f ms." % (num_sparql_queries,
                                             translation_time, avg_query_time))
-        logger.info("Ranking %s query candidates" % len(queries_candidates))
+        logger.info("Ranking %s query candidates" % len(query_candidates))
         ranker = self.scorer
-        ranked_candidates = ranker.rank_query_candidates(queries_candidates)
-        logger.info("Fetching results for all candidates.")
+        ranked_candidates = ranker.rank_query_candidates(query_candidates)
+        logger.info("Fetching translations for all candidates.")
         sparql_query_time = self.backend.total_query_time
-        n_total_results = 0
+        n_total_translations = 0
         if len(ranked_candidates) > n_top:
             logger.info("Truncating returned candidates to %s." % n_top)
         for query_candidate in ranked_candidates[:n_top]:
@@ -177,18 +177,18 @@ class QueryTranslator(object):
             # Sometimes virtuoso just doesn't process a query
             if not query_result:
                 continue
-            n_total_results += sum([len(rows) for rows in query_result])
+            n_total_translations += sum([len(rows) for rows in query_result])
             result = TranslationResult(query_candidate, query_result)
-            results.append(result)
+            translations.append(result)
         # This assumes that each query candidate uses the same SPARQL backend
         # instance which should be the case at the moment.
         result_fetch_time = (self.backend.total_query_time - sparql_query_time) * 1000
-        avg_result_fetch_time = result_fetch_time / (len(results) + 0.001)
-        logger.info("Fetched a total of %s results in %s queries in %.2f ms."
-                    " Avg per query: %.2f ms." % (n_total_results, len(results),
+        avg_result_fetch_time = result_fetch_time / (len(translations) + 0.001)
+        logger.info("Fetched a total of %s translations in %s queries in %.2f ms."
+                    " Avg per query: %.2f ms." % (n_total_translations, len(translations),
                                                   result_fetch_time, avg_result_fetch_time))
         logger.info("Done translating and executing: %s." % query)
-        return results
+        return parsed_query, translations
 
 
 

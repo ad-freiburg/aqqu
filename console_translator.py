@@ -42,7 +42,7 @@ def main():
         sys.stdout.flush()
         query = sys.stdin.readline().strip()
         logger.info("Translating query: %s" % query)
-        results = translator.translate_and_execute_query(query)
+        _, results = translator.translate_and_execute_query(query)
         logger.info("Done translating query: %s" % query)
         logger.info("#candidates: %s" % len(results))
         if len(results) > 0:
