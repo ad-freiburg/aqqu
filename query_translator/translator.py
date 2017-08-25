@@ -6,16 +6,20 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
-from answer_type.answer_type_identifier import AnswerTypeIdentifier
-from .pattern_matcher import QueryCandidateExtender, QueryPatternMatcher, get_content_tokens
-from entity_linker.entity_index import EntityIndex
 import logging
-from . import ranker
 import time
-import config_helper
+from typing import Tuple, Iterable
 import collections
-import sparql_backend.loader
 import spacy
+import sparql_backend.loader
+import config_helper
+from answer_type.answer_type_identifier import AnswerTypeIdentifier,\
+        AnswerType
+from entity_linker.entity_index import EntityIndex
+from entity_linker.entity_linker import IdentifiedEntity
+from .pattern_matcher import QueryCandidateExtender,\
+        QueryPatternMatcher, get_content_tokens
+from . import ranker
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +29,11 @@ class Query:
     """
 
     def __init__(self, text):
-        self.text = text.lower()
-        self.target_type = None
-        self.tokens = None
-        self.content_tokens = None
-        self.identified_entities = None
+        self.text = text.lower()  # type: str
+        self.target_type = None  # type: AnswerType
+        self.tokens = None  # type: spacy.tokens.Doc
+        self.content_tokens = None  # type: spacy.tokens.Span
+        self.identified_entities = None  # type: Iterable[IdentifiedEntity]
         self.relation_oracle = None
         self.is_count_query = False
 
