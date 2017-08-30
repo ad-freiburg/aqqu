@@ -7,11 +7,12 @@ Niklas Schnelle <schnelle@cs.uni-freiburg.de>
 
 """
 import logging
-from typing import List, Union, Iterable
+from typing import List, Union, Iterable, DefaultDict, Any
 import config_helper
 import scorer_globals
 import flask
 import spacy
+from collections import defaultdict
 from query_translator.query_candidate import RelationMatch, EntityMatch
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
@@ -96,22 +97,28 @@ def map_relation_matches(rel_matches: Iterable[RelationMatch]) -> List[dict]:
     """
     results = []
     for rel_match in rel_matches:
-        matches = []  # type: List[str]
+        matches = defaultdict(list)  # type: DefaultDict[str, List[Any]]
         if rel_match.name_match:
-            matches.append(rel_match.name_match.as_string())
+            matches['name_match'].append(rel_match.name_match.as_string())
         if rel_match.derivation_match:
-            matches.append(rel_match.derivation_match.as_string())
+            matches['derivation_match'].append(
+                rel_match.derivation_match.as_string())
         if rel_match.words_match:
-            matches.append(rel_match.words_match.as_string())
+            matches['words_match'].append(
+                rel_match.words_match.as_string())
         if rel_match.name_weak_match:
-            matches.append(rel_match.name_weak_match.as_string())
+            matches['name_weak_match'].append(
+                rel_match.name_weak_match.as_string())
         if rel_match.count_match:
-            matches.append(rel_match.count_match.as_string())
+            matches['count_match'].append(rel_match.count_match.as_string())
         relation_name = rel_match.relation
         if isinstance(rel_match.relation, tuple):
             relation_name = ' -> '.join(rel_match.relation)
 
-        results.append({'name': relation_name, 'matches': matches})
+        token_positions = [tok.i for tok in rel_match.tokens]
+        results.append({'name': relation_name,
+                        'token_positions': token_positions,
+                        'matches': matches})
 
     return results
 
@@ -120,7 +127,8 @@ def map_entity_matches(ent_matches: Iterable[EntityMatch]) -> List[dict]:
     """
     Maps EntityMatches to a list of JSON compatible dicts
     """
-    return [{'mid': em.entity.entity.id, 'score': em.score} for em in ent_matches]
+    return [{'mid': em.entity.entity.id,
+             'score': em.score} for em in ent_matches]
 
 
 def map_translations(raw_query, parsed_query, translations) -> dict:
