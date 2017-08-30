@@ -15,7 +15,6 @@ import spacy
 from query_translator.query_candidate import RelationMatch, EntityMatch
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
-import freebase
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
                            ": %(module)s : %(message)s",
@@ -34,9 +33,9 @@ def map_results_list(results: Iterable[List[Union[str, int]]]) -> List[dict]:
     query_results = []
     for result in results:
         if len(result) > 1:
-            query_results.append({'value': result[1], 'mid': result[0]})
+            query_results.append({'name': result[1], 'mid': result[0]})
         else:
-            query_results.append({'value': result[0]})
+            query_results.append({'name': result[0]})
     return query_results
 
 
@@ -45,7 +44,7 @@ def map_query_doc(doc: spacy.tokens.Doc) -> List[dict]:
     Maps a spaCy Doc into a JSON compatible list
     """
     return [{'orth': tok.orth_, 'tag': tok.tag_,
-             'offset': tok.idx} for tok in doc]
+             'lemma': tok.lemma_, 'offset': tok.idx} for tok in doc]
 
 
 def map_entity(entity: entity_linker.Entity) -> dict:
@@ -53,8 +52,7 @@ def map_entity(entity: entity_linker.Entity) -> dict:
     Maps an entity_linker.Entity to a JSON compatible dict
     """
     return {'name': entity.name,
-            'mid': entity.sparql_name(),
-            'sparql': entity.prefixed_sparql_name(freebase.FREEBASE_NS_PREFIX)}
+            'mid': entity.sparql_name()}
 
 
 def map_identified_entity(entity: entity_linker.IdentifiedEntity) -> dict:
@@ -62,7 +60,6 @@ def map_identified_entity(entity: entity_linker.IdentifiedEntity) -> dict:
     Maps an IdentifiedEntity into a JSON compatible dict
     """
     mapped_entity = {
-        'name': entity.name,
         'token_positions': [tok.i for tok in entity.tokens],
         'surface_score': entity.surface_score,
         'score': entity.score,
@@ -123,7 +120,7 @@ def map_entity_matches(ent_matches: Iterable[EntityMatch]) -> List[dict]:
     """
     Maps EntityMatches to a list of JSON compatible dicts
     """
-    return [em.as_string() for em in ent_matches]
+    return [{'mid': em.entity.entity.id, 'score': em.score} for em in ent_matches]
 
 
 def map_translations(raw_query, parsed_query, translations) -> dict:
@@ -145,12 +142,13 @@ def map_translations(raw_query, parsed_query, translations) -> dict:
 
         candidates.append({
             'sparql': candidate.to_sparql_query(),
+            'rank_score': candidate.rank_score,
             'matches_answer_type': candidate.matches_answer_type,
             'relation_matches': relation_matches,
             'entity_matches': entity_matches,
             'pattern': candidate.pattern,
             'graph': candidate.graph_as_simple_string(indent=1),
-            'results': query_results,
+            'answers': query_results,
             })
 
     return {'raw_query': raw_query,
