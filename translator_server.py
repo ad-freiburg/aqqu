@@ -7,12 +7,11 @@ Niklas Schnelle <schnelle@cs.uni-freiburg.de>
 
 """
 import logging
-from typing import List, Union, Iterable, DefaultDict, Any
+from typing import List, Union, Iterable, Dict, Any
 import config_helper
 import scorer_globals
 import flask
 import spacy
-from collections import defaultdict
 from query_translator.query_candidate import RelationMatch, EntityMatch
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
@@ -97,28 +96,47 @@ def map_relation_matches(rel_matches: Iterable[RelationMatch]) -> List[dict]:
     """
     results = []
     for rel_match in rel_matches:
-        matches = defaultdict(list)  # type: DefaultDict[str, List[Any]]
+        rel_match_dict = {}
         if rel_match.name_match:
-            matches['name_match'].append(rel_match.name_match.as_string())
+            name_match = rel_match.name_match
+            token_name_dicts = [{'token_position': tok.i, 'name': name}
+                                for tok, name in name_match.token_names]
+            name_match_dict = {'token_names': token_name_dicts}
+            rel_match_dict['name_match'] = name_match_dict
         if rel_match.derivation_match:
-            matches['derivation_match'].append(
-                rel_match.derivation_match.as_string())
+            derivation_match = rel_match.derivation_match
+            token_name_dicts = [{'token_position': tok.i, 'name': name}
+                                for tok, name in derivation_match.token_names]
+            derivation_match_dict = {'token_names': token_name_dicts}
+            rel_match_dict['derivation_match'] = derivation_match_dict
         if rel_match.words_match:
-            matches['words_match'].append(
-                rel_match.words_match.as_string())
+            words_match = rel_match.words_match
+            token_name_dicts = [{'token_position': tok.i, 'score': score}
+                                for tok, score in words_match.token_scores]
+            words_match_dict = {'token_scores': token_name_dicts}
+            rel_match_dict['words_match'] = words_match_dict
         if rel_match.name_weak_match:
-            matches['name_weak_match'].append(
-                rel_match.name_weak_match.as_string())
+            name_weak_match = rel_match.name_weak_match
+            token_name_score_dicts = [{'token_position': tok.i, 'name': name,
+                                       'score': score}
+                                      for tok, name, score
+                                      in name_weak_match.token_name_scores]
+            name_weak_match_dict = {'token_name_scores':
+                                    token_name_score_dicts}
+            rel_match_dict['name_weak_match'] = name_weak_match_dict
         if rel_match.count_match:
-            matches['count_match'].append(rel_match.count_match.as_string())
+            count_match = rel_match.count_match
+            count_match_dict = {'count': count_match.count}
+            rel_match_dict['count_match'] = count_match_dict
+
         relation_name = rel_match.relation
         if isinstance(rel_match.relation, tuple):
             relation_name = ' -> '.join(rel_match.relation)
+        rel_match_dict['name'] = relation_name
 
         token_positions = [tok.i for tok in rel_match.tokens]
-        results.append({'name': relation_name,
-                        'token_positions': token_positions,
-                        'matches': matches})
+        rel_match_dict['token_positions'] = token_positions
+        results.append(rel_match_dict)
 
     return results
 

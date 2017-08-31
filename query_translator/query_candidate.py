@@ -122,6 +122,7 @@ class RelationMatch:
         m.words_match = self.words_match
         m.name_match = self.name_match
         m.name_weak_match = self.name_weak_match
+        m.tokens = self.tokens
         return m
 
     def as_string(self):
@@ -153,14 +154,14 @@ class WordsMatch:
     """
 
     def __init__(self, token_scores=[]):
-        # A list of tuples (word, score)
+        # A list of tuples (token, score)
         self.token_scores = token_scores
 
     def add_match(self, token_score):
         self.token_scores.append(token_score)
 
     def as_string(self):
-        s = ','.join(["%s:%.4f" % (t.lemma, s)
+        s = ','.join(["%s:%.4f" % (t.lemma_, s)
                       for t, s in self.token_scores])
         return "RelationContext: %s" % s
 
@@ -179,7 +180,7 @@ class DerivationMatch:
         self.token_names.append(token_name)
 
     def as_string(self):
-        s = ','.join(["%s=%s" % (t.lemma, n)
+        s = ','.join(["%s=%s" % (t.lemma_, n)
                       for t, n in self.token_names])
         return "DerivationMatch: %s" % s
 
@@ -190,7 +191,6 @@ class CountMatch:
     """
 
     def __init__(self, count):
-        # A list of tuples (word, score)
         self.count = count
 
     def as_string(self):
@@ -211,7 +211,7 @@ class NameMatch:
         self.token_names.append(token_name)
 
     def as_string(self):
-        s = ','.join(["%s=%s" % (t.lemma, n)
+        s = ','.join(["%s=%s" % (t.lemma_, n)
                       for t, n in self.token_names])
         return "RelationName: %s" % s
 
@@ -231,7 +231,7 @@ class NameWeakMatch:
         self.token_name_scores.append(token_name_score)
 
     def as_string(self):
-        s = ','.join(["%s=%s:%.2f" % (t.lemma, n, s)
+        s = ','.join(["%s=%s:%.2f" % (t.lemma_, n, s)
                       for t, n, s in self.token_name_scores])
         return "RelationNameSynonym: %s" % s
 
