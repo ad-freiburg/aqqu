@@ -239,16 +239,16 @@ class NameWeakMatch:
 class EntityMatch:
     """
     Describes a match of an entity in the tokens.
+    TODO(schnelle) it might make sense to remove this class and
+    use IdentifiedEntity directly
     """
 
     def __init__(self, entity):
         self.entity = entity
-        self.score = None
 
     def __deepcopy__(self, memo):
         # No need to copy the identified entity.
         m = EntityMatch(self.entity)
-        m.score = self.score
         return m
 
     def as_string(self):

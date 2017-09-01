@@ -37,6 +37,17 @@ class Query:
         self.relation_oracle = None
         self.is_count_query = False
 
+class TranslationResult:
+    """
+    Final result of a translated and executed query
+    TODO(schnelle): It would probably be nicer to just
+    store the answers in the QueryCandidate
+    """
+    def __init__(self, candidate, result_rows):
+        self.query_candidate = candidate
+        self.query_result_rows = result_rows
+
+
 class QueryTranslator(object):
 
     def __init__(self, backend,
@@ -145,14 +156,10 @@ class QueryTranslator(object):
     def translate_and_execute_query(self, query, n_top=200):
         """
         Translates the query and returns a list
-        of namedtuples of type TranslationResult.
+        of type TranslationResult.
         :param query:
         :return:
         """
-        TranslationResult = collections.namedtuple('TranslationResult',
-                                                   ['query_candidate',
-                                                    'query_result_rows'],
-                                                   verbose=False)
         # Parse query.
         translations = []
         num_sparql_queries = self.backend.num_queries_executed

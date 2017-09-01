@@ -7,13 +7,15 @@ Niklas Schnelle <schnelle@cs.uni-freiburg.de>
 
 """
 import logging
-from typing import List, Union, Iterable, Dict, Any
+from typing import List, Union, Iterable, Dict, Any, Set
 import config_helper
 import scorer_globals
 import flask
 import spacy
-from query_translator.query_candidate import RelationMatch, EntityMatch
-from query_translator.translator import QueryTranslator, Query
+from query_translator.query_candidate import RelationMatch, EntityMatch,\
+    QueryCandidate, QueryCandidateNode
+from query_translator.translator import QueryTranslator, Query,\
+    TranslationResult
 import entity_linker.entity_linker as entity_linker
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
@@ -39,7 +41,7 @@ def map_results_list(results: Iterable[List[Union[str, int]]]) -> List[dict]:
     return query_results
 
 
-def map_query_doc(doc: spacy.tokens.Doc) -> List[dict]:
+def map_query_doc(doc: spacy.tokens.Doc) -> List[Dict[str, Any]]:
     """
     Maps a spaCy Doc into a JSON compatible list
     """
@@ -55,7 +57,8 @@ def map_entity(entity: entity_linker.Entity) -> dict:
             'mid': entity.sparql_name()}
 
 
-def map_identified_entity(entity: entity_linker.IdentifiedEntity) -> dict:
+def map_identified_entity(entity: entity_linker.IdentifiedEntity)\
+        -> Dict[str, Any]:
     """
     Maps an IdentifiedEntity into a JSON compatible dict
     """
@@ -71,7 +74,7 @@ def map_identified_entity(entity: entity_linker.IdentifiedEntity) -> dict:
     return mapped_entity
 
 
-def map_query(query: Query) -> dict:
+def map_query(query: Query) -> Dict[str, Any]:
     """
     Maps a Query into a JSON compatible dict
     """
@@ -90,7 +93,8 @@ def map_query(query: Query) -> dict:
     return query_map
 
 
-def map_relation_matches(rel_matches: Iterable[RelationMatch]) -> List[dict]:
+def map_relation_matches(rel_matches: Iterable[RelationMatch])\
+                                        -> List[Dict[str, Any]]:
     """
     Maps RelationMatches to a list of JSON compatible dicts
     """
@@ -141,46 +145,82 @@ def map_relation_matches(rel_matches: Iterable[RelationMatch]) -> List[dict]:
     return results
 
 
-def map_entity_matches(ent_matches: Iterable[EntityMatch]) -> List[dict]:
+def map_entity_matches(ent_matches: Iterable[EntityMatch])\
+                        -> List[Dict[str, Any]]:
     """
     Maps EntityMatches to a list of JSON compatible dicts
     """
-    return [{'mid': em.entity.entity.id,
-             'score': em.score} for em in ent_matches]
+    return [{'mid': em.entity.entity.id} for em in ent_matches]
 
 
-def map_translations(raw_query, parsed_query, translations) -> dict:
+def map_query_graph(node: QueryCandidateNode, visited: set)\
+                                          -> Dict[str, Any]:
+    """
+    Maps the query graph into a JSON compatible format starting from the
+    root_node.
+
+    NOTE: This assumes that all nodes are reachable via out_relations from the
+    root_node
+    """
+    if node in visited:
+        return None
+
+    out_relations = []  # type: List[Dict[str, str]]
+    visited.add(node)
+    for rel in node.out_relations:
+        rel_dict = {'name': rel.name, 'target_node': None}
+        if rel.has_target() and rel.target_node not in visited:
+            rel_dict['target_node'] = map_query_graph(rel.target_node, visited)
+        out_relations.append(rel_dict)
+
+    mid = None
+    if node.entity_match:
+        # TODO(schnelle) ;-(
+        mid = node.entity_match.entity.entity.id
+    return {'mid': mid,
+            'out_relations': out_relations}
+
+def map_query_candidate(candidate: QueryCandidate,
+                        result_rows: Iterable[List[Union[str, int]]])\
+                                                    -> Dict[str, Any]:
+    """
+    Turns a QueryCandidate into a result dict suitable for JSON encoding
+    """
+    answers = map_results_list(result_rows)
+    relation_matches = map_relation_matches(candidate.matched_relations)
+    entity_matches = map_entity_matches(candidate.matched_entities)
+    visited = set()  # type: Set[Any]
+    root_node = map_query_graph(candidate.root_node, visited)
+
+    return {
+        'sparql': candidate.to_sparql_query(),
+        'rank_score': candidate.rank_score,
+        'matches_answer_type': candidate.matches_answer_type,
+        'relation_matches': relation_matches,
+        'entity_matches': entity_matches,
+        'pattern': candidate.pattern,
+        'root_node': root_node,
+        'answers': answers,
+        }
+
+
+def map_translations(raw_query: str, parsed_query: Query,
+                     translations: Iterable[TranslationResult])\
+                                             -> Dict[str, Any]:
     """
     Turns the final translations which are lists of namedtuple with
     query_candidate and query_result into a result map suitable for JSON
     encoding
-
-    Note: All query candidates reference the same Query object so if there
-    is any candiate we can pick it's Query object as the only one
     """
-    candidates = []
-
+    candidates = []  # type: List[dict]
     for translation in translations:
-        candidate = translation.query_candidate
-        query_results = map_results_list(translation.query_result_rows)
-        relation_matches = map_relation_matches(candidate.matched_relations)
-        entity_matches = map_entity_matches(candidate.matched_entities)
-
-        candidates.append({
-            'sparql': candidate.to_sparql_query(),
-            'rank_score': candidate.rank_score,
-            'matches_answer_type': candidate.matches_answer_type,
-            'relation_matches': relation_matches,
-            'entity_matches': entity_matches,
-            'pattern': candidate.pattern,
-            'graph': candidate.graph_as_simple_string(indent=1),
-            'answers': query_results,
-            })
+        candidates.append(map_query_candidate(
+            translation.query_candidate,
+            translation.query_result_rows))
 
     return {'raw_query': raw_query,
             'parsed_query': map_query(parsed_query),
             'candidates': candidates}
-
 
 def main() -> None:
     """
