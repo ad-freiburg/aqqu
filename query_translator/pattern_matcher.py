@@ -678,6 +678,7 @@ class QueryCandidateExtender:
         if relation_name in self.relation_expected_types:
             if self.relation_expected_types[relation_name] == 'type.datetime':
                 return True
+
         return False
 
     def relation_has_int_target(self, relation_name):
@@ -711,7 +712,9 @@ class QueryCandidateExtender:
         :param target_class:
         :return:
         """
-        target_class_suffix = target_class[target_class.rfind('.'):]
+        if target_class == 'date' or target_class == 'count':
+            return False
+        target_class_suffix = target_class[target_class.rfind('.')+1:]
         # Sometimes the class is meantioned in the relation.
         if target_class_suffix in get_relation_suffix(relation, suffix_length=2):
             return True
@@ -791,7 +794,7 @@ class QueryCandidateExtender:
             # logger.info((rel, match))
             at_match = self.relation_matches_answer_type(rel, query_candidate)
             # Do we require an answer type match?
-            if self.parameters.restrict_answer_type and at_match <  0.05:
+            if self.parameters.restrict_answer_type and at_match <  0.3:
                 continue
 
             # Try to match remaining token to the relation.
@@ -893,8 +896,8 @@ class QueryCandidateExtender:
             for relation_match in relation_matches:
                 at_match = self.relation_matches_answer_type(
                     relation_match.relation[1], query_candidate)
-                # Check if target relation has correc type.
-                if self.parameters.restrict_answer_type and not at_match:
+                # Check if target relation has correct type.
+                if self.parameters.restrict_answer_type and at_match < 0.3:
                     continue
                 # Use the target part of the mediated relation to look up cardinality.
                 if relation_match.relation[1] in self.relation_counts:
@@ -964,7 +967,7 @@ class QueryCandidateExtender:
             # Only consider unused relations that have correct type.
             relations = [r for r in relations
                          if
-                         self.relation_matches_answer_type(r, query_candidate) > 0.5
+                         self.relation_matches_answer_type(r, query_candidate) > 0.3
                          and r not in filled_relation_slots]
         else:
             relations = [r for r in relations
