@@ -192,7 +192,7 @@ def simple_features(candidate):
     n_rel_tokens = len(set.union(*[set(x.keys()) for x in token_matches]))
 
     coverage = ((n_rel_tokens + n_entity_tokens) /
-                float(len(candidate.query.tokens)))
+                len(candidate.query.tokens))
     features = {}
     relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0
