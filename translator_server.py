@@ -150,7 +150,7 @@ def map_entity_matches(ent_matches: Iterable[EntityMatch])\
     """
     Maps EntityMatches to a list of JSON compatible dicts
     """
-    return [{'mid': em.entity.entity.id} for em in ent_matches]
+    return [{'mid': em.entity.entity.sparql_name()} for em in ent_matches]
 
 
 def map_query_graph(node: QueryCandidateNode, visited: set)\
@@ -175,10 +175,10 @@ def map_query_graph(node: QueryCandidateNode, visited: set)\
 
     mid = None
     if node.entity_match:
-        # TODO(schnelle) ;-(
-        mid = node.entity_match.entity.entity.id
+        mid = node.entity_match.entity.entity.sparql_name()
     return {'mid': mid,
             'out_relations': out_relations}
+
 
 def map_query_candidate(candidate: QueryCandidate,
                         result_rows: Iterable[List[Union[str, int]]])\
