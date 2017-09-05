@@ -107,14 +107,14 @@ def simple_features(candidate):
     n_word_weak_relations = 0
     # The number of relations that are matched by derivative at least once.
     n_derivative_relations = 0
-    # The number of tokens that are part of a literal entity match.
+    # The length of tokens that are part of a literal entity match.
     literal_entities_length = 0
-    # The number of tokens that match literal in a relation.
-    n_literal_relation_tokens = 0
+    # The length of tokens that match literally in a relation.
+    literal_relation_tokens_length = 0
     # The number of tokens that match via weak synoynms in a relation.
     n_weak_relation_tokens = 0
-    # The number of tokens that match via derivation in a relation.
-    n_derivation_relation_tokens = 0
+    # The length of tokens that match via derivation in a relation.
+    derivation_relation_tokens_length = 0
     # The sum of all weak match scores.
     sum_weak_relation_tokens = 0
     # The sum of all weak match scores.
@@ -152,6 +152,7 @@ def simple_features(candidate):
         if rm.name_match:
             for (t, _) in rm.name_match.token_names:
                 token_name_match_score[t] += 1.0
+                literal_relation_tokens_length += len(t.text)
             n_literal_relations += 1
         if rm.words_match:
             for (t, s) in rm.words_match.token_scores:
@@ -164,16 +165,13 @@ def simple_features(candidate):
         if rm.derivation_match:
             for (t, _) in rm.derivation_match.token_names:
                 token_derivation_match_score[t] += 1.0
+                derivation_relation_tokens_length += len(t.text)
             n_derivative_relations += 1
         # cardinality is only set for the answer relation.
         if rm.cardinality != -1: # this is a tuple but gets initalized as -1
             # Number of facts in the relation (like in FreebaseEasy).
             cardinality = rm.cardinality[0]
 
-    n_literal_relation_tokens = len(token_name_match_score)
-    n_derivation_relation_tokens = len(token_derivation_match_score)
-    n_word_relation_tokens = len(token_word_match_score)
-    n_weak_relation_tokens = len(token_weak_match_score)
     sum_weak_relation_tokens = round(sum(token_weak_match_score.values()), 2)
     sum_context_relation_tokens = round(sum(token_word_match_score.values()), 6)
     avg_em_surface_score = round(sum(em_surface_scores) / len(em_surface_scores), 2)
@@ -222,13 +220,11 @@ def simple_features(candidate):
         'n_relations': len(candidate.get_relation_names()),
         'relation_match': relation_match,
         'n_literal_relations': n_literal_relations,
+        'literal_relation_tokens_length': literal_relation_tokens_length,
         'n_word_relations': n_word_relations,
         'n_word_weak_relations': n_word_weak_relations,
         'n_derivative_relations': n_derivative_relations,
-        'n_literal_relation_tokens': n_literal_relation_tokens,
-        'n_derivation_relation_tokens': n_derivation_relation_tokens,
-        'n_word_relation_tokens': n_word_relation_tokens,
-        'n_weak_relation_tokens': n_weak_relation_tokens,
+        'derivation_relation_tokens_length': derivation_relation_tokens_length,
         'sum_weak_relation_tokens': sum_weak_relation_tokens,
         'sum_context_relation_tokens': sum_context_relation_tokens,
         'cardinality': cardinality,
