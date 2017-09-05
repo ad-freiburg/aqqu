@@ -69,7 +69,6 @@ class Value(Entity):
 
     def __init__(self, name, value):
         Entity.__init__(self, name)
-        # The unique identifier used in the knowledge base.
         self.value = value
 
     def sparql_name(self):
