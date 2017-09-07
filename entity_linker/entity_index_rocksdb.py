@@ -227,7 +227,8 @@ class EntityIndex(object):
             surface_score = float(cols[i])
             mid_str = cols[i+1].decode('utf-8')
             entity = self.get_entity_for_mid(mid_str)
-            result.append((entity, surface_score))
+            if entity:
+                result.append((entity, surface_score))
         return result
 
     @staticmethod
