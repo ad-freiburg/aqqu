@@ -9,14 +9,11 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import logging
 import time
 from typing import Tuple, Iterable
-import collections
 import spacy
 import sparql_backend.loader
 import config_helper
-from answer_type.answer_type_identifier import AnswerTypeIdentifier,\
-        AnswerType
-from entity_linker.entity_index import EntityIndex
-from entity_linker.entity_linker import IdentifiedEntity
+from answer_type.answer_type_identifier import AnswerTypeIdentifier
+from entity_linker.entity_index_rocksdb import EntityIndex
 from .pattern_matcher import QueryCandidateExtender,\
         QueryPatternMatcher, get_content_tokens
 from . import ranker
