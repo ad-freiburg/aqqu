@@ -713,10 +713,11 @@ class QueryCandidateExtender:
         :return:
         """
         if target_class == 'date' or target_class == 'count':
+            # handled separately
             return False
         target_class_suffix = target_class[target_class.rfind('.')+1:]
         # Sometimes the class is meantioned in the relation.
-        if target_class_suffix in get_relation_suffix(relation, suffix_length=2):
+        if target_class_suffix in get_relation_suffix(relation, suffix_length=1):
             return True
         # Check if the class is in the relation type distribution.
         elif relation in self.relation_target_types:
@@ -738,19 +739,19 @@ class QueryCandidateExtender:
         """
         matches_answer_type = 0.0
         for target_class, prob in query_candidate.query.target_type.target_classes:
-
+            matches = False
             if target_class == 'UNK':
-                continue
+                matches = False
             if target_class == 'date' and self.relation_has_date_target(relation):
-                matches_answer_type += prob
-                continue
+                matches = True
             if target_class == 'count' and self.relation_points_to_count(relation):
+                matches = True
+            elif self.relation_answers_target_class(relation, target_class):
+                matches = True
+
+            if matches:
+                logger.debug("%s matches target_class: %s", relation, target_class)
                 matches_answer_type += prob
-                continue
-            elif self.relation_answers_target_class(relation,
-                                                    target_class):
-                matches_answer_type += prob
-                continue
         return matches_answer_type
 
     def get_relation_suggestions(self, query_candidate):
