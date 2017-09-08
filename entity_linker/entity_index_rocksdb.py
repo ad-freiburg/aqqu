@@ -99,6 +99,10 @@ class EntityIndex(object):
             self._build_entity_types(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'surfaces_loaded'):
             self._build_surface_index(entity_db)
+        # Now we can reopen in read-only mode so as to allow
+        # multiple instances to share the same DB
+        del entity_db
+        entity_db = rocksdb.DB(entity_db_path, options, read_only=True)
         return entity_db
 
     def _build_surface_index(self, entity_db):
