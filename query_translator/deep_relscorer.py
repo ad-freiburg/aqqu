@@ -165,7 +165,7 @@ class DeepCNNAqquRelScorer():
         train_neg_labels = np.array(neg_labels, dtype=float).reshape((len(neg_labels), 1))
         self.g = tf.Graph()
         self.writer = tf.summary.FileWriter(
-            os.path.join('.log/', time.strftime("%Y-%m-%d-%H-%M-%S")))
+            os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S")))
         writer.add_graph(self.g)
         dev_scores = []
         with self.g.as_default():
