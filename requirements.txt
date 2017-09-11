@@ -47,3 +47,4 @@ webencodings==0.5.1
 Werkzeug==0.12.2
 wrapt==1.10.10
 xgboost==0.6a2
+pyrocksdb==0.4

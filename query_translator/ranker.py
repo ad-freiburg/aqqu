@@ -163,7 +163,8 @@ class Ranker(object):
         y_score = y_candidate.rank_score.score
         return x_score - y_score
 
-    def rank_query_candidates(self, query_candidates, key=lambda x: x):
+    def rank_query_candidates(self, query_candidates, key=lambda x: x,
+                              store_features=False):
         """Rank query candidates by scoring and then sorting them.
 
         :param query_candidates:
@@ -693,7 +694,8 @@ class AqquModel(MLModel, Ranker):
         s_rk = sorted(rk, key=lambda x: x[1], reverse=True)
         return [x[0] for x in s_rk]
 
-    def rank_query_candidates(self, query_candidates, key=lambda x: x):
+    def rank_query_candidates(self, query_candidates, key=lambda x: x,
+                              store_features=False):
         """Rank query candidates by scoring and then sorting them.
 
         :param query_candidates:
@@ -712,6 +714,10 @@ class AqquModel(MLModel, Ranker):
         features = f_ext.extract_features(candidates,
                                           rel_score_model=self.relation_scorer,
                                           deep_rel_score_model=self.deep_relation_scorer)
+        if store_features:
+            for i, candidate in enumerate(candidates):
+                candidate.feature_dict = features[i]
+
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
@@ -1162,7 +1168,8 @@ class LiteralRankerFeatures(object):
                 score,
                 self.result_size)
 
-    def rank_query_candidates(self, query_candidates, key=lambda x: x):
+    def rank_query_candidates(self, query_candidates, key=lambda x: x,
+                              store_features=False):
         """Rank query candidates by scoring and then sorting them.
 
         :param query_candidates:
@@ -1171,6 +1178,8 @@ class LiteralRankerFeatures(object):
         for qc in query_candidates:
             candidate = key(qc)
             candidate.rank_score = self.score(candidate)
+            if store_features:
+                candidate.feature_dict = {'rank_score': candidate.rank_score}
         ranked_candidates = sorted(query_candidates,
                                    key=Compare2Key(key, self.compare),
                                    reverse=True)
@@ -1205,8 +1214,6 @@ class LiteralRanker(Ranker):
         rm_relation_length = 0
         # This is how you can get the size of the result set for a candidate.
         result_size = query_candidate.get_result_count()
-        # Each entity match represents a matched entity.
-        num_entity_matches = len(query_candidate.matched_entities)
         # Each pattern has a name.
         # An "M" indicates a mediator in the pattern.
         if "M" in query_candidate.pattern:

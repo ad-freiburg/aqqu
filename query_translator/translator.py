@@ -9,14 +9,11 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 import logging
 import time
 from typing import Tuple, Iterable
-import collections
 import spacy
 import sparql_backend.loader
 import config_helper
-from answer_type.answer_type_identifier import AnswerTypeIdentifier,\
-        AnswerType
-from entity_linker.entity_index import EntityIndex
-from entity_linker.entity_linker import IdentifiedEntity
+from answer_type.answer_type_identifier import AnswerTypeIdentifier
+from entity_linker.entity_index_rocksdb import EntityIndex
 from .pattern_matcher import QueryCandidateExtender,\
         QueryPatternMatcher, get_content_tokens
 from . import ranker
@@ -173,7 +170,8 @@ class QueryTranslator(object):
                                             translation_time, avg_query_time))
         logger.info("Ranking %s query candidates" % len(query_candidates))
         ranker = self.scorer
-        ranked_candidates = ranker.rank_query_candidates(query_candidates)
+        ranked_candidates = ranker.rank_query_candidates(query_candidates,
+                                                         store_features=True)
         logger.info("Fetching translations for all candidates.")
         sparql_query_time = self.backend.total_query_time
         n_total_translations = 0

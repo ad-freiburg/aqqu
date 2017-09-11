@@ -10,7 +10,7 @@ from collections import defaultdict
 import re
 import copy
 import time
-from .entity_index import EntityIndex
+from .entity_index_rocksdb import EntityIndex
 from .util import normalize_entity_name, remove_number_suffix,\
     remove_prefixes_from_name, remove_suffixes_from_name
 import config_helper
