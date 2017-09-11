@@ -24,7 +24,6 @@ class DeepCNNAqquRelScorer():
     UNK = '---UNK---'
     PAD = '---PAD---'
 
-
     def __init__(self, name, embedding_file):
         self.name = name + "_DeepRelScorer"
         self.n_rels = 3
@@ -63,23 +62,12 @@ class DeepCNNAqquRelScorer():
         if gensim_model is None:
             gensim_model = models.Word2Vec.load(gensim_model_fname)
         vector_size = gensim_model.vector_size
-        common_words = set()
-        # Find the most frequent words to keep the embeddings small.
-        # TF doesn't work when they are larger than 2GB !?
-        #with open("data/word_frequencies.txt") as f:
-        #    for line in f:
-        #        cols = line.strip().split()
-        #        if len(cols) != 2:
-        #            continue
-        #        common_words.add(cols[0].lower())
-        #        if len(common_words) > 500000:
-        #            break
         vocab = {}
         # +1 for UNK +1 for PAD, + 1 for ENTITY, + 1 for STRTS
         num_words = len(gensim_model.vocab) + 3
         logger.info("#words: %d", num_words)
         vectors = np.zeros(shape=(num_words, vector_size), dtype=np.float32)
-        # Vector for UNK, 0 is reserved for PAD
+        # Vector for PAD, 0 is reserved for PAD
         PAD_ID = 0
         vocab[DeepCNNAqquRelScorer.PAD] = PAD_ID
 
@@ -88,9 +76,9 @@ class DeepCNNAqquRelScorer():
         vocab[DeepCNNAqquRelScorer.UNK] = UNK_ID
         vectors[UNK_ID] = np.random.uniform(-0.05, 0.05,
                                             vector_size)
-        #ENTITY_ID = 2
-        #vocab["<entity>"] = ENTITY_ID
-        #vectors[ENTITY_ID] = np.random.uniform(-0.05, 0.05,
+        # ENTITY_ID = 2
+        # vocab["<entity>"] = ENTITY_ID
+        # vectors[ENTITY_ID] = np.random.uniform(-0.05, 0.05,
         #                                       vector_size)
         STRTS_ID = 2
         vocab["<start>"] = STRTS_ID
@@ -98,16 +86,9 @@ class DeepCNNAqquRelScorer():
                                               vector_size)
         #tmin, tmax, tavg = 0.0, 0.0, 0.0
         for w in gensim_model.vocab:
-            #if w not in common_words:
-            #    continue
             vector_index = len(vocab)
             vocab[w] = vector_index
             vectors[vector_index, :] = gensim_model[w]
-            #min, max, avg = np.min(gensim_model[w]), np.max(gensim_model[w]), np.average(gensim_model[w])
-            #tmin += min
-            #tmax += max
-            #tavg += avg
-        #print(tmin/len(vocab), tmax/len(vocab), tavg/len(vocab))
         logger.info("Done. Final vocabulary size: %d", len(vocab))
         #vectors = normalize(vectors, norm='l2', axis=1)
         return vector_size, vocab, vectors
@@ -139,8 +120,8 @@ class DeepCNNAqquRelScorer():
 
     def evaluate_dev(self, qids, f1s, probs):
         qids, f1s, probs = utils.shuffle(qids, f1s, probs,
-                                                 random_state=999)
-        assert(len(qids) == len(f1s) == len(probs))
+                                         random_state=999)
+        assert len(qids) == len(f1s) == len(probs)
         queries = {}
         for q, f, p in zip(qids, f1s, probs):
             if q not in queries:
@@ -174,7 +155,7 @@ class DeepCNNAqquRelScorer():
             default_sess.close()
         if dev_queries is not None:
             dev_features, dev_qids, dev_f1 = self.create_test_batches(dev_queries)
-            #devt_features, devt_qids, devt_f1 = self.create_test_batches( train_queries)
+
         pos_labels, pos_features, neg_labels, neg_features = self.create_train_examples(train_queries)
         train_pos_word_features = np.array(pos_features[0])
         train_pos_rel_features = np.array(pos_features[1])
@@ -183,6 +164,9 @@ class DeepCNNAqquRelScorer():
         train_pos_labels = np.array(pos_labels, dtype=float).reshape((len(pos_labels), 1))
         train_neg_labels = np.array(neg_labels, dtype=float).reshape((len(neg_labels), 1))
         self.g = tf.Graph()
+        self.writer = tf.summary.FileWriter(
+            os.path.join('.log/', time.strftime("%Y-%m-%d-%H-%M-%S")))
+        writer.add_graph(self.g)
         dev_scores = []
         with self.g.as_default():
             tf.set_random_seed(42)
@@ -225,10 +209,10 @@ class DeepCNNAqquRelScorer():
                             labels = [1 for _ in range(x_b.shape[0])]
                             input_y = np.array(labels, dtype=float).reshape((len(labels), 1))
                             feed_dict = {
-                              self.input_y: input_y,
-                              self.input_s: x_b,
-                              self.input_r: x_rel_b,
-                              self.dropout_keep_prob: 1.0
+                                self.input_y: input_y,
+                                self.input_s: x_b,
+                                self.input_r: x_rel_b,
+                                self.dropout_keep_prob: 1.0
                             }
                             loss, p = self.sess.run(
                                 [self.loss, self.probs],
@@ -247,17 +231,11 @@ class DeepCNNAqquRelScorer():
                         A single training step
                         """
                         y_batch, x_batch, x_rel_batch = batch
-                        #if x_batch.shape[0] > 400:
-                        #    logger.info("Truncating batch.")
-                        #   rows = [0] + random.sample(range(1, x_batch.shape[0]), 400)
-                        #    x_batch = x_batch[rows, :]
-                        #    x_rel_batch = x_rel_batch[rows, :]
-                        #    y_batch = y_batch[rows, :]
                         feed_dict = {
-                          self.input_y: y_batch,
-                          self.input_s: x_batch,
-                          self.input_r: x_rel_batch,
-                          self.dropout_keep_prob: 1.0
+                            self.input_y: y_batch,
+                            self.input_s: x_batch,
+                            self.input_r: x_rel_batch,
+                            self.dropout_keep_prob: 1.0
                         }
                         _, step, loss, probs = self.sess.run(
                             [train_op, global_step, self.loss, self.probs],
@@ -351,8 +329,8 @@ class DeepCNNAqquRelScorer():
         # Avoid noisy examples.
         features = self.create_batch_features(example_candidates)
         neg_features = self.create_batch_features(negative_candidates)
-        logger.info("Done. %d batches/queries, %d candidates." % (total_num_queries,
-                                                                  total_num_candidates))
+        logger.info("Done. %d batches/queries, %d candidates.", 
+                    total_num_queries, total_num_candidates)
         return pos_labels, features, neg_labels, neg_features
 
     def create_test_batches(self, test_queries):
