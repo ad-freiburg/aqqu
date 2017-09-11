@@ -206,7 +206,7 @@ def simple_features(candidate):
         # "Entity Features"
         'n_literal_entities': n_literal_entities,
         'n_entity_matches': n_entity_matches,
-        'n_text_and_question_entities': n_text_and_question_entities > 0,
+        'n_text_and_question_entities': n_text_and_question_entities,
         'literal_entities_length': literal_entities_length,
         'avg_em_surface_score': avg_em_surface_score,
         'sum_em_surface_score': sum_em_surface_score,
@@ -273,13 +273,15 @@ def extract_features(candidates,
     """
     all_features = []
     for c in candidates:
-        all_features.append(simple_features(c))
+        feature_dict = simple_features(c)
+        all_features.append(feature_dict)
+
     if deep_rel_score_model:
         deep_rel_scores = deep_rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
-            f['deep_relation_score'] = deep_rel_scores[i].score
+            f['deep_relation_score'] = float(deep_rel_scores[i].score)
     if rel_score_model:
         rel_scores = rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
-            f['relation_score'] = rel_scores[i].score
+            f['relation_score'] = float(rel_scores[i].score)
     return all_features

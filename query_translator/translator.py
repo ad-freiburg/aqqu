@@ -170,7 +170,8 @@ class QueryTranslator(object):
                                             translation_time, avg_query_time))
         logger.info("Ranking %s query candidates" % len(query_candidates))
         ranker = self.scorer
-        ranked_candidates = ranker.rank_query_candidates(query_candidates)
+        ranked_candidates = ranker.rank_query_candidates(query_candidates,
+                                                         store_features=True)
         logger.info("Fetching translations for all candidates.")
         sparql_query_time = self.backend.total_query_time
         n_total_translations = 0

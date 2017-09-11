@@ -46,6 +46,7 @@ class RelationMatch:
         # For target relations we track the cardinality
         # of a relation. This is only set for target relations.
         self.cardinality = -1
+        self.feature_dict = None
 
     def is_empty(self):
         """
@@ -302,6 +303,7 @@ class QueryCandidate:
         self.cached_result_count = -1
         # An indicator whether the candidate matches the answer type
         self.matches_answer_type = None
+        self.feature_dict = None
 
     def get_relation_names(self):
         return sorted([r.name for r in self.relations])
