@@ -164,9 +164,11 @@ class DeepCNNAqquRelScorer():
         train_pos_labels = np.array(pos_labels, dtype=float).reshape((len(pos_labels), 1))
         train_neg_labels = np.array(neg_labels, dtype=float).reshape((len(neg_labels), 1))
         self.g = tf.Graph()
-        self.writer = tf.summary.FileWriter(
-            os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S")))
-        writer.add_graph(self.g)
+        log_name = os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
+        if not os.path.exists(log_name):
+            os.makedirs(log_name)
+        self.writer = tf.summary.FileWriter(log_name)
+
         dev_scores = []
         with self.g.as_default():
             tf.set_random_seed(42)
@@ -441,6 +443,11 @@ class DeepCNNAqquRelScorer():
         if ckpt and ckpt.model_checkpoint_path:
             logger.info("Loading model from %s." % filename)
             self.g = tf.Graph()
+
+            log_name = os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
+            if not os.path.exists(log_name):
+                os.makedirs(log_name)
+            self.writer = tf.summary.FileWriter(log_name)
             with self.g.as_default():
                 self.build_deep_model(self.sentence_len, self.embeddings,
                                       self.embedding_size, self.rel_width_len,
@@ -451,6 +458,8 @@ class DeepCNNAqquRelScorer():
                 sess = tf.Session(config=session_conf)
                 self.sess = sess
                 saver.restore(sess, ckpt.model_checkpoint_path)
+            self.writer.add_graph(self.g)
+
 
     def score(self, candidate):
         from .ranker import RankScore
@@ -707,3 +716,5 @@ class DeepCNNAqquRelScorer():
                         #0.1 * tf.nn.l2_loss(self.W_o)
             #self.loss = tf.reduce_mean(tf.mul(losses, self.weight_y))
             self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores))# + 0.00001 * tf.nn.l2_loss(self.W_1) + 0.00001 * tf.nn.l2_loss(self.W_2)
+
+        self.writer.add_graph(self.g)
