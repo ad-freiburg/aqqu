@@ -28,6 +28,6 @@ if [ "$1" == "learner" ]; then
 	echo Executing $DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
 	$DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
 else
-	echo Executing $DOCKER_CMD run --rm -d --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
+	echo Executing $DOCKER_CMD run --rm -p 0.0.0.0:$PORT:8090 -d --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
 	$DOCKER_CMD run --rm -d -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
 fi
