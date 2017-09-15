@@ -33,11 +33,12 @@ class DeepCNNAqquRelScorer():
             [self.embedding_size, self.vocab,
              self.embeddings] = self.extract_vectors(embedding_file)
             self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
-            self.rel_width_len = self.n_rel_parts * self.embedding_size
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
         self.filter_sizes = (1, 2, 3)
         self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
+        self.scores = None
+        self.probs = None
 
     @staticmethod
     def init_from_config(name, load_embeddings=True):
@@ -173,7 +174,7 @@ class DeepCNNAqquRelScorer():
         with self.g.as_default():
             tf.set_random_seed(42)
             self.build_deep_model(self.sentence_len, self.embeddings,
-                                  self.embedding_size, self.rel_width_len,
+                                  self.embedding_size,
                                   filter_sizes=self.filter_sizes)
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
             session_conf = tf.ConfigProto(
@@ -248,7 +249,6 @@ class DeepCNNAqquRelScorer():
                         return loss
 
                     for n in range(num_epochs):
-                        total_train_loss = 0.0
                         # Need to shuffle the batches in each epoch.
                         logger.info("Starting epoch %d" % (n + 1))
 
@@ -265,7 +265,6 @@ class DeepCNNAqquRelScorer():
                             train_step(batch, n + 1, batch_num)
                         if (n + 1) % 10 == 0 and dev_queries is not None:
                             run_dev_batches(dev_features, dev_qids, dev_f1, dev_train="Dev")
-                            #run_dev_batches(devt_features, devt_qids, devt_f1, dev_train="Train")
                     if dev_scores:
                         logger.info("Dev avg_f1 history:")
                         logger.info(" ".join(["%d:%f" % (i + 1, f)
@@ -315,7 +314,6 @@ class DeepCNNAqquRelScorer():
             for i, candidate in enumerate(candidates):
                 f1 = query.eval_candidates[i].evaluation_result.f1
                 if f1 >= correct_threshold:
-                    #    or i + 1 == oracle_position:
                     example_candidates.append(candidate)
                     pos_labels.append(1)
                     total_num_candidates += 1
@@ -361,7 +359,8 @@ class DeepCNNAqquRelScorer():
         words = np.zeros(shape=(num_candidates, self.max_query_len + 2 * pad),
                          dtype=int)
         rel_features = np.zeros(shape=(num_candidates,
-                                       self.n_rel_parts * self.embedding_size),
+                                       self.n_rel_parts,
+                                       self.embedding_size),
                                 dtype=float)
         oov_words = set()
         for i, candidate in enumerate(batch):
@@ -375,25 +374,27 @@ class DeepCNNAqquRelScorer():
                     oov_words.add(t)
                     text_sequence.append(self.UNK_ID)
             if len(text_sequence) > self.max_query_len:
-                logger.warn("Max length exceeded: %s. Truncating" % text_sequence)
+                logger.warn("Max length exceeded: %s. Truncating",
+                            text_sequence)
                 text_sequence = text_sequence[:self.max_query_len]
             for j, t in enumerate(text_sequence):
                 words[i, pad + j] = t
+
             relations = candidate.get_relation_names()
             rel_words = self.split_relation_into_words(relations)
-            rel_parts = []
-            for ws in rel_words:
-                p = []
-                for w in ws:
-                    if w in self.vocab:
-                        p.append(self.embeddings[self.vocab[w]])
+            for rel_part_num, rel_part in enumerate(rel_words):
+                embedded_words = []
+                for word in rel_part:
+                    if word in self.vocab:
+                        embedded_words.append(
+                            self.embeddings[self.vocab[word]])
                     else:
-                        oov_words.add(w)
-                        #p.append(self.embeddings[self.UNK_ID])
-                if not p:
-                    p.append(np.zeros(shape=(self.embedding_size,)))
-                rel_parts.append(np.average(np.array(p), axis=0))
-            rel_features[i] = np.hstack(rel_parts)
+                        oov_words.add(word)
+                if not embedded_words:
+                    embedded_words.append(
+                        np.zeros(shape=(self.embedding_size,)))
+                rel_features[i, rel_part_num] = np.average(
+                    np.array(embedded_words), axis=0)
         if oov_words:
             logger.debug("OOV words in batch: %s" % str(oov_words))
         return words, rel_features
@@ -437,7 +438,6 @@ class DeepCNNAqquRelScorer():
         logger.info("Loading model vocab from %s" % vocab_filename)
         [self.embeddings, self.vocab, self.embedding_size] = joblib.load(vocab_filename)
         self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
-        self.rel_width_len = self.n_rel_parts * self.embedding_size
         logger.info("Loading model from %s." % filename)
         ckpt = tf.train.get_checkpoint_state(filename)
         if ckpt and ckpt.model_checkpoint_path:
@@ -450,7 +450,7 @@ class DeepCNNAqquRelScorer():
             self.writer = tf.summary.FileWriter(log_name)
             with self.g.as_default():
                 self.build_deep_model(self.sentence_len, self.embeddings,
-                                      self.embedding_size, self.rel_width_len,
+                                      self.embedding_size,
                                       filter_sizes=self.filter_sizes)
                 saver = tf.train.Saver()
                 session_conf = tf.ConfigProto(
@@ -515,20 +515,24 @@ class DeepCNNAqquRelScorer():
         return result
 
     def build_deep_model(self, sentence_len, embeddings, embedding_size,
-                         rel_width, filter_sizes=(2, 3, 4), num_filters=300,
+                         filter_sizes=(2, 3, 4), num_filters=300,
                          n_hidden_nodes_1=200,
                          n_hidden_nodes_r=200,
                          n_hidden_nodes_3=50,
                          num_classes=1):
-        logger.info("sentence_len: %s"% sentence_len)
-        logger.info("embedding_size: %s"% embedding_size)
-        logger.info("rel_width: %s"% rel_width)
+        logger.info("sentence_len: %s", sentence_len)
+        logger.info("embedding_size: %s", embedding_size)
+        logger.info("n_rel_parts: %s", self.n_rel_parts)
 
-        self.input_s = tf.placeholder(tf.int32, [None, sentence_len], name="input_s")
-        self.input_r = tf.placeholder(tf.float32, [None, rel_width], name="input_r")
-        self.input_y = tf.placeholder(tf.float32, [None, num_classes], name="input_y")
-        self.weight_y = tf.placeholder(tf.float32, [None, num_classes], name="weight_y")
-        self.dropout_keep_prob = tf.placeholder(tf.float32, name="dropout_keep_prob")
+        self.input_s = tf.placeholder(tf.int32, [None, sentence_len],
+                                      name="input_s")
+        self.input_r = tf.placeholder(tf.float32, 
+                                      [None, self.n_rel_parts, embedding_size],
+                                      name="input_r")
+        self.input_y = tf.placeholder(tf.float32, [None, num_classes],
+                                      name="input_y")
+        self.dropout_keep_prob = tf.placeholder(tf.float32,
+                                                name="dropout_keep_prob")
         self.margin = tf.constant(1.0)
 
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
@@ -537,24 +541,26 @@ class DeepCNNAqquRelScorer():
                 name="W",
                 trainable=False)
             self.embedded_chars = tf.nn.embedding_lookup(W, self.input_s)
-            self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars, -1)
+            self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars,
+                                                          -1)
 
-        # Create a convolution + maxpool layer for each filter size
+        # Convolution layers for query text, one conv-maxpool per filter size
         pooled_outputs = []
         for i, filter_size in enumerate(filter_sizes):
-            with tf.name_scope("conv-maxpool-%s" % filter_size):
+            with tf.name_scope("conv-maxpool-q-%s" % filter_size):
                 # Convolution Layer
                 filter_shape = [filter_size, embedding_size, 1, num_filters]
                 W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
                                                     seed=123),
                                 name="W")
-                b = tf.Variable(tf.constant(0.1, shape=[num_filters]), name="b")
+                b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
+                                name="b")
                 conv = tf.nn.conv2d(
                     self.embedded_chars_expanded,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
-                    name="conv")
+                    name="conv-q")
                 # Apply nonlinearity
                 h = tf.nn.elu(tf.nn.bias_add(conv, b), name="relu")
                 # Maxpooling over the outputs
@@ -563,158 +569,102 @@ class DeepCNNAqquRelScorer():
                     ksize=[1, sentence_len - filter_size + 1, 1, 1],
                     strides=[1, 1, 1, 1],
                     padding='VALID',
-                    name="pool")
+                    name="pool-q")
                 pooled_outputs.append(pooled)
-
-        #pooled_distances = []
-        #with tf.name_scope("cosdistance"):
-        #    for i in range(0, rel_width, embedding_size):
-        #        rel_part = tf.reshape(self.input_r[:, i:i + embedding_size],
-        #                              [-1, embedding_size, 1])
-        #        product = tf.batch_matmul(self.embedded_chars, rel_part)
-        #        product = tf.reshape(product, [-1, sentence_len, 1, 1])
-        #        pooled = tf.nn.max_pool(
-        #            product,
-        #            ksize=[1, sentence_len, 1, 1],
-        #            strides=[1, 1, 1, 1],
-        #            padding='VALID',
-        #            name="pool")
-        #        pooled_distances.append(pooled)
-
-        #num_rel_parts = rel_width / embedding_size
-        #num_distances_total = num_rel_parts
-        #pool_concat = tf.concat(3, pooled_distances)
-        #pooled_distances_flat = tf.reshape(tf.concat(3, pooled_distances),
-        #                                   [-1, num_distances_total])
 
         # Combine all the pooled features
         num_filters_total = num_filters * len(filter_sizes)
-        self.h_pool = tf.concat(pooled_outputs, 3)
-        self.h_pool_flat = tf.reshape(self.h_pool, [-1, num_filters_total])
+        self.q_h_pool = tf.concat(pooled_outputs, 3)
+        self.q_h_pool_flat = tf.reshape(self.q_h_pool, [-1, num_filters_total])
+
+        # Convolution layers for relations, one conv-maxpool per filter size
+        self.input_r_expanded = tf.expand_dims(self.input_r, -1)
+        pooled_outputs = []
+        for i, filter_size in enumerate(filter_sizes):
+            with tf.name_scope("conv-maxpool-r-%s" % filter_size):
+                # Convolution Layer
+                filter_shape = [filter_size, embedding_size, 1, num_filters]
+                W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
+                                                    seed=123),
+                                name="W")
+                b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
+                                name="b")
+                conv = tf.nn.conv2d(
+                    self.input_r_expanded,
+                    W,
+                    strides=[1, 1, 1, 1],
+                    padding="VALID",
+                    name="conv-r")
+                # Apply nonlinearity
+                h = tf.nn.elu(tf.nn.bias_add(conv, b), name="relu")
+                # Maxpooling over the outputs
+                pooled = tf.nn.max_pool(
+                    h,
+                    ksize=[1, self.n_rel_parts - filter_size + 1,
+                           1, 1],
+                    strides=[1, 1, 1, 1],
+                    padding='VALID',
+                    name="pool-r")
+                pooled_outputs.append(pooled)
+
+        # Combine all the pooled features
+        num_filters_total = num_filters * len(filter_sizes)
+        self.r_h_pool = tf.concat(pooled_outputs, 3)
+        self.r_h_pool_flat = tf.reshape(self.r_h_pool, [-1, num_filters_total])
 
         # Add dropout
         with tf.name_scope("dropout"):
-            self.h_drop = tf.nn.dropout(self.h_pool_flat,
+            self.h_drop = tf.nn.dropout(self.q_h_pool_flat,
                                         self.dropout_keep_prob,
+                                        name='dropout_q',
                                         seed=1332)
-            self.r_drop = tf.nn.dropout(self.input_r, self.dropout_keep_prob,
+            self.r_drop = tf.nn.dropout(self.r_h_pool_flat,
+                                        self.dropout_keep_prob,
+                                        name='dropout_r',
                                         seed=1332)
 
-
-        #self.rh_pool = tf.concat(1, [self.h_drop, self.input_r])
 
         pooled_width = num_filters_total
 
         with tf.name_scope("dense_q"):
-            W = tf.Variable(tf.truncated_normal([pooled_width, n_hidden_nodes_1],
-                                                stddev=0.1, seed=234), name="W")
+            W = tf.Variable(tf.truncated_normal([pooled_width,
+                                                 n_hidden_nodes_1],
+                                                stddev=0.1, seed=234),
+                            name="W")
             self.W_1 = W
-            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]), name="b")
+            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
+                            name="b")
             self.h_1 = tf.nn.xw_plus_b(self.h_drop, W, b, name="h_1")
             self.a_1 = tf.nn.elu(self.h_1)
 
 
-        with tf.name_scope("dense_r_input"):
-            W = tf.Variable(
-                tf.truncated_normal([rel_width, n_hidden_nodes_r],
-                                    stddev=0.1, seed=234), name="W")
-            self.W_3 = W
-            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_r]),
-                            name="b")
-            self.h_3 = tf.nn.xw_plus_b(self.r_drop, W, b, name="h_3")
-            self.a_3 = tf.nn.elu(self.h_3)
+        #with tf.name_scope("dense_r_input"):
+        #    W = tf.Variable(
+        #        tf.truncated_normal([rel_width, n_hidden_nodes_r],
+        #                            stddev=0.1, seed=234), name="W")
+        #    self.W_3 = W
+        #    b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_r]),
+        #                    name="b")
+        #    self.h_3 = tf.nn.xw_plus_b(self.r_drop, W, b, name="h_3")
+        #    self.a_3 = tf.nn.elu(self.h_3)
 
         with tf.name_scope("dense_r"):
             W = tf.Variable(
-                tf.truncated_normal([n_hidden_nodes_r, n_hidden_nodes_1],
+                tf.truncated_normal([pooled_width, n_hidden_nodes_1],
                                     stddev=0.1, seed=234), name="W")
             self.W_2 = W
             b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
                             name="b")
-            self.h_2 = tf.nn.xw_plus_b(self.a_3, W, b, name="h_2")
+            self.h_2 = tf.nn.xw_plus_b(self.r_drop, W, b, name="h_2")
             self.a_2 = tf.nn.elu(self.h_2)
-
-        #with tf.name_scope("dense2"):
-        #    W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, n_hidden_nodes_2],
-        #                                        stddev=0.1), name="W")
-        #    b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_2]), name="b")
-        #    self.h_2 = tf.nn.xw_plus_b(self.a_1, W, b, name="h_2")
-        #    self.a_2 = tf.nn.relu(self.h_2)
-
-
-        #with tf.name_scope("dense3"):
-        #    W = tf.Variable(tf.truncated_normal([n_hidden_nodes_2, n_hidden_nodes_3],
-        #                                        stddev=0.1), name="W")
-        #    b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_3]), name="b")
-        #    self.h_3 = tf.nn.xw_plus_b(self.a_2, W, b, name="h_3")
-        #    self.a_3 = tf.nn.relu(self.h_3)
-
-        # Final (unnormalized) scores and predictions
-
-
-        #with tf.name_scope("output"):
-        #    W = tf.Variable(tf.truncated_normal([n_hidden_nodes_1, num_classes],
-        #                                        stddev=0.1, seed=234), name="W")
-        #    self.W_o = W
-        #    b = tf.Variable(tf.constant(0.1, shape=[num_classes]), name="b")
-        #    #W = tf.clip_by_norm(W, 3)
-        #    self.scores = tf.nn.xw_plus_b(self.a_1, W, b, name="scores")
-        #    self.probs = tf.nn.sigmoid(self.scores)
-
-
-        #norm_a_1 = tf.sqrt(tf.reduce_sum(tf.square(self.a_1), 1, keep_dims=True))
-        #norm_a_2 = tf.sqrt(tf.reduce_sum(tf.square(self.a_2), 1, keep_dims=True))
-        #a_1 = self.a_1 / n
-        #a_2 = self.a_2 /norm_a_1
-        a_1 = tf.nn.l2_normalize(self.a_1, 1)
-        a_2 = tf.nn.l2_normalize(self.a_2, 1)
-        scores = tf.multiply(a_1, a_2)
-        self.scores = tf.reduce_sum(scores, 1, keep_dims=True)
-        #self.scores = tf.exp(- tf.reduce_sum(tf.abs(a_1 - a_2), 1, keep_dims=True))
-        #self.scores = scores
-        self.probs = self.scores
-
-        #correct_score = self.scores[0, :]
-        #wrong_scores = self.scores[1:, :]
-
-        def get_rank(correct_score, wrong_scores):
-            rank = tf.reduce_sum(tf.cast(tf.greater(tf.add(wrong_scores, self.margin),
-                                                    correct_score),
-                                         tf.float32))
-            # Above behaves weird (negative rank) if wrong_scores is empty
-            rank = tf.maximum(0.0, rank)
-            return rank
-
-        def rank_loss(rank):
-            #return tf.cast(rank, tf.float32)
-            rank_int = tf.cast(rank, tf.int32)
-            a = tf.cast(tf.range(1, limit=rank_int + 1), tf.float32)
-            ones = tf.ones_like(a, dtype=tf.float32)
-            l = tf.reduce_sum(tf.div(ones, a), name="rank_loss")
-            return l
-            #loss = 0
-            #for j in range(rank[0]):
-            #    loss += 1/j
-            #return loss
-
-        #rank = get_rank(correct_score, wrong_scores)
-        #r_loss = rank_loss(rank)
-
-        #self.weighted_logits = tf.mul(self.scores, self.weight_y)
 
         # CalculateMean cross-entropy loss
         with tf.name_scope("loss"):
-            #losses = tf.reduce_sum(wrong_scores) - tf.reduce_sum(correct_score)
-            #losses = - self.input_y * scores
-            #print(losses.get_shape())
-            #losses = - tf.reduce_sum(scores)
-            #losses = tf.maximum(0.0, self.margin + wrong_scores - correct_score)
-            #losses = tf.nn.sigmoid_cross_entropy_with_logits(self.scores,
-            #                                                 self.input_y)
-            #self.loss = tf.reduce_sum(r_loss * losses / rank)
-            #self.loss = tf.reduce_mean(losses)
-                        #0.1 * tf.nn.l2_loss(self.W_o)
-            #self.loss = tf.reduce_mean(tf.mul(losses, self.weight_y))
-            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores))# + 0.00001 * tf.nn.l2_loss(self.W_1) + 0.00001 * tf.nn.l2_loss(self.W_2)
+            a_1 = tf.nn.l2_normalize(self.a_1, 1, name='normalize_q')
+            a_2 = tf.nn.l2_normalize(self.a_2, 1, name='normalize_r')
+            scores = tf.multiply(a_1, a_2)
+            self.scores = tf.reduce_sum(scores, 1, keep_dims=True)
+            self.probs = self.scores
+            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores))
 
         self.writer.add_graph(self.g)
