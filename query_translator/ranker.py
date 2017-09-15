@@ -1014,16 +1014,18 @@ class RelationNgramScorer(MLModel):
         if self.regularization_C is None:
             logger.info("Performing grid search.")
             # Smaller -> stronger.
-            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001]}]
+            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001, 
+                                1e-3, 1e-4, 1e-5, 1e-6]}]
             relation_scorer = LogisticRegression(class_weight=class_weights,
+                                                 max_iter=200,
                                                  solver='sag')
             grid_search_cv = GridSearchCV(relation_scorer,
-                                                      cv_params,
-                                                      n_jobs=4,
-                                                      verbose=1,
-                                                      cv=4,
-                                                      refit=True,
-                                                      scoring='roc_auc')
+                                          cv_params,
+                                          n_jobs=1,
+                                          verbose=1,
+                                          cv=4,
+                                          refit=True,
+                                          scoring='roc_auc')
             grid_search_cv.fit(X, labels)
             logger.info("Best score: %.5f" % grid_search_cv.best_score_)
             logger.info("Best params: %s" % grid_search_cv.best_params_)
@@ -1038,6 +1040,7 @@ class RelationNgramScorer(MLModel):
                                                  class_weight=class_weights,
                                                  n_jobs=-1,
                                                  solver='sag',
+                                                 max_iter=200,
                                                  random_state=999)
             relation_scorer.fit(X, labels)
             logger.info("Done.")
