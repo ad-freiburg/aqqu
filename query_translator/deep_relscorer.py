@@ -36,7 +36,10 @@ class DeepCNNAqquRelScorer():
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
         self.filter_sizes = (1, 2, 3)
-        self.sentence_len = self.max_query_len + 2 * (max(self.filter_sizes) - 1)
+        pad = max(self.filter_sizes) - 1
+        self.sentence_len = self.max_query_len + 2 * pad
+        # + 3 to make relation_len=12 a common multiple of the filter
+        self.relation_len = self.n_rel_parts + 3
         self.scores = None
         self.probs = None
 
@@ -173,7 +176,7 @@ class DeepCNNAqquRelScorer():
         dev_scores = []
         with self.g.as_default():
             tf.set_random_seed(42)
-            self.build_deep_model(self.sentence_len, self.embeddings,
+            self.build_deep_model(self.embeddings,
                                   self.embedding_size,
                                   filter_sizes=self.filter_sizes)
             gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
@@ -356,12 +359,11 @@ class DeepCNNAqquRelScorer():
         num_candidates = len(batch)
         # How much to add left and right.
         pad = max(self.filter_sizes) - 1
-        words = np.zeros(shape=(num_candidates, self.max_query_len + 2 * pad),
+        words = np.zeros(shape=(num_candidates, self.sentence_len),
                          dtype=int)
         rel_features = np.zeros(shape=(num_candidates,
-                                       self.n_rel_parts,
-                                       self.embedding_size),
-                                dtype=float)
+                                       self.relation_len),
+                                dtype=int)
         oov_words = set()
         for i, candidate in enumerate(batch):
             text_tokens = feature_extraction.get_query_text_tokens(candidate)
@@ -373,28 +375,32 @@ class DeepCNNAqquRelScorer():
                 else:
                     oov_words.add(t)
                     text_sequence.append(self.UNK_ID)
+
             if len(text_sequence) > self.max_query_len:
                 logger.warn("Max length exceeded: %s. Truncating",
                             text_sequence)
                 text_sequence = text_sequence[:self.max_query_len]
+
             for j, t in enumerate(text_sequence):
                 words[i, pad + j] = t
 
             relations = candidate.get_relation_names()
             rel_words = self.split_relation_into_words(relations)
-            for rel_part_num, rel_part in enumerate(rel_words):
-                embedded_words = []
+            rel_sequence = []
+            for rel_part in rel_words:
                 for word in rel_part:
                     if word in self.vocab:
-                        embedded_words.append(
-                            self.embeddings[self.vocab[word]])
+                        rel_sequence.append(self.vocab[word])
                     else:
                         oov_words.add(word)
-                if not embedded_words:
-                    embedded_words.append(
-                        np.zeros(shape=(self.embedding_size,)))
-                rel_features[i, rel_part_num] = np.average(
-                    np.array(embedded_words), axis=0)
+                        text_sequence.append(self.UNK_ID)
+
+            if len(rel_sequence) > self.n_rel_parts:
+                rel_sequence = rel_sequence[-self.n_rel_parts:]
+
+            for j, rel in enumerate(rel_sequence):
+                rel_features[i, j] = rel
+
         if oov_words:
             logger.debug("OOV words in batch: %s" % str(oov_words))
         return words, rel_features
@@ -419,10 +425,6 @@ class DeepCNNAqquRelScorer():
         # Store UNK, as well as name of embeddings_source?
         filename = "data/model-dir/tf/" + self.name + "/"
         logger.info("Writing model to %s." % filename)
-        #try:
-        #    os.remove(self.name)
-        #except OSError:
-        #    pass
         if not os.path.exists(filename):
             os.makedirs(filename)
 
@@ -449,7 +451,7 @@ class DeepCNNAqquRelScorer():
                 os.makedirs(log_name)
             self.writer = tf.summary.FileWriter(log_name)
             with self.g.as_default():
-                self.build_deep_model(self.sentence_len, self.embeddings,
+                self.build_deep_model(self.embeddings,
                                       self.embedding_size,
                                       filter_sizes=self.filter_sizes)
                 saver = tf.train.Saver()
@@ -514,20 +516,20 @@ class DeepCNNAqquRelScorer():
         assert(len(result) == len(score_candidates))
         return result
 
-    def build_deep_model(self, sentence_len, embeddings, embedding_size,
+    def build_deep_model(self, embeddings, embedding_size,
                          filter_sizes=(2, 3, 4), num_filters=300,
                          n_hidden_nodes_1=200,
                          n_hidden_nodes_r=200,
                          n_hidden_nodes_3=50,
                          num_classes=1):
-        logger.info("sentence_len: %s", sentence_len)
+        logger.info("sentence_len: %s", self.sentence_len)
         logger.info("embedding_size: %s", embedding_size)
         logger.info("n_rel_parts: %s", self.n_rel_parts)
 
-        self.input_s = tf.placeholder(tf.int32, [None, sentence_len],
+        self.input_s = tf.placeholder(tf.int32, [None, self.sentence_len],
                                       name="input_s")
-        self.input_r = tf.placeholder(tf.float32, 
-                                      [None, self.n_rel_parts, embedding_size],
+        self.input_r = tf.placeholder(tf.int32, 
+                                      [None, self.relation_len],
                                       name="input_r")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes],
                                       name="input_y")
@@ -540,7 +542,11 @@ class DeepCNNAqquRelScorer():
                 embeddings,
                 name="W",
                 trainable=False)
+            self.embedded_input_r = tf.nn.embedding_lookup(W, self.input_r)
             self.embedded_chars = tf.nn.embedding_lookup(W, self.input_s)
+            self.embedded_input_r_expanded = tf.expand_dims(
+                    self.embedded_input_r,
+                    -1)
             self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars,
                                                           -1)
 
@@ -566,7 +572,7 @@ class DeepCNNAqquRelScorer():
                 # Maxpooling over the outputs
                 pooled = tf.nn.max_pool(
                     h,
-                    ksize=[1, sentence_len - filter_size + 1, 1, 1],
+                    ksize=[1, self.sentence_len - filter_size + 1, 1, 1],
                     strides=[1, 1, 1, 1],
                     padding='VALID',
                     name="pool-q")
@@ -578,7 +584,6 @@ class DeepCNNAqquRelScorer():
         self.q_h_pool_flat = tf.reshape(self.q_h_pool, [-1, num_filters_total])
 
         # Convolution layers for relations, one conv-maxpool per filter size
-        self.input_r_expanded = tf.expand_dims(self.input_r, -1)
         pooled_outputs = []
         for i, filter_size in enumerate(filter_sizes):
             with tf.name_scope("conv-maxpool-r-%s" % filter_size):
@@ -590,7 +595,7 @@ class DeepCNNAqquRelScorer():
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    self.input_r_expanded,
+                    self.embedded_input_r_expanded,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
@@ -600,7 +605,7 @@ class DeepCNNAqquRelScorer():
                 # Maxpooling over the outputs
                 pooled = tf.nn.max_pool(
                     h,
-                    ksize=[1, self.n_rel_parts - filter_size + 1,
+                    ksize=[1, self.relation_len - filter_size + 1,
                            1, 1],
                     strides=[1, 1, 1, 1],
                     padding='VALID',

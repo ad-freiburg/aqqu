@@ -201,6 +201,8 @@ def simple_features(candidate):
         'coverage': coverage,
         'matches_answer_type': matches_answer_type,
         'result_size_0': result_size_0,
+        'total_literal_length': (literal_entities_length
+                                 + literal_relation_tokens_length),
     })
     features.update({
         # "Entity Features"
@@ -212,8 +214,6 @@ def simple_features(candidate):
         'sum_em_surface_score': sum_em_surface_score,
         'avg_em_popularity': avg_em_popularity,
         'sum_em_popularity': sum_em_popularity,
-        'total_literal_length': (literal_entities_length
-                                 + n_literal_relations),
     })
     features.update({
         # "Relation Features"
