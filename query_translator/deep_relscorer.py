@@ -1,17 +1,17 @@
 import logging
 import math
+from itertools import chain
+import os
+import time
+import datetime
 import random
 import numpy as np
 import joblib
 from sklearn import utils
 import config_helper
-import os
-import time
-import datetime
 import tensorflow as tf
 from gensim import models
 from . import feature_extraction
-from sklearn.preprocessing import normalize
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,9 @@ class DeepCNNAqquRelScorer():
         self.filter_sizes = (1, 2, 3)
         pad = max(self.filter_sizes) - 1
         self.sentence_len = self.max_query_len + 2 * pad
-        # + 3 to make relation_len=12 a common multiple of the filter
-        self.relation_len = self.n_rel_parts + 3
+        # 3 1-word domains, 3 2-word sub domains
+        # and 3 3-word relation names gives 18 which is deviseable by 2 and 3
+        self.relation_len = 3 + 6 + 9
         self.scores = None
         self.probs = None
 
@@ -106,16 +107,17 @@ class DeepCNNAqquRelScorer():
             candidates = [x.query_candidate for x in query.eval_candidates]
             for candidate in candidates:
                 relations = candidate.get_unsorted_relation_names()
-                rel_words = self.split_relation_into_words(relations)
-                for ws in rel_words:
-                    for w in ws:
-                        if w not in self.vocab:
-                            vector = np.random.uniform(-0.05, 0.05,
-                                                       self.embedding_size)
-                            new_vectors.append(vector)
-                            next_id = len(self.vocab)
-                            self.vocab[w] = next_id
-                            new_words.append(w)
+                rel_splits = self.split_relations_into_words(relations)
+                for rel_words in rel_splits:
+                    for ws in rel_words:
+                        for w in ws:
+                            if w not in self.vocab:
+                                vector = np.random.uniform(-0.05, 0.05,
+                                                           self.embedding_size)
+                                new_vectors.append(vector)
+                                next_id = len(self.vocab)
+                                self.vocab[w] = next_id
+                                new_words.append(w)
         self.embeddings = np.vstack((self.embeddings, np.array(new_vectors)))
         self.embeddings = self.embeddings.astype(np.float32)
         #self.embeddings = normalize(self.embeddings, norm='l2', axis=1)
@@ -345,7 +347,8 @@ class DeepCNNAqquRelScorer():
             candidates = [x.query_candidate for x in query.eval_candidates]
             all_candidates += candidates
             for i, candidate in enumerate(candidates):
-                candidate_f1.append(query.eval_candidates[i].evaluation_result.f1)
+                candidate_f1.append(
+                    query.eval_candidates[i].evaluation_result.f1)
                 candidate_qids.append(query.id)
         candidate_features = self.create_batch_features(all_candidates,
                                                         max_len=999999)
@@ -355,7 +358,6 @@ class DeepCNNAqquRelScorer():
         return candidate_features, candidate_qids, candidate_f1
 
     def create_batch_features(self, batch, max_len=3000):
-        #batch = batch[:max_len]
         num_candidates = len(batch)
         # How much to add left and right.
         pad = max(self.filter_sizes) - 1
@@ -381,45 +383,61 @@ class DeepCNNAqquRelScorer():
                             text_sequence)
                 text_sequence = text_sequence[:self.max_query_len]
 
-            for j, t in enumerate(text_sequence):
-                words[i, pad + j] = t
+            for word_num, word_id in enumerate(text_sequence):
+                words[i, pad + word_num] = word_id
 
             relations = candidate.get_relation_names()
-            rel_words = self.split_relation_into_words(relations)
-            rel_sequence = []
-            for rel_part in rel_words:
-                for word in rel_part:
-                    if word in self.vocab:
-                        rel_sequence.append(self.vocab[word])
-                    else:
-                        oov_words.add(word)
-                        text_sequence.append(self.UNK_ID)
+            rel_splits = self.split_relations_into_words(relations)
 
-            if len(rel_sequence) > self.n_rel_parts:
-                rel_sequence = rel_sequence[-self.n_rel_parts:]
+            rel_sequences = []
+            for rel_parts in rel_splits:
+                rel_words = []
+                for rel_part in rel_parts:
+                    word_sequence = []
+                    for word in rel_part:
+                        if word in self.vocab:
+                            word_sequence.append(self.vocab[word])
+                        else:
+                            oov_words.add(word)
+                            word_sequence.append(self.UNK_ID)
+                    rel_words.append(word_sequence)
+                rel_sequences.append(rel_words)
 
-            for j, rel in enumerate(rel_sequence):
-                rel_features[i, j] = rel
+            # at most 3 relations, and 3 parts per relation
+            # so at most 3 groups of 3 elements, each element
+            # being all words of that part. Thus:
+            # ['a.r.c_d', 'a.x.y', 'a_b.p.q'] ->
+            # [ 'a', 'a', 'a', 'b', '', ''
+            #   'r', 'x', 'p', '', '', '',
+            #   'c', 'd', 'y', 'q', '', '']
+            grouped_rel_parts = zip(*rel_sequences)
+            group_sizes = [3, 6, 9]
+            pos = 0
+            for group_num, group in enumerate(grouped_rel_parts):
+                flat_group = list(chain(*group))
+                for word_id in flat_group[-group_sizes[group_num]:]:
+                    rel_features[i, pos] = word_id
+                    pos += 1
 
         if oov_words:
             logger.debug("OOV words in batch: %s" % str(oov_words))
         return words, rel_features
 
-    def split_relation_into_words(self, relations):
-        """Split the relation into a list of words.
+    def split_relations_into_words(self, relations):
+        """Split each of the supplied relations into a list of words.
         domain.sub_domain.rel_name -> [[domain], [sub, domain], [rel, name]]
 
-        :param relation_name:
+        :param relations:
         :return:
          """
-        words = [[] for _ in range(self.n_rel_parts)]
-        #words = []
-        #words = [[], [], []]
+        split_rels = [[] for _ in range(len(relations))]
         for k, rel in enumerate(relations):
+            words = [[] for _ in range(self.n_parts_per_rel)]
             parts = rel.strip().split('.')
             for i, p in enumerate(parts[-self.n_parts_per_rel:]):
-                words[k * self.n_parts_per_rel + i] += p.split('_')
-        return words
+                words[i] += p.split('_')
+            split_rels[k] = words
+        return split_rels
 
     def store_model(self):
         # Store UNK, as well as name of embeddings_source?
