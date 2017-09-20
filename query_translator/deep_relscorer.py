@@ -369,6 +369,7 @@ class DeepCNNAqquRelScorer():
         oov_words = set()
         for i, candidate in enumerate(batch):
             text_tokens = feature_extraction.get_query_text_tokens(candidate)
+            logger.info('question tokens: %s', text_tokens)
             text_sequence = []
             # Transform to IDs.
             for t in text_tokens:
