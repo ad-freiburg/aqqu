@@ -57,6 +57,9 @@ def get_query_text_tokens(candidate, include_mid=False):
     query_text_tokens = ['<start>']
     # Replace entity tokens with "ENTITY"
     for t in candidate.query.tokens:
+        # ignore punctuation
+        if t.pos_ == 'PUNCT':
+            continue
         if t in entity_tokens:
             if include_mid and isinstance(entity_tokens[t].entity.entity, KBEntity):
                 mid = entity_tokens[t].entity.entity.id
