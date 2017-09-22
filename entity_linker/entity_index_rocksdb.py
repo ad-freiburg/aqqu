@@ -222,6 +222,7 @@ class EntityIndex(object):
         :return:
         """
         surface = normalize_entity_name(surface).encode('utf-8')
+        LOG.debug("Looking up %s", surface)
         line = self.entity_db.get(SURFACE_PREFIX+surface)
         if not line:
             return []

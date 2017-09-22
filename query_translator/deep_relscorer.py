@@ -35,12 +35,14 @@ class DeepCNNAqquRelScorer():
             self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
-        self.filter_sizes = (1, 2, 3)
-        pad = max(self.filter_sizes) - 1
-        self.sentence_len = self.max_query_len + 2 * pad
+        self.filter_sizes = (1, 2, 3, 4)
+        #pad = max(self.filter_sizes) - 1
+        self.sentence_len = self.max_query_len
         # 3 1-word domains, 3 2-word sub domains
-        # and 3 3-word relation names gives 18 which is deviseable by 2 and 3
-        self.relation_len = 3 + 6 + 9
+        # and 3 3-word relation names plus 2 paddings
+        # between domain, sub-domain, relation 20 which is 
+        # as long max_query_len
+        self.relation_len = 3 + 6 + 9 + 2
         self.scores = None
         self.probs = None
 
@@ -81,11 +83,11 @@ class DeepCNNAqquRelScorer():
         vocab[DeepCNNAqquRelScorer.UNK] = UNK_ID
         vectors[UNK_ID] = np.random.uniform(-0.05, 0.05,
                                             vector_size)
-        # ENTITY_ID = 2
-        # vocab["<entity>"] = ENTITY_ID
-        # vectors[ENTITY_ID] = np.random.uniform(-0.05, 0.05,
-        #                                       vector_size)
-        STRTS_ID = 2
+        ENTITY_ID = 2
+        vocab["<entity>"] = ENTITY_ID
+        vectors[ENTITY_ID] = np.random.uniform(-0.05, 0.05,
+                                               vector_size)
+        STRTS_ID = 3
         vocab["<start>"] = STRTS_ID
         vectors[STRTS_ID] = np.random.uniform(-0.05, 0.05,
                                               vector_size)
@@ -220,7 +222,7 @@ class DeepCNNAqquRelScorer():
                                 self.input_y: input_y,
                                 self.input_s: x_b,
                                 self.input_r: x_rel_b,
-                                self.dropout_keep_prob: 1.0
+                                self.dropout_keep_prob: 0.7
                             }
                             loss, p = self.sess.run(
                                 [self.loss, self.probs],
@@ -243,7 +245,7 @@ class DeepCNNAqquRelScorer():
                             self.input_y: y_batch,
                             self.input_s: x_batch,
                             self.input_r: x_rel_batch,
-                            self.dropout_keep_prob: 1.0
+                            self.dropout_keep_prob: 0.7
                         }
                         _, step, loss, probs = self.sess.run(
                             [train_op, global_step, self.loss, self.probs],
@@ -360,7 +362,6 @@ class DeepCNNAqquRelScorer():
     def create_batch_features(self, batch, max_len=3000):
         num_candidates = len(batch)
         # How much to add left and right.
-        pad = max(self.filter_sizes) - 1
         words = np.zeros(shape=(num_candidates, self.sentence_len),
                          dtype=int)
         rel_features = np.zeros(shape=(num_candidates,
@@ -369,7 +370,6 @@ class DeepCNNAqquRelScorer():
         oov_words = set()
         for i, candidate in enumerate(batch):
             text_tokens = feature_extraction.get_query_text_tokens(candidate)
-            logger.info('question tokens: %s', text_tokens)
             text_sequence = []
             # Transform to IDs.
             for t in text_tokens:
@@ -385,7 +385,7 @@ class DeepCNNAqquRelScorer():
                 text_sequence = text_sequence[:self.max_query_len]
 
             for word_num, word_id in enumerate(text_sequence):
-                words[i, pad + word_num] = word_id
+                words[i, word_num] = word_id
 
             relations = candidate.get_relation_names()
             rel_splits = self.split_relations_into_words(relations)
@@ -401,7 +401,8 @@ class DeepCNNAqquRelScorer():
                         else:
                             oov_words.add(word)
                             word_sequence.append(self.UNK_ID)
-                    rel_words.append(word_sequence)
+                    # tuple so the word sequence is hashable
+                    rel_words.append(tuple(word_sequence))
                 rel_sequences.append(rel_words)
 
             # at most 3 relations, and 3 parts per relation
@@ -411,14 +412,25 @@ class DeepCNNAqquRelScorer():
             # [ 'a', 'a', 'a', 'b', '', ''
             #   'r', 'x', 'p', '', '', '',
             #   'c', 'd', 'y', 'q', '', '']
-            grouped_rel_parts = zip(*rel_sequences)
+            grouped_rel_parts = list(zip(*rel_sequences))
+
+            # For domains and sub-domains we don't
+            # care if the same domain is used multiple times
+            grouped_rel_parts[0] = list(set(grouped_rel_parts[0]))
+            grouped_rel_parts[1] = list(set(grouped_rel_parts[1]))
+            # above becomes
+            # ['', '', 'a', 'a', 'b', '',
+            #  'x', 'r, 'p', '',
+            #  'c', 'd', 'y', 'q', '', ''..]
             group_sizes = [3, 6, 9]
-            pos = 0
+            word_num = 0
             for group_num, group in enumerate(grouped_rel_parts):
                 flat_group = list(chain(*group))
                 for word_id in flat_group[-group_sizes[group_num]:]:
-                    rel_features[i, pos] = word_id
-                    pos += 1
+                    rel_features[i, word_num] = word_id
+                    word_num += 1
+                # one padding between groups
+                word_num += 1
 
         if oov_words:
             logger.debug("OOV words in batch: %s" % str(oov_words))
@@ -488,7 +500,7 @@ class DeepCNNAqquRelScorer():
         feed_dict = {
           self.input_s: words,
           self.input_r: rel_features,
-          self.dropout_keep_prob: 1.0
+          self.dropout_keep_prob: 0.7
         }
         with self.g.as_default():
             with self.g.device("/gpu:0"):
@@ -518,7 +530,7 @@ class DeepCNNAqquRelScorer():
             feed_dict = {
               self.input_s: words,
               self.input_r: rel_features,
-              self.dropout_keep_prob: 1.0
+              self.dropout_keep_prob: 0.7
             }
             with self.g.as_default():
                 with self.g.device("/gpu:0"):
@@ -536,7 +548,7 @@ class DeepCNNAqquRelScorer():
         return result
 
     def build_deep_model(self, embeddings, embedding_size,
-                         filter_sizes=(2, 3, 4), num_filters=300,
+                         filter_sizes=(2, 3, 4), num_filters=128,
                          n_hidden_nodes_1=200,
                          n_hidden_nodes_r=200,
                          n_hidden_nodes_3=50,
@@ -587,7 +599,7 @@ class DeepCNNAqquRelScorer():
                     padding="VALID",
                     name="conv-q")
                 # Apply nonlinearity
-                h = tf.nn.elu(tf.nn.bias_add(conv, b), name="relu")
+                h = tf.nn.elu(tf.nn.bias_add(conv, b), name="elu")
                 # Maxpooling over the outputs
                 pooled = tf.nn.max_pool(
                     h,
@@ -620,7 +632,7 @@ class DeepCNNAqquRelScorer():
                     padding="VALID",
                     name="conv-r")
                 # Apply nonlinearity
-                h = tf.nn.elu(tf.nn.bias_add(conv, b), name="relu")
+                h = tf.nn.elu(tf.nn.bias_add(conv, b), name="elu")
                 # Maxpooling over the outputs
                 pooled = tf.nn.max_pool(
                     h,
@@ -637,49 +649,37 @@ class DeepCNNAqquRelScorer():
         self.r_h_pool_flat = tf.reshape(self.r_h_pool, [-1, num_filters_total])
 
         # Add dropout
-        with tf.name_scope("dropout"):
-            self.h_drop = tf.nn.dropout(self.q_h_pool_flat,
-                                        self.dropout_keep_prob,
-                                        name='dropout_q',
-                                        seed=1332)
-            self.r_drop = tf.nn.dropout(self.r_h_pool_flat,
-                                        self.dropout_keep_prob,
-                                        name='dropout_r',
-                                        seed=1332)
-
+        self.h_drop = tf.nn.dropout(self.q_h_pool_flat,
+                                    self.dropout_keep_prob,
+                                    name='dropout_q',
+                                    seed=1332)
+        self.r_drop = tf.nn.dropout(self.r_h_pool_flat,
+                                    self.dropout_keep_prob,
+                                    name='dropout_r',
+                                    seed=1332)
 
         pooled_width = num_filters_total
 
-        with tf.name_scope("dense_q"):
-            W = tf.Variable(tf.truncated_normal([pooled_width,
-                                                 n_hidden_nodes_1],
-                                                stddev=0.1, seed=234),
-                            name="W")
-            self.W_1 = W
+        with tf.name_scope("shared-weights"):
+            self.W_shared = tf.Variable(tf.truncated_normal([pooled_width,
+                                                             n_hidden_nodes_1],
+                                                            stddev=0.1,
+                                                            seed=234),
+                                        name="W_shared")
+
+        with tf.name_scope("dense_r"):
             b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
                             name="b")
-            self.h_1 = tf.nn.xw_plus_b(self.h_drop, W, b, name="h_1")
+            self.h_1 = tf.nn.xw_plus_b(self.h_drop, self.W_shared, b,
+                                       name="h_1")
             self.a_1 = tf.nn.elu(self.h_1)
 
 
-        #with tf.name_scope("dense_r_input"):
-        #    W = tf.Variable(
-        #        tf.truncated_normal([rel_width, n_hidden_nodes_r],
-        #                            stddev=0.1, seed=234), name="W")
-        #    self.W_3 = W
-        #    b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_r]),
-        #                    name="b")
-        #    self.h_3 = tf.nn.xw_plus_b(self.r_drop, W, b, name="h_3")
-        #    self.a_3 = tf.nn.elu(self.h_3)
-
         with tf.name_scope("dense_r"):
-            W = tf.Variable(
-                tf.truncated_normal([pooled_width, n_hidden_nodes_1],
-                                    stddev=0.1, seed=234), name="W")
-            self.W_2 = W
             b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
                             name="b")
-            self.h_2 = tf.nn.xw_plus_b(self.r_drop, W, b, name="h_2")
+            self.h_2 = tf.nn.xw_plus_b(self.r_drop, self.W_shared, b,
+                                       name="h_2")
             self.a_2 = tf.nn.elu(self.h_2)
 
         # CalculateMean cross-entropy loss

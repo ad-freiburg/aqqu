@@ -193,6 +193,7 @@ class EntityLinker:
         # UH, . for: hey arnold!
         # MD for: ben may library
         # PRP for: henry i
+        # CD for: episode 1
         # FW for: ?
         self.valid_entity_tag = re.compile(r'^(UH|\.|TO|PRP.?|#|FW|IN|VB.?|'
                                            r'RB|CC|NNP.?|NN.?|JJ.?|CD|DT|MD|'
@@ -263,7 +264,8 @@ class EntityLinker:
             return False
 
         # For length 1 only allows nouns
-        elif len(pos_list) == 1 and (pos_list[0].startswith('N') or pos_list[0].startswith('J')) or \
+        elif len(pos_list) == 1 and (pos_list[0].startswith('N') or
+                                     pos_list[0].startswith('J')) or \
                 (len(pos_list) > 1 and self.valid_entity_tag.match(pos_str)):
             # It is not allowed to split a consecutive NNP
             # if it is a single token.
@@ -313,7 +315,7 @@ class EntityLinker:
                 entity_str = entity_tokens.text 
                 logger.debug("Checking if '{0}' is an entity.".format(entity_str))
                 entities = self.entity_index.get_entities_for_surface(entity_str)
-                logger.debug("Found {0} raw entities".format(len(entities)))
+                logger.info("Found {0} raw entities".format(len(entities)))
                 # No suggestions.
                 if len(entities) == 0:
                     continue
