@@ -8,8 +8,6 @@ import config_helper
 from collections import Counter, defaultdict
 from operator import itemgetter
 
-from .freebaseize_questions import EntityMention
-
 from entity_linker.entity_linker import IdentifiedEntity
 
 from sklearn.feature_extraction import DictVectorizer
@@ -27,9 +25,38 @@ from sklearn.ensemble import RandomForestClassifier
 
 logger = logging.getLogger(__name__)
 
-mentionregex = re.compile(r'\[[^\|\]]+?\|[^\|\]]+?\|[^\|\]]+?\|[^\]]+?\]')
-
 PAD = 'PAD'
+
+class EntityMention:
+    def __init__(self, name=None, 
+                 mid='UNK', types=['UNK'], position=0):
+        self.name = name
+        self.mid = mid
+        self.types = types
+        self.tokens = name.split(' ')
+        self.span = (position, position+len(self.tokens))
+
+    def __repr__(self):
+        return "[{}|{}|{}]".format(self.name,
+                self.mid, ','.join(self.types)) 
+
+    @staticmethod
+    def fromString(text, entity_types_map, position=0):
+        if text[0] != '[' and text[-1] != ']':
+            return EntityMention(name=text)
+        else:
+            splits = text[1:-1].split('|')
+            mid = splits[0]
+            if mid == '<VALUE>':
+                mid = 'UNK'
+                types = ['year']
+            else:
+                types = entity_types_map[mid]
+                if len(types) < 1:
+                    logger.error("Too few types in %s", text)
+                    types = ['UNK']
+            name = splits[1].replace('_', ' ')
+            return EntityMention(name, mid, types, position)
 
 class AnswerType:
     """
@@ -49,9 +76,9 @@ class DummyQuery:
     Query class used as stand-in for query_translator.Query during training.
     This prevents a cyclic dependency
     """
-    def __init__(self, text):
-        self.tokens = None
-        self.identified_entities = None
+    def __init__(self):
+        self.tokens = []
+        self.identified_entities = []
 
 class DummyToken:
     """ 
@@ -61,38 +88,38 @@ class DummyToken:
         self.orth_ = token
         self.lower_ = token.lower()
 
-def dumb_tokenize(text):
-    toks_split = text.split(' ')
-    build_tok = None
-    for tok in toks_split:
-        if not build_tok:
-            if tok[0] != '[' or tok[-1] == ']':
-                yield DummyToken(tok)
-            else:
-                build_tok = tok
-        else:
-            if tok[-1] == ']':
-                yield DummyToken(build_tok+tok)
-                build_tok = None
-            else:
-                build_tok += ' '+tok
+
+def load_entity_types(entity_types_path, max_len=None):
+    entity_types_map = defaultdict(lambda: ['UNK'])
+    with open(entity_types_path, 'rt', encoding='utf-8') as entity_types_file:
+        for line in entity_types_file:
+            mid, types = line.split('\t')
+            types = types.strip()
+            # list[:None] is the same as list[:] see
+            # https://stackoverflow.com/q/30622809
+            entity_types_map[mid] = types.split(' ')[:max_len]
+    return entity_types_map
 
 
-def gq_read(gq_file_path):
-    with open(gq_file_path, 'rt', encoding='utf-8', errors='replace') as gq_file:
+def gq_read(gq_path, entity_types_map):
+    """
+    Reads a generated questions file in freebase format and returns
+    generates DummyQuery objects for each line DummyQuery objects for each line
+    """
+    with open(gq_path, 'rt', encoding='utf-8', errors='replace') as gq_file:
         for line in gq_file:
             query_str, answer_str = line.split('\t')
-            em_answer = EntityMention.fromString(answer_str.strip())
+            em_answer = EntityMention.fromString(answer_str.strip(),
+                                                 entity_types_map)
             ie_answer = IdentifiedEntity(em_answer.tokens,
-                                          em_answer.name, em_answer.mid, 0, 0,
-                                          True, entity_types=em_answer.types)
-            query = DummyQuery(query_str)
-            query.tokens = []
-            query.identified_entities = []
-            for position, tok in enumerate(dumb_tokenize(query_str)):
-                match = mentionregex.match(tok.orth_)
-                if match:
-                    em = EntityMention.fromString(match.string, position)
+                                         em_answer.name,
+                                         em_answer.mid, 0, 0,
+                                         True, entity_types=em_answer.types)
+            query = DummyQuery()
+            for position, raw_tok in enumerate(query_str.split(' ')):
+                if raw_tok.startswith('[') and raw_tok.endswith(']'):
+                    em = EntityMention.fromString(raw_tok, entity_types_map,
+                                                  position)
                     query.tokens.extend([DummyToken(t) for t in em.tokens])
                     ie = IdentifiedEntity(em.tokens,
                                           em.name, em.mid, 0, 0,
@@ -100,7 +127,7 @@ def gq_read(gq_file_path):
                                           entity_types=em.types)
                     query.identified_entities.append(ie)
                 else:
-                    query.tokens.append(tok)
+                    query.tokens.append(DummyToken(raw_tok))
             yield query, ie_answer
 
 class AnswerTypeIdentifier:
@@ -188,10 +215,10 @@ class AnswerTypeIdentifier:
             train_accuracy = self.clf.score(X[test_indices], y[test_indices])
             print("Subset accuracy on fold test data:", train_accuracy)
 
-    def train(self, train_file):
+    def train(self, train_file, entity_types_map):
         featurized_queries = []
         answer_types = []
-        for query, answer in gq_read(train_file):
+        for query, answer in gq_read(train_file, entity_types_map):
             featurized_query = self.extract_features(query)
             answer_type = self.transform_answer(answer)
 
@@ -214,7 +241,6 @@ class AnswerTypeIdentifier:
 
     def test_predictions(self, X, y, num=100, best_n=3):
         X_subset = X[:num]
-        y_subset = y[:num]
         for i, x in enumerate(X_subset):
             prediction = self.predict_best(x, best_n)
             print('query: {}\nprediction: {}, gold: {}\n\n'.format(
@@ -223,10 +249,10 @@ class AnswerTypeIdentifier:
                 ))
 
 
-    def test(self, test_file):
+    def test(self, test_file, entity_types_map):
         featurized_queries = []
         answer_types = []
-        for query, answer in gq_read(test_file):
+        for query, answer in gq_read(test_file, entity_types_map):
             featurized_query = self.extract_features(query)
             answer_type = self.transform_answer(answer)
 
@@ -249,24 +275,25 @@ def main():
     parser.add_argument('train_file')
     parser.add_argument('--load_model', action='store_true')
     parser.add_argument('--test_file', default=None)
-    parser.add_argument('--entity_types', default='data/entity_types_clean.tsv')
-    parser.add_argument('--model_file', default=None)
+    parser.add_argument('--entity-types',
+                        default='data/entity_types_clean.tsv')
+    parser.add_argument('--modelfile', default=None)
 
-    #parser.add_argument('savefile')
-    guesser = AnswerTypeIdentifier()
     args = parser.parse_args()
 
-    if args.load_model and args.model_file:
-        guesser.load_model(args.model_file)
+    entity_types_map = load_entity_types(args.entity_types, 3)
+    guesser = AnswerTypeIdentifier()
+
+    if args.load_model and args.modelfile:
+        guesser.load_model(args.modelfile)
     else:
-        guesser.train(args.train_file)
+        guesser.train(args.train_file, entity_types_map)
 
-    if args.model_file and not args.load_model:
-        guesser.save_model(args.model_file)
-
+    if args.modelfile and not args.load_model:
+        guesser.save_model(args.modelfile)
 
     if args.test_file:
-        guesser.test(args.test_file)
+        guesser.test(args.test_file, entity_types_map)
 
 if __name__ == "__main__":
     main()
