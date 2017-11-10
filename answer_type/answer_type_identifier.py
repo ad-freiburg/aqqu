@@ -111,7 +111,10 @@ def gq_read(gq_path, entity_types_map):
             query_str, answer_str = line.split('\t')
             em_answer = EntityMention.fromString(answer_str.strip(),
                                                  entity_types_map)
-            ie_answer = IdentifiedEntity(em_answer.tokens,
+
+            answer_tokens = [DummyToken(tok)
+                             for tok in em_answer.tokens]
+            ie_answer = IdentifiedEntity(answer_tokens,
                                          em_answer.name,
                                          em_answer.mid, 0, 0,
                                          True, entity_types=em_answer.types)
@@ -191,9 +194,9 @@ class AnswerTypeIdentifier:
         features['tok_2'] = toks[2].lower_ if len(toks) > 2 else PAD
 
         mentions = query.identified_entities
-        features['mtype_0']  = mentions[0].types[0] if len(mentions) > 0 else PAD
-        features['mtype_1']  = mentions[1].types[0] if len(mentions) > 1 else PAD
-        features['mtype_2']  = mentions[2].types[0] if len(mentions) > 2 else PAD
+        features['mtype_0'] = mentions[0].types[0] if len(mentions) > 0 else PAD
+        features['mtype_1'] = mentions[1].types[0] if len(mentions) > 1 else PAD
+        features['mtype_2'] = mentions[2].types[0] if len(mentions) > 2 else PAD
 
         all_types = [t for mention in mentions for t in mention.types]
         all_types_counter = Counter(all_types)
@@ -271,6 +274,8 @@ class AnswerTypeIdentifier:
 
 
 def main():
+    logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
+                        level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('train_file')
     parser.add_argument('--load_model', action='store_true')
@@ -281,7 +286,7 @@ def main():
 
     args = parser.parse_args()
 
-    entity_types_map = load_entity_types(args.entity_types, 3)
+    entity_types_map = load_entity_types(args.entity_types, 1)
     guesser = AnswerTypeIdentifier()
 
     if args.load_model and args.modelfile:

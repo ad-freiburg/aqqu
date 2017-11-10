@@ -36,6 +36,14 @@ def load_freebase_easy_links(links_path):
     logging.info('Freebase Easy Links file loaded')
     return name_to_mid
 
+def load_name_to_mid(name_to_mid_path):
+    name_to_mid = defaultdict(lambda: 'UNK')
+    with open(name_to_mid_path, 'rt', encoding='utf-8') as name_to_mid_file:
+        for line in name_to_mid_file:
+            name, mid = line.split('\t')
+            name_to_mid[name] = mid.strip()
+    return name_to_mid
+
 
 def freebasesize_mention(mention, name_to_mid):
     """
@@ -104,11 +112,11 @@ def main():
                         level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('file')
-    parser.add_argument('--freebase-easy-links', default='freebase-links.txt')
+    parser.add_argument('--name-to-mid', default='data/name-to-mid.txt')
     parser.add_argument('savefile')
     args = parser.parse_args()
 
-    name_to_mid = load_freebase_easy_links(args.freebase_easy_links)
+    name_to_mid = load_name_to_mid(args.name_to_mid)
 
     gq_freebaseize(args.file, name_to_mid, args.savefile)
 
