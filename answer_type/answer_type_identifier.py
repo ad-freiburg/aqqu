@@ -9,6 +9,7 @@ from collections import Counter, defaultdict
 from operator import itemgetter
 
 from entity_linker.entity_linker import IdentifiedEntity
+from entity_linker.entity_index_rocksdb import EntityIndex
 
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.metrics import classification_report
@@ -41,22 +42,24 @@ class EntityMention:
                 self.mid, ','.join(self.types)) 
 
     @staticmethod
-    def fromString(text, entity_types_map, position=0):
+    def fromString(text, entity_index, position=0, num_types=1):
         if text[0] != '[' and text[-1] != ']':
             return EntityMention(name=text)
         else:
             splits = text[1:-1].split('|')
             mid = splits[0]
             if mid == '<VALUE>':
-                mid = 'UNK'
                 types = ['year']
+            elif mid == 'UNK':
+                types = ['UNK']
             else:
-                types = entity_types_map[mid]
+                types = entity_index.get_types_for_mid(mid, num_types)
                 if len(types) < 1:
                     logger.error("Too few types in %s", text)
                     types = ['UNK']
             name = splits[1].replace('_', ' ')
             return EntityMention(name, mid, types, position)
+
 
 class AnswerType:
     """
@@ -71,8 +74,9 @@ class AnswerType:
     def as_string(self):
             return ', '.join([repr(c) for c in self.target_classes])
 
+
 class DummyQuery:
-    """ 
+    """
     Query class used as stand-in for query_translator.Query during training.
     This prevents a cyclic dependency
     """
@@ -80,8 +84,9 @@ class DummyQuery:
         self.tokens = []
         self.identified_entities = []
 
+
 class DummyToken:
-    """ 
+    """
     Token class used as stand-in for parser.Tokens during training.
     """
     def __init__(self, token):
@@ -101,7 +106,7 @@ def load_entity_types(entity_types_path, max_len=None):
     return entity_types_map
 
 
-def gq_read(gq_path, entity_types_map):
+def gq_read(gq_path, entity_index):
     """
     Reads a generated questions file in freebase format and returns
     generates DummyQuery objects for each line DummyQuery objects for each line
@@ -110,7 +115,11 @@ def gq_read(gq_path, entity_types_map):
         for line in gq_file:
             query_str, answer_str = line.split('\t')
             em_answer = EntityMention.fromString(answer_str.strip(),
-                                                 entity_types_map)
+                                                 entity_index)
+            # if the answer has unknown type the question is useless
+            # skip it
+            if len(em_answer.types) == 1 and em_answer.types[0] == 'UNK':
+                continue
 
             answer_tokens = [DummyToken(tok)
                              for tok in em_answer.tokens]
@@ -121,8 +130,9 @@ def gq_read(gq_path, entity_types_map):
             query = DummyQuery()
             for position, raw_tok in enumerate(query_str.split(' ')):
                 if raw_tok.startswith('[') and raw_tok.endswith(']'):
-                    em = EntityMention.fromString(raw_tok, entity_types_map,
+                    em = EntityMention.fromString(raw_tok, entity_index,
                                                   position)
+
                     query.tokens.extend([DummyToken(t) for t in em.tokens])
                     ie = IdentifiedEntity(em.tokens,
                                           em.name, em.mid, 0, 0,
@@ -279,26 +289,29 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('train_file')
     parser.add_argument('--load_model', action='store_true')
+    parser.add_argument("--config",
+                        default="config.cfg",
+                        help="The configuration file to use.")
     parser.add_argument('--test_file', default=None)
-    parser.add_argument('--entity-types',
-                        default='data/entity_types_clean.tsv')
     parser.add_argument('--modelfile', default=None)
 
     args = parser.parse_args()
 
-    entity_types_map = load_entity_types(args.entity_types, 1)
+    config_helper.read_configuration(args.config)
+
+    entity_index = EntityIndex.init_from_config()
     guesser = AnswerTypeIdentifier()
 
     if args.load_model and args.modelfile:
         guesser.load_model(args.modelfile)
     else:
-        guesser.train(args.train_file, entity_types_map)
+        guesser.train(args.train_file, entity_index)
 
     if args.modelfile and not args.load_model:
         guesser.save_model(args.modelfile)
 
     if args.test_file:
-        guesser.test(args.test_file, entity_types_map)
+        guesser.test(args.test_file, entity_index)
 
 if __name__ == "__main__":
     main()

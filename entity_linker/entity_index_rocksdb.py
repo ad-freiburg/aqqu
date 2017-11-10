@@ -208,7 +208,7 @@ class EntityIndex(object):
         mid = mid.encode('utf-8')
         line = self.entity_db.get(ETYPES_PREFIX+mid)
         if not line:
-            LOG.info("No type known for mid: '%s'.", mid)
+            LOG.debug("No type known for mid: '%s'.", mid)
             return ['UNK']
 
         types = EntityIndex._bytes_to_types(line)
