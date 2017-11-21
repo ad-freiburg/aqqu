@@ -352,14 +352,13 @@ class DeepCNNAqquRelScorer():
                 candidate_f1.append(
                     query.eval_candidates[i].evaluation_result.f1)
                 candidate_qids.append(query.id)
-        candidate_features = self.create_batch_features(all_candidates,
-                                                        max_len=999999)
+        candidate_features = self.create_batch_features(all_candidates)
         logger.info(
             "Done. %d batches/queries, %d candidates." % (len(test_queries),
                                                           len(all_candidates)))
         return candidate_features, candidate_qids, candidate_f1
 
-    def create_batch_features(self, batch, max_len=3000):
+    def create_batch_features(self, batch):
         num_candidates = len(batch)
         # How much to add left and right.
         words = np.zeros(shape=(num_candidates, self.sentence_len),
