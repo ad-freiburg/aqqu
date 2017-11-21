@@ -66,8 +66,8 @@ class EntityLinkerQlever(EntityLinker):
         text_query = """
         PREFIX fb: <http://rdf.freebase.com/ns/>
         SELECT ?0e ?1ename SCORE(?t) WHERE {{
-        ?t <in-text> "{0}" .
-        ?0e <in-text> ?t .
+        ?t ql:contains-word "{0}" .
+        ?t ql:contains-entity ?0e .
         ?0e fb:type.object.name ?1ename .
         }}
         ORDER BY DESC(SCORE(?t))

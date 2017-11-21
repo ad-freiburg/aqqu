@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
  Implements a SPARQL backend using the QLever API
 
@@ -7,13 +8,13 @@
 
 """
 
-from urllib3 import HTTPConnectionPool, Retry, make_headers
 import logging
-import freebase
-import io
 import json
 import time
 from operator import itemgetter
+from urllib3 import HTTPConnectionPool, Retry, make_headers
+import freebase
+
 
 logger = logging.getLogger(__name__)
 
@@ -119,8 +120,8 @@ class Backend(object):
                 lang_in_relations = backend_lir)
 
     def query(self, query, method='GET',
-                   normalize_output=normalize_freebase_output,
-                   filter_lang='en'):
+              normalize_output=normalize_freebase_output,
+              filter_lang='en'):
         """Returns the result table of the query as a list of rows.
 
         :param query:
@@ -130,7 +131,7 @@ class Backend(object):
             "query": query,
         }
         if self.cache_enabled and query in self.cache:
-            logger.debug("Return result from cache! %s" % query)
+            logger.debug("Return result from cache! %s", query)
             return self.cache[query]
         start = time.time()
         resp = self.connection_pool.request(method,
@@ -159,13 +160,12 @@ class Backend(object):
                 logger.warn("Message: %s" % resp.data)
                 results = None
         except ValueError:
-            logger.warn("Error executing query: %s." % query)
-            logger.warn(traceback.format_exc())
-            logger.warn("Headers: %s." % resp.headers)
-            logger.warn("Data: %s." % resp.data)
+            logger.warning("Error executing query: %s.", query)
+            logger.warning("Headers: %s.", resp.headers)
+            logger.warning("Data: %s.", resp.data)
             results = None
         # Add result to cache.
-        if self.cache_enabled and results != None:
+        if self.cache_enabled and results:
             self._add_result_to_cache(query, results)
         logger.debug("Processed Result {}".format(results))
         return results
@@ -185,11 +185,12 @@ def main():
     PREFIX fb: <http://rdf.freebase.com/ns/>
     SELECT DISTINCT ?x
     WHERE {
-     ?s fb:type.object.name "Albert Einstein" .
+     ?s fb:type.object.name "Albert Einstein"@en .
      ?s ?p ?o .
      ?o fb:type.object.name ?x . }
     '''
     print(sparql.query(query))
+
 
 if __name__ == '__main__':
     main()

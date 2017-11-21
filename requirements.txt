@@ -34,7 +34,6 @@ scipy==0.19.1
 six==1.10.0
 smart-open==1.5.3
 spacy==1.8.2
-tensorflow==1.2.1
 termcolor==1.1.0
 thinc==6.5.2
 toolz==0.8.2
