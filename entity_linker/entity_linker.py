@@ -315,7 +315,7 @@ class EntityLinker:
                 entity_str = entity_tokens.text 
                 logger.debug("Checking if '{0}' is an entity.".format(entity_str))
                 entities = self.entity_index.get_entities_for_surface(entity_str)
-                logger.info("Found {0} raw entities".format(len(entities)))
+                logger.debug("Found {0} raw entities".format(len(entities)))
                 # No suggestions.
                 if len(entities) == 0:
                     continue

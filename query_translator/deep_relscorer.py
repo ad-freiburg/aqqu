@@ -100,26 +100,23 @@ class DeepCNNAqquRelScorer():
         #vectors = normalize(vectors, norm='l2', axis=1)
         return vector_size, vocab, vectors
 
-    def extend_vocab_for_relwords(self, train_queries):
+    def extend_vocab_for_relwords(self, examples):
         np.random.seed(234)
         logger.info("Extending vocabulary with words of relations.")
         new_vectors = []
         new_words = []
-        for query in train_queries:
-            candidates = [x.query_candidate for x in query.eval_candidates]
-            for candidate in candidates:
-                relations = candidate.get_unsorted_relation_names()
-                rel_splits = self.split_relations_into_words(relations)
-                for rel_words in rel_splits:
-                    for ws in rel_words:
-                        for w in ws:
-                            if w not in self.vocab:
-                                vector = np.random.uniform(-0.05, 0.05,
-                                                           self.embedding_size)
-                                new_vectors.append(vector)
-                                next_id = len(self.vocab)
-                                self.vocab[w] = next_id
-                                new_words.append(w)
+        for question_tokens, relations in examples:
+            rel_splits = self.split_relations_into_words(relations)
+            for rel_words in rel_splits:
+                for ws in rel_words:
+                    for w in ws:
+                        if w not in self.vocab:
+                            vector = np.random.uniform(-0.05, 0.05,
+                                                       self.embedding_size)
+                            new_vectors.append(vector)
+                            next_id = len(self.vocab)
+                            self.vocab[w] = next_id
+                            new_words.append(w)
         self.embeddings = np.vstack((self.embeddings, np.array(new_vectors)))
         self.embeddings = self.embeddings.astype(np.float32)
         #self.embeddings = normalize(self.embeddings, norm='l2', axis=1)
@@ -152,27 +149,49 @@ class DeepCNNAqquRelScorer():
         indices = np.random.permutation(len(labels))[:n]
         return labels[indices], word_features[indices], rel_features[indices]
 
+    def learn_model(self, train_candidates, dev_candidates):
+        """
+        Wrapper aroung learn_relation_model used to directly take query
+        candidates instead of lists of (question_tokens, relations) tuples
+        """
+        train_pos, train_neg = self.create_train_examples(train_candidates)
+        if dev_candidates:
+            dev_examples, dev_qids, dev_f1s = \
+                self.create_test_examples(dev_candidates)
+        else:
+            dev_examples, dev_qids, dev_f1s = None, None, None
+        self.learn_relation_model(train_pos, train_neg,
+                                  dev_examples, dev_qids, dev_f1s)
 
-    def learn_model(self, train_queries, dev_queries, num_epochs=30):
+    def learn_relation_model(self, train_pos, train_neg,
+                             dev_examples, dev_qids, dev_f1s,
+                             num_epochs=30):
         random.seed(123)
-        self.extend_vocab_for_relwords(train_queries)
+        self.extend_vocab_for_relwords(train_pos)
+        self.extend_vocab_for_relwords(train_neg)
         np.random.seed(123)
         default_sess = tf.get_default_session()
         if default_sess is not None:
             logger.info("Closing previous default session.")
             default_sess.close()
-        if dev_queries is not None:
-            dev_features, dev_qids, dev_f1 = self.create_test_batches(dev_queries)
 
-        pos_labels, pos_features, neg_labels, neg_features = self.create_train_examples(train_queries)
+        dev_features = None
+        if dev_examples:
+            dev_features = self.create_batch_features(dev_examples)
+
+        pos_features = self.create_batch_features(train_pos)
+        neg_features = self.create_batch_features(train_neg)
         train_pos_word_features = np.array(pos_features[0])
         train_pos_rel_features = np.array(pos_features[1])
         train_neg_word_features = np.array(neg_features[0])
         train_neg_rel_features = np.array(neg_features[1])
-        train_pos_labels = np.array(pos_labels, dtype=float).reshape((len(pos_labels), 1))
-        train_neg_labels = np.array(neg_labels, dtype=float).reshape((len(neg_labels), 1))
+        train_pos_labels = \
+            np.ones(shape=(len(train_pos), 1), dtype=float)
+        train_neg_labels = \
+            np.zeros(shape=(len(train_neg), 1), dtype=float)
         self.g = tf.Graph()
-        log_name = os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
+        log_name = \
+            os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
         if not os.path.exists(log_name):
             os.makedirs(log_name)
         self.writer = tf.summary.FileWriter(log_name)
@@ -187,21 +206,24 @@ class DeepCNNAqquRelScorer():
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=False,
-                device_count={'GPU':1},
-            gpu_options=gpu_options)
+                device_count={'GPU': 1},
+                gpu_options=gpu_options)
             self.sess = tf.Session(config=session_conf)
             with self.g.device("/gpu:0"):
                 with self.sess.as_default():
                     tf.set_random_seed(42)
                     optimizer = tf.train.AdamOptimizer()
-                    #optimizer = tf.train.AdagradOptimizer(0.1)
-                    #optimizer = tf.train.RMSPropOptimizer(0.01)
-                    #grads_and_vars = optimizer.compute_gradients(self.loss)
-                    global_step = tf.Variable(0, name="global_step", trainable=False)
-                    #train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
+                    # optimizer = tf.train.AdagradOptimizer(0.1)
+                    # optimizer = tf.train.RMSPropOptimizer(0.01)
+                    # grads_and_vars = optimizer.compute_gradients(self.loss)
+                    global_step = \
+                        tf.Variable(0, name="global_step", trainable=False)
+                    # train_op = \
+                    #   optimizer.apply_gradients(grads_and_vars,
+                    #                             global_step=global_step)
                     train_op = optimizer.minimize(self.loss)
 
-                    #self.sess.run(tf.initialize_all_variables())
+                    # self.sess.run(tf.initialize_all_variables())
                     self.sess.run(tf.global_variables_initializer())
                     self.saver = tf.train.Saver()
                     tf.set_random_seed(42)
@@ -270,8 +292,9 @@ class DeepCNNAqquRelScorer():
                                                                 train_word_features,
                                                                 train_rel_featuers):
                             train_step(batch, n + 1, batch_num)
-                        if (n + 1) % 10 == 0 and dev_queries is not None:
-                            run_dev_batches(dev_features, dev_qids, dev_f1, dev_train="Dev")
+                        if (n + 1) % 10 == 0 and dev_examples:
+                            run_dev_batches(dev_features, dev_qids, dev_f1s, 
+                                            dev_train="Dev")
                     if dev_scores:
                         logger.info("Dev avg_f1 history:")
                         logger.info(" ".join(["%d:%f" % (i + 1, f)
@@ -298,77 +321,66 @@ class DeepCNNAqquRelScorer():
             yield batch_num, result
 
     def create_train_examples(self, train_queries, correct_threshold=.5):
-        total_num_candidates = len([x.query_candidate for query in train_queries
+        # TODO turn this into a generator and pull it out of the class
+        # that will allow training on very large question, relation corpora
+        total_num_candidates = len([x.query_candidate
+                                    for query in train_queries
                                     for x in query.eval_candidates])
         logger.info("Creating train batches from %d queries and %d candidates."
                     % (len(train_queries), total_num_candidates))
-        features = []
-        total_num_candidates = 0
-        total_num_queries = 0
-        example_candidates = []
-        negative_candidates =[]
-        pos_labels = []
-        neg_labels = []
+        positive_examples = []
+        negative_examples = []
 
         for query in train_queries:
-            batch = []
-            oracle_position = query.oracle_position
             candidates = [x.query_candidate for x in query.eval_candidates]
-            correct_candidates = []
-            num_neg = 0
-            neg_candidates = []
+            neg_examples = []
             has_pos_candidate = False
             for i, candidate in enumerate(candidates):
                 f1 = query.eval_candidates[i].evaluation_result.f1
                 if f1 >= correct_threshold:
-                    example_candidates.append(candidate)
-                    pos_labels.append(1)
-                    total_num_candidates += 1
+                    positive_examples.append((
+                        feature_extraction.get_query_text_tokens(candidate),
+                        candidate.get_relation_names()))
                     has_pos_candidate = True
-                    total_num_queries += 1
                 else:
-                    neg_candidates.append(candidate)
-                    num_neg += 1
+                    neg_examples.append((
+                        feature_extraction.get_query_text_tokens(candidate),
+                        candidate.get_relation_names()))
             if has_pos_candidate:
-                neg_labels.extend([0 for _ in neg_candidates])
-                negative_candidates.extend(neg_candidates)
-                total_num_candidates += len(neg_candidates)
-        # Avoid noisy examples.
-        features = self.create_batch_features(example_candidates)
-        neg_features = self.create_batch_features(negative_candidates)
-        logger.info("Done. %d batches/queries, %d candidates.", 
-                    total_num_queries, total_num_candidates)
-        return pos_labels, features, neg_labels, neg_features
+                negative_examples.extend(neg_examples)
+        return positive_examples, negative_examples
 
-    def create_test_batches(self, test_queries):
-        logger.info("Creating test batches.")
+    def create_test_examples(self, test_queries):
+        logger.info("Creating test examples.")
         candidate_qids = []
         candidate_f1 = []
         all_candidates = []
         for query in test_queries:
             candidates = [x.query_candidate for x in query.eval_candidates]
-            all_candidates += candidates
             for i, candidate in enumerate(candidates):
                 candidate_f1.append(
                     query.eval_candidates[i].evaluation_result.f1)
                 candidate_qids.append(query.id)
-        candidate_features = self.create_batch_features(all_candidates)
+                all_candidates.append((
+                    feature_extraction.get_query_text_tokens(candidate),
+                    candidate.get_relation_names()
+                    ))
         logger.info(
             "Done. %d batches/queries, %d candidates." % (len(test_queries),
                                                           len(all_candidates)))
-        return candidate_features, candidate_qids, candidate_f1
+        return all_candidates, candidate_qids, candidate_f1
 
     def create_batch_features(self, batch):
-        num_candidates = len(batch)
+        num_questions = len(batch)
         # How much to add left and right.
-        words = np.zeros(shape=(num_candidates, self.sentence_len),
+        words = np.zeros(shape=(num_questions, self.sentence_len),
                          dtype=int)
-        rel_features = np.zeros(shape=(num_candidates,
+        rel_features = np.zeros(shape=(num_questions,
                                        self.relation_len),
                                 dtype=int)
         oov_words = set()
-        for i, candidate in enumerate(batch):
-            text_tokens = feature_extraction.get_query_text_tokens(candidate)
+        for i, example in enumerate(batch):
+            text_tokens, relations = example
             text_sequence = []
             # Transform to IDs.
             for t in text_tokens:
@@ -386,7 +398,6 @@ class DeepCNNAqquRelScorer():
             for word_num, word_id in enumerate(text_sequence):
                 words[i, word_num] = word_id
 
-            relations = candidate.get_relation_names()
             rel_splits = self.split_relations_into_words(relations)
 
             rel_sequences = []
@@ -495,7 +506,10 @@ class DeepCNNAqquRelScorer():
 
     def score(self, candidate):
         from .ranker import RankScore
-        words, rel_features = self.create_batch_features([candidate])
+        words, rel_features = self.create_batch_features([(
+            feature_extraction.get_query_text_tokens(candidate),
+            candidate.get_relation_names()
+            )])
         feed_dict = {
           self.input_s: words,
           self.input_r: rel_features,
@@ -514,7 +528,7 @@ class DeepCNNAqquRelScorer():
 
     def score_multiple(self, score_candidates, batch_size=100):
         """
-        Return a lis tof scores
+        Return a list of scores
         :param candidates:
         :return:
         """
@@ -522,10 +536,16 @@ class DeepCNNAqquRelScorer():
         result = []
         batch = 0
         while True:
-            candidates = score_candidates[batch * batch_size:(batch + 1) * batch_size]
+            candidates = \
+                score_candidates[batch * batch_size:(batch + 1) * batch_size]
+            candidate_relations = [(
+                feature_extraction.get_query_text_tokens(candidate),
+                candidate.get_relation_names()
+                ) for candidate in candidates]
             if not candidates:
                 break
-            words, rel_features = self.create_batch_features(candidates)
+            words, rel_features = \
+                self.create_batch_features(candidate_relations)
             feed_dict = {
               self.input_s: words,
               self.input_r: rel_features,
