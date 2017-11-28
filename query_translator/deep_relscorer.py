@@ -2,16 +2,17 @@ import logging
 import math
 from itertools import chain
 import os
+from sklearn import utils
 import time
 import datetime
 import random
 import numpy as np
 import joblib
-from sklearn import utils
 import config_helper
 import tensorflow as tf
 from gensim import models
 from . import feature_extraction
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +25,11 @@ class DeepCNNAqquRelScorer():
     UNK = '---UNK---'
     PAD = '---PAD---'
 
-    def __init__(self, name, embedding_file):
-        self.name = name + "_DeepRelScorer"
+    def __init__(self, embeddings_file=None):
         self.n_rels = 3
         self.n_parts_per_rel = 3
         self.n_rel_parts = self.n_rels * self.n_parts_per_rel
-        if embedding_file is not None:
-            [self.embedding_size, self.vocab,
-             self.embeddings] = self.extract_vectors(embedding_file)
-            self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
+        self.embeddings_file = embeddings_file
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
         self.filter_sizes = (1, 2, 3, 4)
@@ -45,20 +42,19 @@ class DeepCNNAqquRelScorer():
         self.relation_len = 3 + 6 + 9 + 2
         self.scores = None
         self.probs = None
+        self.sess = None
 
     @staticmethod
-    def init_from_config(name, load_embeddings=True):
+    def init_from_config():
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
         :return:
         """
         config_options = config_helper.config
-        embeddings_file = None
-        if load_embeddings:
-            embeddings_file = config_options.get('DeepRelScorer',
-                                                 'word-embeddings')
-        return DeepCNNAqquRelScorer(name, embeddings_file)
+        embeddings_file = config_options.get('DeepRelScorer',
+                                             'word-embeddings')
+        return DeepCNNAqquRelScorer(embeddings_file)
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -117,10 +113,12 @@ class DeepCNNAqquRelScorer():
                             next_id = len(self.vocab)
                             self.vocab[w] = next_id
                             new_words.append(w)
-        self.embeddings = np.vstack((self.embeddings, np.array(new_vectors)))
-        self.embeddings = self.embeddings.astype(np.float32)
-        #self.embeddings = normalize(self.embeddings, norm='l2', axis=1)
-        logger.info("Added the following words: %s", str(new_words))
+        if new_vectors:
+            self.embeddings = \
+                np.vstack((self.embeddings, np.array(new_vectors)))
+            self.embeddings = self.embeddings.astype(np.float32)
+            #self.embeddings = normalize(self.embeddings, norm='l2', axis=1)
+            logger.info("Added the following words: %s", str(new_words))
         logger.info("Final final vocabulary size: %d.", len(self.vocab))
 
     def evaluate_dev(self, qids, f1s, probs):
@@ -149,7 +147,58 @@ class DeepCNNAqquRelScorer():
         indices = np.random.permutation(len(labels))[:n]
         return labels[indices], word_features[indices], rel_features[indices]
 
-    def learn_model(self, train_candidates, dev_candidates):
+    def create_train_examples(self, train_queries, correct_threshold=.5):
+        # TODO turn this into a generator and pull it out of the class
+        # that will allow training on very large question, relation corpora
+        total_num_candidates = len([x.query_candidate
+                                    for query in train_queries
+                                    for x in query.eval_candidates])
+        logger.info("Creating train batches from %d queries and %d candidates."
+                    % (len(train_queries), total_num_candidates))
+        positive_examples = []
+        negative_examples = []
+
+        for query in train_queries:
+            candidates = [x.query_candidate for x in query.eval_candidates]
+            neg_examples = []
+            has_pos_candidate = False
+            for i, candidate in enumerate(candidates):
+                f1 = query.eval_candidates[i].evaluation_result.f1
+                if f1 >= correct_threshold:
+                    positive_examples.append((
+                        feature_extraction.get_query_text_tokens(candidate),
+                        candidate.get_relation_names()))
+                    has_pos_candidate = True
+                else:
+                    neg_examples.append((
+                        feature_extraction.get_query_text_tokens(candidate),
+                        candidate.get_relation_names()))
+            if has_pos_candidate:
+                negative_examples.extend(neg_examples)
+        return positive_examples, negative_examples
+
+    def create_test_examples(self, test_queries):
+        logger.info("Creating test examples.")
+        candidate_qids = []
+        candidate_f1 = []
+        all_candidates = []
+        for query in test_queries:
+            candidates = [x.query_candidate for x in query.eval_candidates]
+            for i, candidate in enumerate(candidates):
+                candidate_f1.append(
+                    query.eval_candidates[i].evaluation_result.f1)
+                candidate_qids.append(query.id)
+                all_candidates.append((
+                    feature_extraction.get_query_text_tokens(candidate),
+                    candidate.get_relation_names()
+                    ))
+        logger.info(
+            "Done. %d batches/queries, %d candidates." % (len(test_queries),
+                                                          len(all_candidates)))
+        return all_candidates, candidate_qids, candidate_f1
+
+
+    def learn_model(self, train_candidates, dev_candidates, extend_model=None):
         """
         Wrapper aroung learn_relation_model used to directly take query
         candidates instead of lists of (question_tokens, relations) tuples
@@ -160,20 +209,52 @@ class DeepCNNAqquRelScorer():
                 self.create_test_examples(dev_candidates)
         else:
             dev_examples, dev_qids, dev_f1s = None, None, None
-        self.learn_relation_model(train_pos, train_neg,
+        self.learn_relation_model(train_pos, train_neg, extend_model,
                                   dev_examples, dev_qids, dev_f1s)
 
-    def learn_relation_model(self, train_pos, train_neg,
-                             dev_examples, dev_qids, dev_f1s,
-                             num_epochs=30):
-        random.seed(123)
-        self.extend_vocab_for_relwords(train_pos)
-        self.extend_vocab_for_relwords(train_neg)
-        np.random.seed(123)
+
+    def init_new_model(self, embeddings, embedding_size):
+        """
+        Initialize an empty model for learning from scratch
+        """
+
         default_sess = tf.get_default_session()
         if default_sess is not None:
             logger.info("Closing previous default session.")
             default_sess.close()
+        self.g = tf.Graph()
+        log_name = \
+            os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
+        if not os.path.exists(log_name):
+            os.makedirs(log_name)
+        self.writer = tf.summary.FileWriter(log_name)
+
+        with self.g.as_default():
+            tf.set_random_seed(42)
+            self.build_deep_model(embeddings,
+                                  embedding_size,
+                                  filter_sizes=self.filter_sizes)
+        self.writer.add_graph(self.g)
+
+    def learn_relation_model(self, train_pos, train_neg, extend_model=None,
+                             dev_examples=None, dev_qids=None, dev_f1s=None,
+                             num_epochs=30):
+        """
+        Learns the model directly on question-relation examples
+        """
+        random.seed(123)
+        if extend_model:
+            self.load_model(extend_model)
+        elif self.embeddings_file and not extend_model:
+            [self.embedding_size, self.vocab,
+             self.embeddings] = self.extract_vectors(self.embeddings_file)
+            self.extend_vocab_for_relwords(train_pos)
+            self.extend_vocab_for_relwords(train_neg)
+            self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
+            self.init_new_model(self.embeddings, self.embedding_size)
+
+        # because extract_vectors sets the seed and isn't always executed
+        np.random.seed(123)
 
         dev_features = None
         if dev_examples:
@@ -189,26 +270,20 @@ class DeepCNNAqquRelScorer():
             np.ones(shape=(len(train_pos), 1), dtype=float)
         train_neg_labels = \
             np.zeros(shape=(len(train_neg), 1), dtype=float)
-        self.g = tf.Graph()
-        log_name = \
-            os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
-        if not os.path.exists(log_name):
-            os.makedirs(log_name)
-        self.writer = tf.summary.FileWriter(log_name)
 
         dev_scores = []
         with self.g.as_default():
-            tf.set_random_seed(42)
-            self.build_deep_model(self.embeddings,
-                                  self.embedding_size,
-                                  filter_sizes=self.filter_sizes)
-            gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
-            session_conf = tf.ConfigProto(
-                allow_soft_placement=True,
-                log_device_placement=False,
-                device_count={'GPU': 1},
-                gpu_options=gpu_options)
-            self.sess = tf.Session(config=session_conf)
+            # when a model was loaded it already inits a session
+            if not self.sess:
+                gpu_options = tf.GPUOptions(
+                    per_process_gpu_memory_fraction=0.9)
+                session_conf = tf.ConfigProto(
+                    allow_soft_placement=True,
+                    log_device_placement=False,
+                    device_count={'GPU': 1},
+                    gpu_options=gpu_options)
+                self.sess = tf.Session(config=session_conf)
+
             with self.g.device("/gpu:0"):
                 with self.sess.as_default():
                     tf.set_random_seed(42)
@@ -223,9 +298,8 @@ class DeepCNNAqquRelScorer():
                     #                             global_step=global_step)
                     train_op = optimizer.minimize(self.loss)
 
-                    # self.sess.run(tf.initialize_all_variables())
                     self.sess.run(tf.global_variables_initializer())
-                    self.saver = tf.train.Saver()
+                    self.saver = tf.train.Saver(save_relative_paths=True)
                     tf.set_random_seed(42)
 
                     def run_dev_batches(dev_features, dev_qids, dev_f1, dev_train,
@@ -244,7 +318,7 @@ class DeepCNNAqquRelScorer():
                                 self.input_y: input_y,
                                 self.input_s: x_b,
                                 self.input_r: x_rel_b,
-                                self.dropout_keep_prob: 0.7
+                                self.dropout_keep_prob: 0.9
                             }
                             loss, p = self.sess.run(
                                 [self.loss, self.probs],
@@ -267,7 +341,7 @@ class DeepCNNAqquRelScorer():
                             self.input_y: y_batch,
                             self.input_s: x_batch,
                             self.input_r: x_rel_batch,
-                            self.dropout_keep_prob: 0.7
+                            self.dropout_keep_prob: 0.9
                         }
                         _, step, loss, probs = self.sess.run(
                             [train_op, global_step, self.loss, self.probs],
@@ -320,56 +394,6 @@ class DeepCNNAqquRelScorer():
                 result.append(d[indices[start_index:end_index]])
             yield batch_num, result
 
-    def create_train_examples(self, train_queries, correct_threshold=.5):
-        # TODO turn this into a generator and pull it out of the class
-        # that will allow training on very large question, relation corpora
-        total_num_candidates = len([x.query_candidate
-                                    for query in train_queries
-                                    for x in query.eval_candidates])
-        logger.info("Creating train batches from %d queries and %d candidates."
-                    % (len(train_queries), total_num_candidates))
-        positive_examples = []
-        negative_examples = []
-
-        for query in train_queries:
-            candidates = [x.query_candidate for x in query.eval_candidates]
-            neg_examples = []
-            has_pos_candidate = False
-            for i, candidate in enumerate(candidates):
-                f1 = query.eval_candidates[i].evaluation_result.f1
-                if f1 >= correct_threshold:
-                    positive_examples.append((
-                        feature_extraction.get_query_text_tokens(candidate),
-                        candidate.get_relation_names()))
-                    has_pos_candidate = True
-                else:
-                    neg_examples.append((
-                        feature_extraction.get_query_text_tokens(candidate),
-                        candidate.get_relation_names()))
-            if has_pos_candidate:
-                negative_examples.extend(neg_examples)
-        return positive_examples, negative_examples
-
-    def create_test_examples(self, test_queries):
-        logger.info("Creating test examples.")
-        candidate_qids = []
-        candidate_f1 = []
-        all_candidates = []
-        for query in test_queries:
-            candidates = [x.query_candidate for x in query.eval_candidates]
-            for i, candidate in enumerate(candidates):
-                candidate_f1.append(
-                    query.eval_candidates[i].evaluation_result.f1)
-                candidate_qids.append(query.id)
-                all_candidates.append((
-                    feature_extraction.get_query_text_tokens(candidate),
-                    candidate.get_relation_names()
-                    ))
-        logger.info(
-            "Done. %d batches/queries, %d candidates." % (len(test_queries),
-                                                          len(all_candidates)))
-        return all_candidates, candidate_qids, candidate_f1
-
     def create_batch_features(self, batch):
         num_questions = len(batch)
         # How much to add left and right.
@@ -391,7 +415,7 @@ class DeepCNNAqquRelScorer():
                     text_sequence.append(self.UNK_ID)
 
             if len(text_sequence) > self.max_query_len:
-                logger.warn("Max length exceeded: %s. Truncating",
+                logger.debug("Max length exceeded: %s. Truncating",
                             text_sequence)
                 text_sequence = text_sequence[:self.max_query_len]
 
@@ -462,32 +486,38 @@ class DeepCNNAqquRelScorer():
             split_rels[k] = words
         return split_rels
 
-    def store_model(self):
+    def store_model(self, path):
+        if path[-1] != '/':
+            logger.error("Model path needs to end in '/'")
+            return
         # Store UNK, as well as name of embeddings_source?
-        filename = "data/model-dir/tf/" + self.name + "/"
-        logger.info("Writing model to %s." % filename)
-        if not os.path.exists(filename):
-            os.makedirs(filename)
+        logger.info("Writing model to %s." % path)
+        if not os.path.exists(path):
+            os.makedirs(path)
 
-        logger.info("Writing model to %s." % filename)
-        self.saver.save(self.sess, filename, global_step=100)
-        vocab_filename = "data/model-dir/tf/" + self.name + ".vocab"
-        joblib.dump([self.embeddings, self.vocab, self.embedding_size], vocab_filename)
+        logger.info("Writing model to %s." % path)
+        self.saver.save(self.sess, path, global_step=100)
+        vocab_path = path[:-1]+".vocab"
+        joblib.dump([self.embeddings, self.vocab, self.embedding_size], vocab_path)
         logger.info("Done.")
 
-    def load_model(self):
-        filename = "data/model-dir/tf/" + self.name + "/"
-        vocab_filename = "data/model-dir/tf/" + self.name + ".vocab"
-        logger.info("Loading model vocab from %s" % vocab_filename)
-        [self.embeddings, self.vocab, self.embedding_size] = joblib.load(vocab_filename)
+    def load_model(self, path):
+        if path[-1] != '/':
+            logger.error("Model path needs to end in '/'")
+            return
+        vocab_path = path[:-1] + ".vocab"
+        logger.info("Loading model vocab from %s" % vocab_path)
+        [self.embeddings, self.vocab, self.embedding_size] = \
+            joblib.load(vocab_path)
         self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
-        logger.info("Loading model from %s." % filename)
-        ckpt = tf.train.get_checkpoint_state(filename)
+        logger.info("Loading model from %s." % path)
+        ckpt = tf.train.get_checkpoint_state(path)
         if ckpt and ckpt.model_checkpoint_path:
-            logger.info("Loading model from %s." % filename)
+            logger.info("Loading model from %s." % path)
             self.g = tf.Graph()
 
-            log_name = os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
+            log_name = os.path.join('data/log/',
+                                    time.strftime("%Y-%m-%d-%H-%M-%S"))
             if not os.path.exists(log_name):
                 os.makedirs(log_name)
             self.writer = tf.summary.FileWriter(log_name)
@@ -495,12 +525,11 @@ class DeepCNNAqquRelScorer():
                 self.build_deep_model(self.embeddings,
                                       self.embedding_size,
                                       filter_sizes=self.filter_sizes)
-                saver = tf.train.Saver()
+                saver = tf.train.Saver(save_relative_paths=True)
                 session_conf = tf.ConfigProto(
                     allow_soft_placement=True)
-                sess = tf.Session(config=session_conf)
-                self.sess = sess
-                saver.restore(sess, ckpt.model_checkpoint_path)
+                self.sess = tf.Session(config=session_conf)
+                saver.restore(self.sess, ckpt.model_checkpoint_path)
             self.writer.add_graph(self.g)
 
 
@@ -511,9 +540,9 @@ class DeepCNNAqquRelScorer():
             candidate.get_relation_names()
             )])
         feed_dict = {
-          self.input_s: words,
-          self.input_r: rel_features,
-          self.dropout_keep_prob: 0.7
+            self.input_s: words,
+            self.input_r: rel_features,
+            self.dropout_keep_prob: 1.0
         }
         with self.g.as_default():
             with self.g.device("/gpu:0"):
@@ -547,9 +576,9 @@ class DeepCNNAqquRelScorer():
             words, rel_features = \
                 self.create_batch_features(candidate_relations)
             feed_dict = {
-              self.input_s: words,
-              self.input_r: rel_features,
-              self.dropout_keep_prob: 0.7
+                self.input_s: words,
+                self.input_r: rel_features,
+                self.dropout_keep_prob: 1.0
             }
             with self.g.as_default():
                 with self.g.device("/gpu:0"):
@@ -710,4 +739,3 @@ class DeepCNNAqquRelScorer():
             self.probs = self.scores
             self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores))
 
-        self.writer.add_graph(self.g)

@@ -265,9 +265,11 @@ class AqquModel(MLModel, Ranker):
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
-                self.deep_relation_scorer = DeepCNNAqquRelScorer.init_from_config(self.get_model_name(),
-                    load_embeddings=False)
-                self.deep_relation_scorer.load_model()
+                self.deep_relation_scorer = \
+                    DeepCNNAqquRelScorer.init_from_config()
+                # TODO make paths configurable for submodels
+                self.deep_relation_scorer.load_model(
+                    'data/model-dir/tf/'+self.get_model_name()+'/')
 
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
@@ -289,7 +291,7 @@ class AqquModel(MLModel, Ranker):
         return rel_model
 
     def learn_deep_rel_score_model(self, queries, test_queries):
-        rel_model = DeepCNNAqquRelScorer.init_from_config(self.get_model_name())
+        rel_model = DeepCNNAqquRelScorer.init_from_config()
         rel_model.learn_model(queries, test_queries)
         return rel_model
 
@@ -627,7 +629,8 @@ class AqquModel(MLModel, Ranker):
                     self.get_model_filename())
         self.relation_scorer.store_model()
         if self.learn_deep_rel_model:
-            self.deep_relation_scorer.store_model()
+            self.deep_relation_scorer.store_model(
+                'data/model-dir/tf/'+self.get_model_name()+'/')
         self.pruner.store_model()
         logger.info("Done.")
 
