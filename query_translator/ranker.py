@@ -126,7 +126,6 @@ class Ranker(object):
                  name,
                  entity_linker_class=EntityLinker,
                  entity_oracle_file=None,
-                 entity_linker_qlever=True,
                  all_relations_match=True,
                  all_types_match=True):
         self.name = name
@@ -292,7 +291,10 @@ class AqquModel(MLModel, Ranker):
 
     def learn_deep_rel_score_model(self, queries, test_queries):
         rel_model = DeepCNNAqquRelScorer.init_from_config()
-        rel_model.learn_model(queries, test_queries)
+        extend_deep_model = config_helper.config.get('Ranker',
+                                                     'extend-deep-model')
+        rel_model.learn_model(queries, test_queries,
+                              extend_model=extend_deep_model)
         return rel_model
 
     def learn_prune_model(self, labels, features, dict_vec):

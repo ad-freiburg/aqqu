@@ -2,7 +2,6 @@ import logging
 import math
 from itertools import chain
 import os
-from sklearn import utils
 import time
 import datetime
 import random
@@ -11,6 +10,7 @@ import joblib
 import config_helper
 import tensorflow as tf
 from gensim import models
+from sklearn import utils
 from . import feature_extraction
 
 
@@ -40,9 +40,16 @@ class DeepCNNAqquRelScorer():
         # between domain, sub-domain, relation 20 which is 
         # as long max_query_len
         self.relation_len = 3 + 6 + 9 + 2
+        self.sess = None
         self.scores = None
         self.probs = None
-        self.sess = None
+        self.loss = None
+
+        self.input_s = None
+        self.input_r = None
+        self.input_y = None
+        self.dropout_keep_prob = None
+        self.summary = None
 
     @staticmethod
     def init_from_config():
@@ -320,19 +327,21 @@ class DeepCNNAqquRelScorer():
                                 self.input_r: x_rel_b,
                                 self.dropout_keep_prob: 0.9
                             }
-                            loss, p = self.sess.run(
-                                [self.loss, self.probs],
+                            summary, loss, p = self.sess.run(
+                                [self.summary, self.loss, self.probs],
                                 feed_dict)
                             total_loss += loss
                             n_batch += 1
                             probs += [p[i, 0] for i in range(p.shape[0])]
+                            self.writer.add_summary(summary, n_batch)
+
                         avg_f1, oracle_avg_f1 = self.evaluate_dev(dev_qids, dev_f1, probs)
                         dev_scores.append(avg_f1)
                         #logger.info("Dev loss: %.2f" % total_loss)
                         logger.info("%s avg_f1: %.2f oracle_avg_f1: %.2f" % (dev_train,
                         100 * avg_f1, 100 * oracle_avg_f1))
 
-                    def train_step(batch, n_epoch, n_batch):
+                    def train_step(batch, epoch, n_batch, batch_size, train_size):
                         """
                         A single training step
                         """
@@ -343,30 +352,33 @@ class DeepCNNAqquRelScorer():
                             self.input_r: x_rel_batch,
                             self.dropout_keep_prob: 0.9
                         }
-                        _, step, loss, probs = self.sess.run(
-                            [train_op, global_step, self.loss, self.probs],
+                        _, summary, step, loss, probs = self.sess.run(
+                            [train_op, self.summary, global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
+                        self.writer.add_summary(summary, epoch*train_size+n_batch*batch_size)
                         if n_batch % 200 == 0:
-                            print("{}: step {}, epoch {}, loss {}".format(time_str, n_batch, n_epoch, loss))
+                            print("{}: step {}, epoch {}, loss {}".format(time_str, n_batch, epoch, loss))
                         return loss
 
-                    for n in range(num_epochs):
+                    batch_size = 50
+                    for epoch in range(num_epochs):
                         # Need to shuffle the batches in each epoch.
-                        logger.info("Starting epoch %d" % (n + 1))
+                        logger.info("Starting epoch %d" % (epoch + 1))
 
                         n_labels, n_wf, n_rf = self.random_sample(len(train_pos_labels), train_neg_labels, train_neg_word_features, train_neg_rel_features)
                         train_labels = np.vstack([n_labels, train_pos_labels])
                         train_word_features = np.vstack([n_wf, train_pos_word_features])
                         train_rel_featuers = np.vstack([n_rf, train_pos_rel_features])
+                        train_size = 2*len(train_pos_labels)
 
-                        for batch_num, batch in self.batch_iter(50,
+                        for batch_num, batch in self.batch_iter(batch_size,
                                                                 True,
                                                                 train_labels,
                                                                 train_word_features,
                                                                 train_rel_featuers):
-                            train_step(batch, n + 1, batch_num)
-                        if (n + 1) % 10 == 0 and dev_examples:
+                            train_step(batch, epoch, batch_num, batch_size, train_size)
+                        if epoch % 10 == 0 and dev_examples:
                             run_dev_batches(dev_features, dev_qids, dev_f1s, 
                                             dev_train="Dev")
                     if dev_scores:
@@ -598,8 +610,6 @@ class DeepCNNAqquRelScorer():
     def build_deep_model(self, embeddings, embedding_size,
                          filter_sizes=(2, 3, 4), num_filters=128,
                          n_hidden_nodes_1=200,
-                         n_hidden_nodes_r=200,
-                         n_hidden_nodes_3=50,
                          num_classes=1):
         logger.info("sentence_len: %s", self.sentence_len)
         logger.info("embedding_size: %s", embedding_size)
@@ -614,20 +624,21 @@ class DeepCNNAqquRelScorer():
                                       name="input_y")
         self.dropout_keep_prob = tf.placeholder(tf.float32,
                                                 name="dropout_keep_prob")
-        self.margin = tf.constant(1.0)
 
+        embedded_chars_expanded = None
+        embedded_input_r_expanded = None
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
             W = tf.Variable(
                 embeddings,
                 name="W",
                 trainable=False)
-            self.embedded_input_r = tf.nn.embedding_lookup(W, self.input_r)
-            self.embedded_chars = tf.nn.embedding_lookup(W, self.input_s)
-            self.embedded_input_r_expanded = tf.expand_dims(
-                    self.embedded_input_r,
-                    -1)
-            self.embedded_chars_expanded = tf.expand_dims(self.embedded_chars,
-                                                          -1)
+            embedded_input_r = tf.nn.embedding_lookup(W, self.input_r)
+            embedded_chars = tf.nn.embedding_lookup(W, self.input_s)
+            embedded_input_r_expanded = tf.expand_dims(
+                embedded_input_r,
+                -1)
+            embedded_chars_expanded = tf.expand_dims(embedded_chars,
+                                                     -1)
 
         # Convolution layers for query text, one conv-maxpool per filter size
         pooled_outputs = []
@@ -641,7 +652,7 @@ class DeepCNNAqquRelScorer():
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    self.embedded_chars_expanded,
+                    embedded_chars_expanded,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
@@ -659,8 +670,8 @@ class DeepCNNAqquRelScorer():
 
         # Combine all the pooled features
         num_filters_total = num_filters * len(filter_sizes)
-        self.q_h_pool = tf.concat(pooled_outputs, 3)
-        self.q_h_pool_flat = tf.reshape(self.q_h_pool, [-1, num_filters_total])
+        q_h_pool = tf.concat(pooled_outputs, 3)
+        q_h_pool_flat = tf.reshape(q_h_pool, [-1, num_filters_total])
 
         # Convolution layers for relations, one conv-maxpool per filter size
         pooled_outputs = []
@@ -674,7 +685,7 @@ class DeepCNNAqquRelScorer():
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    self.embedded_input_r_expanded,
+                    embedded_input_r_expanded,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
@@ -693,49 +704,58 @@ class DeepCNNAqquRelScorer():
 
         # Combine all the pooled features
         num_filters_total = num_filters * len(filter_sizes)
-        self.r_h_pool = tf.concat(pooled_outputs, 3)
-        self.r_h_pool_flat = tf.reshape(self.r_h_pool, [-1, num_filters_total])
+        r_h_pool = tf.concat(pooled_outputs, 3)
+        r_h_pool_flat = tf.reshape(r_h_pool, [-1, num_filters_total])
 
         # Add dropout
-        self.h_drop = tf.nn.dropout(self.q_h_pool_flat,
-                                    self.dropout_keep_prob,
-                                    name='dropout_q',
-                                    seed=1332)
-        self.r_drop = tf.nn.dropout(self.r_h_pool_flat,
-                                    self.dropout_keep_prob,
-                                    name='dropout_r',
-                                    seed=1332)
+        h_drop = tf.nn.dropout(q_h_pool_flat,
+                               self.dropout_keep_prob,
+                               name='dropout_q',
+                               seed=1332)
+        r_drop = tf.nn.dropout(r_h_pool_flat,
+                               self.dropout_keep_prob,
+                               name='dropout_r',
+                               seed=1332)
 
         pooled_width = num_filters_total
 
-        with tf.name_scope("shared-weights"):
-            self.W_shared = tf.Variable(tf.truncated_normal([pooled_width,
-                                                             n_hidden_nodes_1],
-                                                            stddev=0.1,
-                                                            seed=234),
-                                        name="W_shared")
 
+        a_q = None
+        with tf.name_scope("dense_q"):
+            W_q = tf.Variable(tf.truncated_normal([pooled_width,
+                                                   n_hidden_nodes_1],
+                                                  stddev=0.1,
+                                                  seed=234),
+                                                  name="W_q")
+            b_q = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
+                              name="b_q")
+            h_q = tf.nn.xw_plus_b(h_drop, W_q, b_q,
+                                  name="h_q")
+            a_q = tf.nn.elu(h_q)
+
+
+        a_r = None
         with tf.name_scope("dense_r"):
-            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
-                            name="b")
-            self.h_1 = tf.nn.xw_plus_b(self.h_drop, self.W_shared, b,
-                                       name="h_1")
-            self.a_1 = tf.nn.elu(self.h_1)
-
-
-        with tf.name_scope("dense_r"):
-            b = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
-                            name="b")
-            self.h_2 = tf.nn.xw_plus_b(self.r_drop, self.W_shared, b,
-                                       name="h_2")
-            self.a_2 = tf.nn.elu(self.h_2)
+            W_r = tf.Variable(tf.truncated_normal([pooled_width,
+                                                   n_hidden_nodes_1],
+                                                  stddev=0.1,
+                                                  seed=234),
+                              name="W_r")
+            b_r = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
+                              name="b_r")
+            h_r = tf.nn.xw_plus_b(r_drop, W_r, b_r,
+                                  name="h_r")
+            a_r = tf.nn.elu(h_r)
 
         # CalculateMean cross-entropy loss
         with tf.name_scope("loss"):
-            a_1 = tf.nn.l2_normalize(self.a_1, 1, name='normalize_q')
-            a_2 = tf.nn.l2_normalize(self.a_2, 1, name='normalize_r')
-            scores = tf.multiply(a_1, a_2)
+            a_q = tf.nn.l2_normalize(a_q, 1, name='normalize_q')
+            a_r = tf.nn.l2_normalize(a_r, 1, name='normalize_r')
+            scores = tf.multiply(a_q, a_r)
             self.scores = tf.reduce_sum(scores, 1, keep_dims=True)
             self.probs = self.scores
-            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores))
+            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores), name='loss')
+            tf.summary.scalar('loss', self.loss)
+
+        self.summary = tf.summary.merge_all()
 
