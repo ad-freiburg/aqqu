@@ -8,6 +8,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import math
 import time
+import os
 import copy
 import logging
 import itertools
@@ -188,10 +189,15 @@ class MLModel(object):
 
     def get_model_filename(self):
         """Return the model file name."""
-        model_filename = self.get_model_name()
-        model_base_dir = config_helper.config.get('Ranker', 'model-dir')
-        model_file = "%s/%s.model" % (model_base_dir, model_filename)
+        model_base_dir = self.get_model_dir()
+        model_file = "%s/%s.model" % (model_base_dir, self.get_model_name())
         return model_file
+
+    def get_model_dir(self):
+        """Return the model path."""
+        model_base_dir = config_helper.config.get('Ranker', 'model-dir')
+        return model_base_dir
+
 
     def get_model_name(self):
         """Return the model name."""
@@ -267,8 +273,9 @@ class AqquModel(MLModel, Ranker):
                 self.deep_relation_scorer = \
                     DeepCNNAqquRelScorer.init_from_config()
                 # TODO make paths configurable for submodels
+                model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
                 self.deep_relation_scorer.load_model(
-                    'data/model-dir/tf/'+self.get_model_name()+'/')
+                    model_dir_tf, self.get_model_name())
 
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
@@ -631,8 +638,9 @@ class AqquModel(MLModel, Ranker):
                     self.get_model_filename())
         self.relation_scorer.store_model()
         if self.learn_deep_rel_model:
+            model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
             self.deep_relation_scorer.store_model(
-                'data/model-dir/tf/'+self.get_model_name()+'/')
+                model_dir_tf, self.get_model_name())
         self.pruner.store_model()
         logger.info("Done.")
 

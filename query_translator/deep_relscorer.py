@@ -10,6 +10,7 @@ import joblib
 import config_helper
 import tensorflow as tf
 from gensim import models
+
 from sklearn import utils
 from . import feature_extraction
 
@@ -25,7 +26,8 @@ class DeepCNNAqquRelScorer():
     UNK = '---UNK---'
     PAD = '---PAD---'
 
-    def __init__(self, embeddings_file=None):
+    def __init__(self, logdir, embeddings_file=None):
+        self.logdir = logdir
         self.n_rels = 3
         self.n_parts_per_rel = 3
         self.n_rel_parts = self.n_rels * self.n_parts_per_rel
@@ -61,7 +63,9 @@ class DeepCNNAqquRelScorer():
         config_options = config_helper.config
         embeddings_file = config_options.get('DeepRelScorer',
                                              'word-embeddings')
-        return DeepCNNAqquRelScorer(embeddings_file)
+        logdir = config_options.get('DeepRelScorer',
+                                    'logdir')
+        return DeepCNNAqquRelScorer(logdir, embeddings_file)
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -231,7 +235,7 @@ class DeepCNNAqquRelScorer():
             default_sess.close()
         self.g = tf.Graph()
         log_name = \
-            os.path.join('data/log/', time.strftime("%Y-%m-%d-%H-%M-%S"))
+            os.path.join(self.logdir, time.strftime("%Y-%m-%d-%H-%M-%S"))
         if not os.path.exists(log_name):
             os.makedirs(log_name)
         self.writer = tf.summary.FileWriter(log_name)
@@ -251,7 +255,8 @@ class DeepCNNAqquRelScorer():
         """
         random.seed(123)
         if extend_model:
-            self.load_model(extend_model)
+            self.load_model(os.path.dirname(extend_model),
+                            os.path.basename(extend_model))
         elif self.embeddings_file and not extend_model:
             [self.embedding_size, self.vocab,
              self.embeddings] = self.extract_vectors(self.embeddings_file)
@@ -498,37 +503,35 @@ class DeepCNNAqquRelScorer():
             split_rels[k] = words
         return split_rels
 
-    def store_model(self, path):
-        if path[-1] != '/':
-            logger.error("Model path needs to end in '/'")
-            return
+    def store_model(self, path, model_name):
         # Store UNK, as well as name of embeddings_source?
         logger.info("Writing model to %s." % path)
         if not os.path.exists(path):
             os.makedirs(path)
 
         logger.info("Writing model to %s." % path)
-        self.saver.save(self.sess, path, global_step=100)
-        vocab_path = path[:-1]+".vocab"
+        model_path = os.path.join(path, model_name)
+        self.saver.save(self.sess, model_path, global_step=100)
+
+        vocab_path = os.path.join(path, model_name+'.vocab')
         joblib.dump([self.embeddings, self.vocab, self.embedding_size], vocab_path)
         logger.info("Done.")
 
-    def load_model(self, path):
-        if path[-1] != '/':
-            logger.error("Model path needs to end in '/'")
-            return
-        vocab_path = path[:-1] + ".vocab"
+    def load_model(self, path, model_name):
+        vocab_path = os.path.join(path, model_name+'.vocab')
         logger.info("Loading model vocab from %s" % vocab_path)
         [self.embeddings, self.vocab, self.embedding_size] = \
             joblib.load(vocab_path)
         self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
         logger.info("Loading model from %s." % path)
-        ckpt = tf.train.get_checkpoint_state(path)
+
+        model_path = os.path.join(path, model_name)
+        ckpt = tf.train.get_checkpoint_state(model_path)
         if ckpt and ckpt.model_checkpoint_path:
             logger.info("Loading model from %s." % path)
             self.g = tf.Graph()
 
-            log_name = os.path.join('data/log/',
+            log_name = os.path.join(self.logdir,
                                     time.strftime("%Y-%m-%d-%H-%M-%S"))
             if not os.path.exists(log_name):
                 os.makedirs(log_name)
