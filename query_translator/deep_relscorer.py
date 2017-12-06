@@ -14,7 +14,6 @@ from gensim import models
 from sklearn import utils
 from . import feature_extraction
 
-
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
@@ -43,7 +42,6 @@ class DeepCNNAqquRelScorer():
         # as long max_query_len
         self.relation_len = 3 + 6 + 9 + 2
         self.sess = None
-        self.scores = None
         self.probs = None
         self.loss = None
 
@@ -505,12 +503,12 @@ class DeepCNNAqquRelScorer():
 
     def store_model(self, path, model_name):
         # Store UNK, as well as name of embeddings_source?
-        logger.info("Writing model to %s." % path)
-        if not os.path.exists(path):
-            os.makedirs(path)
+        model_path = os.path.join(path, model_name, '')
+        logger.info("Writing model to %s." % model_path)
+        if not os.path.exists(model_path):
+            os.makedirs(model_path)
 
-        logger.info("Writing model to %s." % path)
-        model_path = os.path.join(path, model_name)
+        logger.info("Writing model to %s." % model_path)
         self.saver.save(self.sess, model_path, global_step=100)
 
         vocab_path = os.path.join(path, model_name+'.vocab')
@@ -518,17 +516,16 @@ class DeepCNNAqquRelScorer():
         logger.info("Done.")
 
     def load_model(self, path, model_name):
+        model_path = os.path.join(path, model_name, '')
         vocab_path = os.path.join(path, model_name+'.vocab')
-        logger.info("Loading model vocab from %s" % vocab_path)
+        logger.info("Loading model vocab from %s", vocab_path)
         [self.embeddings, self.vocab, self.embedding_size] = \
             joblib.load(vocab_path)
         self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
-        logger.info("Loading model from %s." % path)
+        logger.info("Loading model from %s", model_path)
 
-        model_path = os.path.join(path, model_name)
         ckpt = tf.train.get_checkpoint_state(model_path)
         if ckpt and ckpt.model_checkpoint_path:
-            logger.info("Loading model from %s." % path)
             self.g = tf.Graph()
 
             log_name = os.path.join(self.logdir,
@@ -607,7 +604,7 @@ class DeepCNNAqquRelScorer():
                         for i in range(probs.shape[0]):
                             result.append(RankScore(round(probs[i][0], 4)))
             batch += 1
-        assert(len(result) == len(score_candidates))
+        assert len(result) == len(score_candidates)
         return result
 
     def build_deep_model(self, embeddings, embedding_size,
