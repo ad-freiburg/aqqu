@@ -132,6 +132,7 @@ class Backend(object):
         # Backend capabilities
         self.supports_count = True
         self.supports_optional = True
+        self.supports_text = True
         self.lang_in_relations = False
         self.query_log = open('virtuoso_log.txt', 'wt', encoding='UTF-8')
 

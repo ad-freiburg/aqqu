@@ -158,7 +158,6 @@ class QueryTranslator(object):
         :return:
         """
         # Parse query.
-        translations = []
         num_sparql_queries = self.backend.num_queries_executed
         sparql_query_time = self.backend.total_query_time
         parsed_query, query_candidates = self.translate_query(query)
@@ -172,8 +171,9 @@ class QueryTranslator(object):
         ranker = self.scorer
         ranked_candidates = ranker.rank_query_candidates(query_candidates,
                                                          store_features=True)
-        logger.info("Fetching translations for all candidates.")
         sparql_query_time = self.backend.total_query_time
+        logger.info("Fetching translations for all candidates.")
+        translations = []
         n_total_translations = 0
         if len(ranked_candidates) > n_top:
             logger.info("Truncating returned candidates to %s." % n_top)

@@ -824,7 +824,7 @@ class QueryCandidateExtender:
         query_candidates = []
         query = query_candidate.query
 
-        entity = query_candidate.current_extension.entity_match.entity
+        entity = query_candidate.current_extension.entity_match
         identified_entities = query_candidate.query.identified_entities
         start = time.time()
         remaining_query_content_tokens = set(

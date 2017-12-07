@@ -237,25 +237,6 @@ class NameWeakMatch:
         return "RelationNameSynonym: %s" % s
 
 
-class EntityMatch:
-    """
-    Describes a match of an entity in the tokens.
-    TODO(schnelle) it might make sense to remove this class and
-    use IdentifiedEntity directly
-    """
-
-    def __init__(self, entity):
-        self.entity = entity
-
-    def __deepcopy__(self, memo):
-        # No need to copy the identified entity.
-        m = EntityMatch(self.entity)
-        return m
-
-    def as_string(self):
-        return self.entity.as_string()
-
-
 class QueryCandidate:
     """
     The contained object pointing to a root node.
@@ -275,7 +256,7 @@ class QueryCandidate:
         self.root_node = root_node
         if root_node:
             self.nodes.append(root_node)
-        # A set of EntityMatches.
+        # A set of IdentifiedEntities.
         self.matched_entities = set()
         # A set of RelationMatches.
         self.matched_relations = set()
@@ -492,9 +473,9 @@ class QueryCandidate:
 
     def add_entity_match(self, entity_match):
         self.matched_entities.add(entity_match)
-        self.matched_tokens.update(entity_match.entity.tokens)
+        self.matched_tokens.update(entity_match.tokens)
         self.unmatched_tokens = self.unmatched_tokens - set(
-            entity_match.entity.tokens)
+            entity_match.tokens)
 
     def __deepcopy__(self, memo):
         # Create a new empty query candidate
@@ -702,7 +683,7 @@ class QueryCandidate:
         match_score = 0
         for e in elements:
             if e.entity_match is not None:
-                match_score += e.entity_match.entity.score
+                match_score += e.entity_match.score
         return len(self.covered_tokens()), match_score
 
 
@@ -737,7 +718,7 @@ class QueryCandidateNode:
                                                 allow_new_match=allow_new_match)
 
     def set_entity_match(self, identified_entity):
-        self.entity_match = EntityMatch(identified_entity)
+        self.entity_match = identified_entity
         self.query_candidate.add_entity_match(self.entity_match)
 
     def as_string(self):

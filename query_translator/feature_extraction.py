@@ -52,7 +52,7 @@ def get_query_text_tokens(candidate, include_mid=False):
     # The set of all tokens for which an entity was identified.
     entity_tokens = dict()
     for em in candidate.matched_entities:
-        for t in em.entity.tokens:
+        for t in em.tokens:
             entity_tokens[t] = em
     query_text_tokens = ['<start>']
     # Replace entity tokens with "ENTITY"
@@ -61,8 +61,8 @@ def get_query_text_tokens(candidate, include_mid=False):
         if t.pos_ == 'PUNCT':
             continue
         if t in entity_tokens:
-            if include_mid and isinstance(entity_tokens[t].entity.entity, KBEntity):
-                mid = entity_tokens[t].entity.entity.id
+            if include_mid and isinstance(entity_tokens[t].entity, KBEntity):
+                mid = entity_tokens[t].entity.id
                 # Don't repeat the same mid.
                 if len(query_text_tokens) > 0 and query_text_tokens[-1] == mid:
                     continue
@@ -133,18 +133,18 @@ def simple_features(candidate):
     for em in candidate.matched_entities:
         # A threshold above which we consider the match a literal match.
         threshold = 0.8
-        n_entity_tokens += len(em.entity.tokens)
-        if em.entity.perfect_match or em.entity.surface_score > threshold:
+        n_entity_tokens += len(em.tokens)
+        if em.perfect_match or em.surface_score > threshold:
             n_literal_entities += 1
-            literal_entities_length += len(em.entity.tokens.text)
-        if em.entity.text_match:
+            literal_entities_length += len(em.tokens.text)
+        if em.text_match:
             n_text_and_question_entities += 1
-        em_surface_scores.append(em.entity.surface_score)
-        em_score = em.entity.surface_score
-        em_score *= len(em.entity.tokens.text)
+        em_surface_scores.append(em.surface_score)
+        em_score = em.surface_score
+        em_score *= len(em.tokens.text)
         em_token_score += em_score
-        if em.entity.score > 0:
-            em_pop_scores.append(math.log(em.entity.score))
+        if em.score > 0:
+            em_pop_scores.append(math.log(em.score))
         else:
             em_pop_scores.append(0)
     token_name_match_score = defaultdict(float)

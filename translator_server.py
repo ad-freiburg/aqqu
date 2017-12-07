@@ -12,11 +12,12 @@ import config_helper
 import scorer_globals
 import flask
 import spacy
-from query_translator.query_candidate import RelationMatch, EntityMatch,\
+from query_translator.query_candidate import RelationMatch,\
     QueryCandidate, QueryCandidateNode
 from query_translator.translator import QueryTranslator, Query,\
     TranslationResult
 import entity_linker.entity_linker as entity_linker
+
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
                            ": %(module)s : %(message)s",
@@ -145,12 +146,12 @@ def map_relation_matches(rel_matches: Iterable[RelationMatch])\
     return results
 
 
-def map_entity_matches(ent_matches: Iterable[EntityMatch])\
+def map_entity_matches(ent_matches: Iterable[entity_linker.IdentifiedEntity])\
                         -> List[Dict[str, Any]]:
     """
-    Maps EntityMatches to a list of JSON compatible dicts
+    Maps IdentifiedEntities to a list of JSON compatible dicts
     """
-    return [{'mid': em.entity.entity.sparql_name()} for em in ent_matches]
+    return [{'mid': em.entity.sparql_name()} for em in ent_matches]
 
 
 def map_query_graph(node: QueryCandidateNode, visited: set)\
@@ -175,7 +176,7 @@ def map_query_graph(node: QueryCandidateNode, visited: set)\
 
     mid = None
     if node.entity_match:
-        mid = node.entity_match.entity.entity.sparql_name()
+        mid = node.entity_match.entity.sparql_name()
     return {'mid': mid,
             'out_relations': out_relations}
 
