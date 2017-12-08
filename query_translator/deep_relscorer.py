@@ -747,14 +747,24 @@ class DeepCNNAqquRelScorer():
                                   name="h_r")
             a_r = tf.nn.elu(h_r)
 
-        # CalculateMean cross-entropy loss
+        # Calculate contrastive cosine similarity loss
         with tf.name_scope("loss"):
             a_q = tf.nn.l2_normalize(a_q, 1, name='normalize_q')
             a_r = tf.nn.l2_normalize(a_r, 1, name='normalize_r')
             scores = tf.multiply(a_q, a_r)
-            self.scores = tf.reduce_sum(scores, 1, keep_dims=True)
-            self.probs = self.scores
-            self.loss = tf.reduce_mean(tf.square(self.input_y - self.scores), name='loss')
+            scores = tf.reduce_sum(scores, 1, keep_dims=True)
+            self.probs = scores
+            similar_losses = tf.multiply(self.input_y, tf.square(1 - scores))/2
+            mrgn = 0.1  # don't penalize if score is already small
+            dissimilar_losses = tf.multiply(1.0 - self.input_y,
+                                            tf.square(
+                                                tf.maximum(scores - mrgn,
+                                                           0
+                                                          )
+                                                )
+                                           )/2
+            self.loss = tf.reduce_mean(similar_losses + dissimilar_losses, name='loss')
+            #self.loss = tf.reduce_mean(tf.square(self.input_y - scores), name='loss')
             tf.summary.scalar('loss', self.loss)
 
         self.summary = tf.summary.merge_all()
