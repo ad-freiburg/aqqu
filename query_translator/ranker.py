@@ -1243,14 +1243,14 @@ class LiteralRanker(Ranker):
             # "us supreme court" <-> "Supreme Court of the United States"
             # (prob = 0.983) "mozart" <-> "Wolfgang Amadeus Mozart"
             threshold = 0.8
-            if em.entity.perfect_match or em.entity.surface_score > threshold:
+            if em.perfect_match or em.surface_score > threshold:
                 literal_entities += 1
-                literal_length += len(em.entity.tokens)
-            em_score = em.entity.surface_score
-            em_score *= len(em.entity.tokens)
+                literal_length += len(em.tokens)
+            em_score = em.surface_score
+            em_score *= len(em.tokens)
             em_token_score += em_score
-            if em.entity.score > 0:
-                em_popularity += math.log(em.entity.score)
+            if em.score > 0:
+                em_popularity += math.log(em.score)
         matched_tokens = dict()
         for rm in query_candidate.matched_relations:
             rm_relation_length += len(rm.relation)
