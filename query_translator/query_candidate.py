@@ -285,6 +285,9 @@ class QueryCandidate:
         # An indicator whether the candidate matches the answer type
         self.matches_answer_type = None
         self.feature_dict = None
+        # The result of the query represented by this candidate.
+        # This is only set when execturing retrieve_result()
+        self.query_result = None
 
     def get_relation_names(self):
         return sorted([r.name for r in self.relations])
@@ -358,16 +361,14 @@ class QueryCandidate:
         self.cached_result_count = result
         return result
 
-    def get_result(self, include_name=True):
+    def retrieve_result(self, include_name=True):
         """
-        Returns the results of the SPARQL
+        Retrieves the results of the SPARQL for this candidate
         query when executed against the sparql backend
-        for this query candidate.
-        :return:
         """
         sparql_query = self.to_sparql_query(include_name=include_name)
         query_result = self.backend.query(sparql_query)
-        return query_result
+        self.query_result = query_result
 
     def get_relation_suggestions(self):
         """

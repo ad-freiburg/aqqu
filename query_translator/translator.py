@@ -25,25 +25,14 @@ class Query:
     A query that is to be translated.
     """
 
-    def __init__(self, text):
-        self.text = text.lower()  # type: str
+    def __init__(self, query_doc):
+        self.tokens = query_doc  # type: spacy.tokens.Doc
+        self.text = query_doc.text.lower()  # type: str
         self.target_type = None  # type: AnswerType
-        self.tokens = None  # type: spacy.tokens.Doc
         self.content_tokens = None  # type: spacy.tokens.Span
         self.identified_entities = None  # type: Iterable[IdentifiedEntity]
         self.relation_oracle = None
         self.is_count_query = False
-
-class TranslationResult:
-    """
-    Final result of a translated and executed query
-    TODO(schnelle): It would probably be nicer to just
-    store the answers in the QueryCandidate
-    """
-    def __init__(self, candidate, result_rows):
-        self.query_candidate = candidate
-        self.query_result_rows = result_rows
-
 
 class QueryTranslator(object):
 
@@ -143,8 +132,7 @@ class QueryTranslator(object):
         # Parse query.
         query_doc = self.nlp(query_text)
         # Create a query object.
-        query = Query(query_doc.text)
-        query.tokens = query_doc
+        query = Query(query_doc)
         entities = self.entity_linker.identify_entities_in_tokens(
             query.tokens)
         query.identified_entities = entities
@@ -172,28 +160,23 @@ class QueryTranslator(object):
         ranked_candidates = ranker.rank_query_candidates(query_candidates,
                                                          store_features=True)
         sparql_query_time = self.backend.total_query_time
-        logger.info("Fetching translations for all candidates.")
-        translations = []
-        n_total_translations = 0
+        logger.info("Fetching results for all candidates.")
+        n_total_answers = 0
         if len(ranked_candidates) > n_top:
             logger.info("Truncating returned candidates to %s." % n_top)
         for query_candidate in ranked_candidates[:n_top]:
-            query_result = query_candidate.get_result(include_name=True)
-            # Sometimes virtuoso just doesn't process a query
-            if not query_result:
-                continue
-            n_total_translations += sum([len(rows) for rows in query_result])
-            result = TranslationResult(query_candidate, query_result)
-            translations.append(result)
+            query_candidate.retrieve_result(include_name=True)
+            n_total_answers += sum(
+                [len(rows) for rows in query_candidate.query_result])
         # This assumes that each query candidate uses the same SPARQL backend
         # instance which should be the case at the moment.
         result_fetch_time = (self.backend.total_query_time - sparql_query_time) * 1000
-        avg_result_fetch_time = result_fetch_time / (len(translations) + 0.001)
-        logger.info("Fetched a total of %s translations in %s queries in %.2f ms."
-                    " Avg per query: %.2f ms." % (n_total_translations, len(translations),
+        avg_result_fetch_time = result_fetch_time / (len(ranked_candidates[:n_top]) + 0.001)
+        logger.info("Fetched a total of %s results in %s queries in %.2f ms."
+                " Avg per query: %.2f ms." % (n_total_answers, len(ranked_candidates[:n_top]),
                                                   result_fetch_time, avg_result_fetch_time))
         logger.info("Done translating and executing: %s." % query)
-        return parsed_query, translations
+        return parsed_query, ranked_candidates[:n_top]
 
 
 
