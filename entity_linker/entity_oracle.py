@@ -7,8 +7,6 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 import logging
-import globals
-from .surface_index_memory import EntitySurfaceIndexMemory
 from .entity_linker import IdentifiedEntity, get_value_for_year, \
     DateValue
 
@@ -27,20 +25,19 @@ class EntityOracle:
     name etc.
     """
 
-    def __init__(self, oracle_entities_file, surface_index):
+    def __init__(self, oracle_entities_file, entity_index):
         self.tokens_mid_map = dict()
-        self.surface_index = surface_index
+        self.entity_index = entity_index
         self._read_oracle_entities(oracle_entities_file)
 
     @staticmethod
-    def init_from_config(ranker_params, surface_index):
+    def init_from_config(ranker_params, entity_index):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
         :return:
         """
-        config_options = globals.config
-        return EntityOracle(ranker_params.entity_oracle_file, surface_index)
+        return EntityOracle(ranker_params.entity_oracle_file, entity_index)
 
     def _read_oracle_entities(self, oracle_entities_file):
         with open(oracle_entities_file, 'rb') as f:
@@ -57,7 +54,7 @@ class EntityOracle:
         for i in range(1, len(tokens) + 1):
             for j in range(i):
                 span = tokens[j:i]
-                span_str = ''.join([t.token for t in span])
+                span_str = ''.join([t.orth_ for t in span])
                 if span_str in self.tokens_mid_map:
                     mids = self.tokens_mid_map[span_str]
                     for mid in mids:
@@ -67,7 +64,7 @@ class EntityOracle:
                             ie = IdentifiedEntity(span, e.name, e, perfect_match=True)
                             identified_entities.append(ie)
                         else:
-                            entity = self.surface_index.get_entity_for_mid(mid)
+                            entity = self.entity_index.get_entity_for_mid(mid)
                             if entity:
                                 ie = IdentifiedEntity(span,
                                                       entity.name,

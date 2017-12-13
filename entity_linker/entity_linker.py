@@ -6,12 +6,14 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import logging
+from collections import defaultdict
 import re
+import copy
 import time
-from .surface_index_memory import EntitySurfaceIndexMemory
+from .entity_index_rocksdb import EntityIndex
 from .util import normalize_entity_name, remove_number_suffix,\
     remove_prefixes_from_name, remove_suffixes_from_name
-import globals
+import config_helper
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +69,6 @@ class Value(Entity):
 
     def __init__(self, name, value):
         Entity.__init__(self, name)
-        # The unique identifier used in the knowledge base.
         self.value = value
 
     def sparql_name(self):
@@ -115,7 +116,8 @@ class IdentifiedEntity():
                  score=0, surface_score=0,
                  perfect_match=False,
                  text_match=False,
-                 text_query=False):
+                 text_query=False,
+                 entity_types=None):
         # A readable name to be displayed to the user.
         self.name = name
         # The tokens that matched this entity.
@@ -133,9 +135,11 @@ class IdentifiedEntity():
         self.text_match = text_match
         # A flag indicating if this entity was obtained via text query
         self.text_query = text_query
+        # The possible types of this entity in order of relevance descending
+        self.types = entity_types
 
     def as_string(self):
-        t = ','.join(["%s" % t.token
+        t = ','.join(["%s" % t.orth_
                       for t in self.tokens])
         return "%s: tokens:%s prob:%.3f score:%s perfect_match:%s text_match:%s text_query:%s" % \
                (self.name, t,
@@ -155,6 +159,19 @@ class IdentifiedEntity():
     def prefixed_sparql_name(self, prefix):
         return self.entity.prefixed_sparql_name(prefix)
 
+    def __deepcopy__(self, memo):
+        # Don't copy tokens, name they are immutable
+        res = IdentifiedEntity(
+                self.tokens,
+                self.name,
+                copy.deepcopy(self.entity, memo),
+                copy.deepcopy(self.score, memo),
+                copy.deepcopy(self.surface_score, memo),
+                copy.deepcopy(self.perfect_match, memo),
+                copy.deepcopy(self.text_match, memo),
+                copy.deepcopy(self.types, memo))
+        return res
+
 
 def get_value_for_year(year):
     """Return the correct value representation for a year."""
@@ -165,15 +182,18 @@ def get_value_for_year(year):
 
 class EntityLinker:
 
-    def __init__(self, surface_index,
-                 max_entities_per_tokens=4):
-        self.surface_index = surface_index
+    def __init__(self, entity_index,
+                 max_entities_per_tokens=4,
+                 max_types=3):
+        self.entity_index = entity_index
         self.max_entities_per_tokens = max_entities_per_tokens
+        self.max_types = max_types
         # Entities are a mix of nouns, adjectives and numbers and
         # a LOT of other stuff as it turns out:
         # UH, . for: hey arnold!
         # MD for: ben may library
         # PRP for: henry i
+        # CD for: episode 1
         # FW for: ?
         self.valid_entity_tag = re.compile(r'^(UH|\.|TO|PRP.?|#|FW|IN|VB.?|'
                                            r'RB|CC|NNP.?|NN.?|JJ.?|CD|DT|MD|'
@@ -182,17 +202,23 @@ class EntityLinker:
         self.year_re = re.compile(r'[0-9]{4}')
 
     @staticmethod
-    def init_from_config(ranker_params, surface_index):
+    def init_from_config(ranker_params, entity_index):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         max_entities_per_tokens = int(config_options.get('EntityLinker',
                                                       'max-entites-per-tokens'))
-        return EntityLinker(surface_index,
-                            max_entities_per_tokens=max_entities_per_tokens)
+        max_types = int(config_options.get('EntityLinker',
+                                                      'max-types-per-entity'))
+
+
+        return EntityLinker(entity_index,
+                            max_entities_per_tokens=max_entities_per_tokens,
+                            max_types = max_types)
+
 
 
     def _text_matches_main_name(self, entity, text):
@@ -221,25 +247,34 @@ class EntityLinker:
         :param end:
         :return:
         '''
-        # Concatenate POS-tags
+
         token_list = tokens[start:end]
-        pos_list = [t.pos for t in token_list]
+        # Entity mentions cannot be empty
+        if len(token_list) < 1:
+            return False
+        # Concatenate POS-tags
+        pos_list = [t.tag_ for t in token_list]
         pos_str = ''.join(pos_list)
         # Check if all tokens are in the ignore list.
-        if all((t.lemma in self.ignore_lemmas for t in token_list)):
+        if all([t.lemma_ in self.ignore_lemmas for t in token_list]):
             return False
+
+        # Entity mentions cannot start with an ignored lemma
+        if token_list[0].lemma_ in self.ignore_lemmas:
+            return False
+
         # For length 1 only allows nouns
-        elif len(pos_list) == 1 and (pos_list[0].startswith('N') or pos_list[0].startswith('J')) or \
-                                len(pos_list) > 1 and \
-                        self.valid_entity_tag.match(pos_str):
+        elif len(pos_list) == 1 and (pos_list[0].startswith('N') or
+                                     pos_list[0].startswith('J')) or \
+                (len(pos_list) > 1 and self.valid_entity_tag.match(pos_str)):
             # It is not allowed to split a consecutive NNP
             # if it is a single token.
             if len(pos_list) == 1:
                 if pos_list[0].startswith('NNP') and start > 0 \
-                        and tokens[start - 1].pos.startswith('NNP'):
+                        and tokens[start - 1].tag_.startswith('NNP'):
                     return False
                 elif pos_list[-1].startswith('NNP') and end < len(tokens) \
-                        and tokens[end].pos.startswith('NNP'):
+                        and tokens[end].tag_.startswith('NNP'):
                     return False
             return True
         return False
@@ -253,35 +288,33 @@ class EntityLinker:
         '''
         # Very simplistic for now.
         identified_dates = []
-        for t in tokens:
-            if t.pos == 'CD':
+        for i, t in enumerate(tokens):
+            if t.tag_ == 'CD':
                 # A simple match for years.
-                if re.match(self.year_re, t.token):
-                    year = t.token
+                if re.match(self.year_re, t.orth_):
+                    year = t.orth_
                     e = DateValue(year, get_value_for_year(year))
-                    ie = IdentifiedEntity([t], e.name, e, perfect_match=True)
+                    # TODO(schnelle) the year is currently used in training but should be more specific
+                    # tokens[i:i+1] gives us a span so it's consistent with other entities
+                    ie = IdentifiedEntity(tokens[i:i+1], e.name, e, perfect_match=True, entity_types=['Year'])
                     identified_dates.append(ie)
         return identified_dates
 
-    def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):
+    def identify_in_tokens(self, tokens, min_surface_score=0.1, lax_mode=False):
         '''
-        Identify instances in the tokens.
-        :param tokens: A list of string tokens.
-        :return: A list of IdentifiedEntity
+        Actual entity identification function with a special lax mode where we are less
+        strict
         '''
         n_tokens = len(tokens)
-        logger.info("Starting entity identification.")
-        start_time = time.time()
-        # First find all candidates.
         identified_entities = []
         for start in range(n_tokens):
             for end in range(start + 1, n_tokens + 1):
                 entity_tokens = tokens[start:end]
-                if not self.is_entity_occurrence(tokens, start, end):
+                if not lax_mode and not self.is_entity_occurrence(tokens, start, end):
                     continue
-                entity_str = ' '.join([t.token for t in entity_tokens])
+                entity_str = entity_tokens.text 
                 logger.debug("Checking if '{0}' is an entity.".format(entity_str))
-                entities = self.surface_index.get_entities_for_surface(entity_str)
+                entities = self.entity_index.get_entities_for_surface(entity_str)
                 logger.debug("Found {0} raw entities".format(len(entities)))
                 # No suggestions.
                 if len(entities) == 0:
@@ -294,12 +327,33 @@ class EntityLinker:
                     # Check if the main name of the entity exactly matches the text.
                     if self._text_matches_main_name(e, entity_str):
                         perfect_match = True
+                    types = self.entity_index.get_types_for_mid(e.id, self.max_types)
                     ie = IdentifiedEntity(tokens[start:end],
                                           e.name, e, e.score, surface_score,
-                                          perfect_match)
+                                          perfect_match, entity_types=types)
                     # self.boost_entity_score(ie)
                     identified_entities.append(ie)
+        return identified_entities
+
+    def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):
+        '''
+        Identify instances in the tokens.
+        :param tokens: A list of string tokens.
+        :return: A list of IdentifiedEntity
+        '''
+        logger.info("Starting entity identification.")
+        # First find all candidates.
+        identified_entities = []
+        start_time = time.time()
+        identified_entities.extend(self.identify_in_tokens(tokens, min_surface_score))
+        if len(identified_entities) == 0:
+            # Without any identified entities we would be unable to find anything for
+            # the query so retry this time ignoring POS tags
+            logger.info("No entities were found, retry in lax mode")
+            identified_entities.extend(self.identify_in_tokens(tokens, min_surface_score/2, lax_mode=True))
+
         identified_entities.extend(self.identify_dates(tokens))
+
         duration = (time.time() - start_time) * 1000
         identified_entities = self._filter_identical_entities(identified_entities)
         identified_entities = EntityLinker.prune_entities(identified_entities,

@@ -10,10 +10,11 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import logging
+import freebase
 import bisect
 import mmap
 import time
-import globals
+import config_helper
 from .mediator_index_c import write_index, read_index, compute_intersection, \
     compute_intersection_for_list, compute_intersection_fast
 import numpy as np
@@ -43,7 +44,7 @@ class MediatorIndexFast(object):
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         mediator_index_prefix = config_options.get('MediatorIndex',
                                                    'mediator-index-prefix')
         mediator_facts = config_options.get('MediatorIndex',
@@ -96,7 +97,7 @@ class MediatorIndexFast(object):
                     line = mm.readline()
                     num_lines += 1
                     continue
-                cols = [globals.remove_freebase_ns_bytes(x) for x in cols]
+                cols = [freebase.remove_freebase_ns_bytes(x) for x in cols]
                 vocab__words_set.update(cols)
                 line = mm.readline()
                 num_lines += 1
@@ -120,7 +121,7 @@ class MediatorIndexFast(object):
                     line = mm.readline()
                     num_lines += 1
                     continue
-                cols = [globals.remove_freebase_ns_bytes(x) for x in cols]
+                cols = [freebase.remove_freebase_ns_bytes(x) for x in cols]
                 value_id = vocabulary[cols[0]]
                 relation_id = vocabulary[cols[1]]
                 mediator_id = vocabulary[cols[3]]

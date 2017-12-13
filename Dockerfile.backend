@@ -1,0 +1,20 @@
+FROM gcr.io/tensorflow/tensorflow:latest-py3
+RUN apt-get update && apt-get install -y python3-pip make
+# Mount point for integrating data volumes
+RUN mkdir /data
+RUN mkdir /app
+WORKDIR /app/
+COPY requirements-riseml-basics.txt /app/
+RUN pip3 install -r requirements-riseml-basics.txt
+
+# App specific rules follow
+RUN apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
+COPY requirements.txt /app/
+RUN pip3 install -r requirements.txt
+RUN python3 -m spacy download en
+
+COPY . /app/
+WORKDIR /app/
+RUN python3 setup.py build_ext --inplace
+EXPOSE 8090
+CMD ["python",  "-m", "translator_server", "WQSP_Ranker"]

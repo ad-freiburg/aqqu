@@ -12,7 +12,8 @@ import logging
 import sys
 from .util import *
 import copy
-import globals
+import config_helper
+import freebase
 from entity_linker.entity_linker import KBEntity
 import weakref
 
@@ -45,6 +46,7 @@ class RelationMatch:
         # For target relations we track the cardinality
         # of a relation. This is only set for target relations.
         self.cardinality = -1
+        self.feature_dict = None
 
     def is_empty(self):
         """
@@ -121,6 +123,7 @@ class RelationMatch:
         m.words_match = self.words_match
         m.name_match = self.name_match
         m.name_weak_match = self.name_weak_match
+        m.tokens = self.tokens
         return m
 
     def as_string(self):
@@ -152,14 +155,14 @@ class WordsMatch:
     """
 
     def __init__(self, token_scores=[]):
-        # A list of tuples (word, score)
+        # A list of tuples (token, score)
         self.token_scores = token_scores
 
     def add_match(self, token_score):
         self.token_scores.append(token_score)
 
     def as_string(self):
-        s = ','.join(["%s:%.4f" % (t.lemma, s)
+        s = ','.join(["%s:%.4f" % (t.lemma_, s)
                       for t, s in self.token_scores])
         return "RelationContext: %s" % s
 
@@ -178,7 +181,7 @@ class DerivationMatch:
         self.token_names.append(token_name)
 
     def as_string(self):
-        s = ','.join(["%s=%s" % (t.lemma, n)
+        s = ','.join(["%s=%s" % (t.lemma_, n)
                       for t, n in self.token_names])
         return "DerivationMatch: %s" % s
 
@@ -189,7 +192,6 @@ class CountMatch:
     """
 
     def __init__(self, count):
-        # A list of tuples (word, score)
         self.count = count
 
     def as_string(self):
@@ -210,7 +212,7 @@ class NameMatch:
         self.token_names.append(token_name)
 
     def as_string(self):
-        s = ','.join(["%s=%s" % (t.lemma, n)
+        s = ','.join(["%s=%s" % (t.lemma_, n)
                       for t, n in self.token_names])
         return "RelationName: %s" % s
 
@@ -230,7 +232,7 @@ class NameWeakMatch:
         self.token_name_scores.append(token_name_score)
 
     def as_string(self):
-        s = ','.join(["%s=%s:%.2f" % (t.lemma, n, s)
+        s = ','.join(["%s=%s:%.2f" % (t.lemma_, n, s)
                       for t, n, s in self.token_name_scores])
         return "RelationNameSynonym: %s" % s
 
@@ -238,16 +240,16 @@ class NameWeakMatch:
 class EntityMatch:
     """
     Describes a match of an entity in the tokens.
+    TODO(schnelle) it might make sense to remove this class and
+    use IdentifiedEntity directly
     """
 
     def __init__(self, entity):
         self.entity = entity
-        self.score = None
 
     def __deepcopy__(self, memo):
         # No need to copy the identified entity.
         m = EntityMatch(self.entity)
-        m.score = self.score
         return m
 
     def as_string(self):
@@ -279,7 +281,7 @@ class QueryCandidate:
         self.matched_relations = set()
         # Sets of matched and unmatched tokens so far.
         self.matched_tokens = set()
-        self.unmatched_tokens = set(query.query_tokens)
+        self.unmatched_tokens = set(query.tokens)
         # The current point where we are trying to extend the pattern.
         self.current_extension = None
         # A history of extensions, needed to move back.
@@ -301,6 +303,7 @@ class QueryCandidate:
         self.cached_result_count = -1
         # An indicator whether the candidate matches the answer type
         self.matches_answer_type = None
+        self.feature_dict = None
 
     def get_relation_names(self):
         return sorted([r.name for r in self.relations])
@@ -548,13 +551,13 @@ class QueryCandidate:
         """
         # A set of nodes we visited.
         visited = set()
-        query_prefix = "PREFIX %s: <%s>\n" % (globals.FREEBASE_SPARQL_PREFIX,
-                                              globals.FREEBASE_NS_PREFIX)
+        query_prefix = "PREFIX %s: <%s>\n" % (freebase.FREEBASE_SPARQL_PREFIX,
+                                              freebase.FREEBASE_NS_PREFIX)
         sparql_triples = self.root_node.to_sparql_query_triples(visited)
         triples_string = ' .\n '.join(["%s %s %s" % (
-        s.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        p.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        o.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX))
+        s.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        p.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        o.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX))
                                        for s, p, o in sparql_triples])
         query_vars = []
         if self.target_nodes:
@@ -581,10 +584,10 @@ class QueryCandidate:
             query_vars_str_names = ' '.join("%sname" % var for
                                             var in query_vars)
             query_vars_str += ' ' + query_vars_str_names
-            name_relation = globals.FREEBASE_NAME_RELATION if not self.backend.lang_in_relations else \
-                globals.FREEBASE_NAME_RELATION+".en"
+            name_relation = freebase.FREEBASE_NAME_RELATION if not self.backend.lang_in_relations else \
+                freebase.FREEBASE_NAME_RELATION+".en"
             query_var_triples = ' .\n '.join("%s %s:%s %sname" % (var,
-                                                                  globals.FREEBASE_SPARQL_PREFIX,
+                                                                  freebase.FREEBASE_SPARQL_PREFIX,
                                                                   name_relation,
                                                                   var)
                                              for var in query_vars)
@@ -602,10 +605,10 @@ class QueryCandidate:
             for s, p, o in sparql_triples:
                 if not isinstance(s, QueryCandidateVariable):
                     node_strs.add(s.get_prefixed_sparql_name(
-                        globals.FREEBASE_SPARQL_PREFIX))
+                        freebase.FREEBASE_SPARQL_PREFIX))
                 if not isinstance(o, QueryCandidateVariable):
                     node_strs.add(o.get_prefixed_sparql_name(
-                        globals.FREEBASE_SPARQL_PREFIX))
+                        freebase.FREEBASE_SPARQL_PREFIX))
             for var in query_vars:
                 for node_str in node_strs:
                     filters.append('%s != %s' % (var, node_str))
@@ -650,18 +653,18 @@ class QueryCandidate:
         """
         # A set of nodes we visited.
         visited = set()
-        query_prefix = "PREFIX %s: <%s>\n" % (globals.FREEBASE_SPARQL_PREFIX,
-                                              globals.FREEBASE_NS_PREFIX)
+        query_prefix = "PREFIX %s: <%s>\n" % (freebase.FREEBASE_SPARQL_PREFIX,
+                                              freebase.FREEBASE_NS_PREFIX)
         sparql_triples = self.root_node.to_sparql_query_triples(visited)
         triples_string = ' .\n '.join(["%s %s %s" % (
-        s.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        p.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        o.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX))
+        s.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        p.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        o.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX))
                                        for s, p, o in sparql_triples])
         extension_triple = "%s %s %s" % (
-        subject.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        predicate.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX),
-        object.get_prefixed_sparql_name(globals.FREEBASE_SPARQL_PREFIX))
+        subject.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        predicate.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX),
+        object.get_prefixed_sparql_name(freebase.FREEBASE_SPARQL_PREFIX))
         if triples_string:
             triples_string += " .\n " + extension_triple
         else:
@@ -930,7 +933,7 @@ class QueryCandidateRelation(QueryCandidateNode):
 
 def test():
     query = Query("some test query")
-    query.query_tokens = [1, 2, 3]
+    query.tokens = [1, 2, 3]
     c = QueryCandidate(query)
     root = QueryCandidateNode(':e:Albert_Einstein', 'm.123', c)
     af = QueryCandidateNode(':e:Albert_Flintstein', 'm.234', c)

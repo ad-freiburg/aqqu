@@ -8,13 +8,14 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import math
 import time
+import os
 import copy
 import logging
 import itertools
 from . import translator
 from .deep_relscorer import DeepCNNAqquRelScorer
 import random
-import globals
+import config_helper
 import numpy as np
 from functools import partial
 from random import Random
@@ -126,7 +127,6 @@ class Ranker(object):
                  name,
                  entity_linker_class=EntityLinker,
                  entity_oracle_file=None,
-                 entity_linker_qlever=True,
                  all_relations_match=True,
                  all_types_match=True):
         self.name = name
@@ -163,7 +163,8 @@ class Ranker(object):
         y_score = y_candidate.rank_score.score
         return x_score - y_score
 
-    def rank_query_candidates(self, query_candidates, key=lambda x: x):
+    def rank_query_candidates(self, query_candidates, key=lambda x: x,
+                              store_features=False):
         """Rank query candidates by scoring and then sorting them.
 
         :param query_candidates:
@@ -188,10 +189,15 @@ class MLModel(object):
 
     def get_model_filename(self):
         """Return the model file name."""
-        model_filename = self.get_model_name()
-        model_base_dir = globals.config.get('Ranker', 'model-dir')
-        model_file = "%s/%s.model" % (model_base_dir, model_filename)
+        model_base_dir = self.get_model_dir()
+        model_file = "%s/%s.model" % (model_base_dir, self.get_model_name())
         return model_file
+
+    def get_model_dir(self):
+        """Return the model path."""
+        model_base_dir = config_helper.config.get('Ranker', 'model-dir')
+        return model_base_dir
+
 
     def get_model_name(self):
         """Return the model name."""
@@ -230,7 +236,6 @@ class AqquModel(MLModel, Ranker):
                  train_dataset,
                  top_ngram_percentile=5,
                  rel_regularization_C=None,
-                 load_ds_model=False,
                  learn_deep_rel_model=True,
                  **kwargs):
         MLModel.__init__(self, name, train_dataset)
@@ -244,8 +249,6 @@ class AqquModel(MLModel, Ranker):
         self.cmp_cache = dict()
         self.relation_scorer = None
         self.deep_relation_scorer = None
-        self.ds_deep_relation_scorer = None
-        self.load_ds_model = load_ds_model
         self.learn_deep_rel_model = learn_deep_rel_model
         self.pruner = None
         self.scaler = None
@@ -267,10 +270,13 @@ class AqquModel(MLModel, Ranker):
             relation_scorer.load_model()
             self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
-                self.deep_relation_scorer = DeepCNNAqquRelScorer.init_from_config(self.get_model_name(),
-                    load_embeddings=False)
-                self.deep_relation_scorer.load_model()
-            self.load_ds_aqqu_model()
+                self.deep_relation_scorer = \
+                    DeepCNNAqquRelScorer.init_from_config()
+                # TODO make paths configurable for submodels
+                model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
+                self.deep_relation_scorer.load_model(
+                    model_dir_tf, self.get_model_name())
+
             self.dict_vec = dict_vec
             self.pair_dict_vec = pair_dict_vec
             pruner = CandidatePruner(self.get_model_name(),
@@ -283,13 +289,6 @@ class AqquModel(MLModel, Ranker):
             logger.warn("Model file %s could not be loaded." % model_file)
             raise
 
-    def load_ds_aqqu_model(self):
-        if self.load_ds_model:
-            ds_deep_relation_scorer = DeepCNNAqquDSScorer(None)
-            ds_deep_relation_scorer.load_model()
-            self.ds_deep_relation_scorer = ds_deep_relation_scorer
-
-
     def learn_rel_score_model(self, queries, ngrams_dict=None):
         rel_model = RelationNgramScorer(self.get_model_name(),
                                         self.rel_regularization_C,
@@ -298,9 +297,11 @@ class AqquModel(MLModel, Ranker):
         return rel_model
 
     def learn_deep_rel_score_model(self, queries, test_queries):
-        rel_model = DeepCNNAqquRelScorer.init_from_config(self.get_model_name(),
-                load_embeddings=True)
-        rel_model.learn_model(queries, test_queries)
+        rel_model = DeepCNNAqquRelScorer.init_from_config()
+        extend_deep_model = config_helper.config.get('Ranker',
+                                                     'extend-deep-model')
+        rel_model.learn_model(queries, test_queries,
+                              extend_model=extend_deep_model)
         return rel_model
 
     def learn_prune_model(self, labels, features, dict_vec):
@@ -310,9 +311,7 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
-
-        self.load_ds_aqqu_model()
-        f_extract = partial(f_ext.extract_features, ds_deep_rel_score_model=self.ds_deep_relation_scorer)
+        f_extract = partial(f_ext.extract_features)
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate onc
         labels, features = construct_train_examples(train_queries,
@@ -639,7 +638,9 @@ class AqquModel(MLModel, Ranker):
                     self.get_model_filename())
         self.relation_scorer.store_model()
         if self.learn_deep_rel_model:
-            self.deep_relation_scorer.store_model()
+            model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
+            self.deep_relation_scorer.store_model(
+                model_dir_tf, self.get_model_name())
         self.pruner.store_model()
         logger.info("Done.")
 
@@ -706,7 +707,8 @@ class AqquModel(MLModel, Ranker):
         s_rk = sorted(rk, key=lambda x: x[1], reverse=True)
         return [x[0] for x in s_rk]
 
-    def rank_query_candidates(self, query_candidates, key=lambda x: x):
+    def rank_query_candidates(self, query_candidates, key=lambda x: x,
+                              store_features=False):
         """Rank query candidates by scoring and then sorting them.
 
         :param query_candidates:
@@ -724,8 +726,11 @@ class AqquModel(MLModel, Ranker):
         candidates = [key(q) for q in query_candidates]
         features = f_ext.extract_features(candidates,
                                           rel_score_model=self.relation_scorer,
-                                          deep_rel_score_model=self.deep_relation_scorer,
-                                          ds_deep_rel_score_model=self.ds_deep_relation_scorer)
+                                          deep_rel_score_model=self.deep_relation_scorer)
+        if store_features:
+            for i, candidate in enumerate(candidates):
+                candidate.feature_dict = features[i]
+
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
@@ -1022,16 +1027,18 @@ class RelationNgramScorer(MLModel):
         if self.regularization_C is None:
             logger.info("Performing grid search.")
             # Smaller -> stronger.
-            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001, 0.0001, 0.00001]}]
+            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001, 
+                                1e-3, 1e-4, 1e-5, 1e-6]}]
             relation_scorer = LogisticRegression(class_weight=class_weights,
+                                                 max_iter=200,
                                                  solver='sag')
             grid_search_cv = GridSearchCV(relation_scorer,
-                                                      cv_params,
-                                                      n_jobs=4,
-                                                      verbose=1,
-                                                      cv=4,
-                                                      refit=True,
-                                                      scoring='roc_auc')
+                                          cv_params,
+                                          n_jobs=1,
+                                          verbose=1,
+                                          cv=4,
+                                          refit=True,
+                                          scoring='roc_auc')
             grid_search_cv.fit(X, labels)
             logger.info("Best score: %.5f" % grid_search_cv.best_score_)
             logger.info("Best params: %s" % grid_search_cv.best_params_)
@@ -1046,6 +1053,7 @@ class RelationNgramScorer(MLModel):
                                                  class_weight=class_weights,
                                                  n_jobs=-1,
                                                  solver='sag',
+                                                 max_iter=200,
                                                  random_state=999)
             relation_scorer.fit(X, labels)
             logger.info("Done.")
@@ -1176,7 +1184,8 @@ class LiteralRankerFeatures(object):
                 score,
                 self.result_size)
 
-    def rank_query_candidates(self, query_candidates, key=lambda x: x):
+    def rank_query_candidates(self, query_candidates, key=lambda x: x,
+                              store_features=False):
         """Rank query candidates by scoring and then sorting them.
 
         :param query_candidates:
@@ -1185,6 +1194,8 @@ class LiteralRankerFeatures(object):
         for qc in query_candidates:
             candidate = key(qc)
             candidate.rank_score = self.score(candidate)
+            if store_features:
+                candidate.feature_dict = {'rank_score': candidate.rank_score}
         ranked_candidates = sorted(query_candidates,
                                    key=Compare2Key(key, self.compare),
                                    reverse=True)
@@ -1219,8 +1230,6 @@ class LiteralRanker(Ranker):
         rm_relation_length = 0
         # This is how you can get the size of the result set for a candidate.
         result_size = query_candidate.get_result_count()
-        # Each entity match represents a matched entity.
-        num_entity_matches = len(query_candidate.matched_entities)
         # Each pattern has a name.
         # An "M" indicates a mediator in the pattern.
         if "M" in query_candidate.pattern:

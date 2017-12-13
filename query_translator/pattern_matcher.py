@@ -10,9 +10,9 @@ from entity_linker.mediator_index_fast import MediatorIndexFast
 from entity_linker.entity_linker import Value, DateValue
 import time
 from . import data
-from .answer_type import AnswerType
+from answer_type.answer_type_identifier import AnswerType
 from .alignment import WordembeddingSynonyms, WordDerivations
-import globals
+import config_helper
 import math
 import sparql_backend.loader
 
@@ -69,9 +69,9 @@ def get_content_tokens(tokens):
     :param tokens:
     :return:
     """
-    content_tokens = [t for t in tokens if t.pos in CONTENT_POS_TAGS
-                      and t.lemma != 'be' and t.lemma != 'do'
-                      and t.lemma != 'go']
+    content_tokens = [t for t in tokens if t.tag_ in CONTENT_POS_TAGS
+                      and t.lemma_ != 'be' and t.lemma_ != 'do'
+                      and t.lemma_ != 'go']
     return content_tokens
 
 
@@ -84,6 +84,10 @@ def filter_relation_suggestions(relation_suggestions):
         if relation.startswith('http'):
             # Cannot ignore base here because it is needed
             # for dinosaurs and vulcanos.
+            continue
+        if relation == 'type.object.name':
+            # We use type.object.name to get the display name anyway
+            # so this relation doesn't add information
             continue
         if '..' in relation:
             # Old frebase dump contain concatenated relations:
@@ -409,7 +413,7 @@ class QueryCandidateExtender:
         :param config_options:
         :return:
         """
-        config_options = globals.config
+        config_options = config_helper.config
         backend_module_name = config_options.get("Backend", "backend")
         backend = sparql_backend.loader.get_backend(backend_module_name)
         relation_counts_file = config_options.get('QueryCandidateExtender',
@@ -494,7 +498,7 @@ class QueryCandidateExtender:
         if query.relation_oracle:
             if query.relation_oracle.is_relation_in_query(query, relation,
                                                           self.reverse_relations):
-                return query.query_tokens
+                return query.tokens
             else:
                 return []
         lemma_rel = self.get_relation_lemma_name(relation)
@@ -507,9 +511,9 @@ class QueryCandidateExtender:
             relation_words = self.relation_words[relation]
         match = qc.RelationMatch(relation)
         for t in tokens:
-            lemmas = [t.lemma]
-            if len(t.lemma.split('-')) > 1:
-                lemmas.extend(t.lemma.split('-'))
+            lemmas = [t.lemma_]
+            if len(t.lemma_.split('-')) > 1:
+                lemmas.extend(t.lemma_.split('-'))
             for l in lemmas:
                 # Ignore single word lemmas, e.g. from "nintendo ds":
                 # "ds" -> "d".
@@ -560,7 +564,7 @@ class QueryCandidateExtender:
                         if query.relation_oracle.is_relation_in_query(query,
                                                                       relation_a,
                                                                       self.reverse_relations):
-                            result.append((rel_b, query.query_tokens))
+                            result.append((rel_b, query.tokens))
             return result
         result = []
         relb_words = []
@@ -600,7 +604,7 @@ class QueryCandidateExtender:
                 rel_b_name_words = get_relation_name_words(
                     get_relation_suffix(lemma_rel_b, suffix_length=2))
             for t in tokens:
-                lemma = t.lemma.replace('-', '_')
+                lemma = t.lemma_.replace('-', '_')
                 # Ignore single word lemmas, e.g. from "dintendo ds":
                 # "ds" -> "d".
                 if len(lemma) == 1:
@@ -674,6 +678,7 @@ class QueryCandidateExtender:
         if relation_name in self.relation_expected_types:
             if self.relation_expected_types[relation_name] == 'type.datetime':
                 return True
+
         return False
 
     def relation_has_int_target(self, relation_name):
@@ -707,19 +712,22 @@ class QueryCandidateExtender:
         :param target_class:
         :return:
         """
+        if target_class == 'date' or target_class == 'count':
+            # handled separately
+            return False
+        target_class_suffix = target_class[target_class.rfind('.')+1:]
         # Sometimes the class is meantioned in the relation.
-        if target_class in get_relation_suffix(relation, suffix_length=2):
+        if target_class_suffix in get_relation_suffix(relation, suffix_length=1):
             return True
         # Check if the class is in the relation type distribution.
         elif relation in self.relation_target_types:
             types = self.relation_target_types[relation]
             for t in types:
-                suffix = t[t.rindex('.') + 1:]
-                if target_class in suffix:
+                if target_class == t:
                     return True
         # Check if the class is in the expected_type of the relation.
         elif relation in self.relation_expected_types:
-            if target_class in self.relation_expected_types[relation]:
+            if target_class_suffix in self.relation_expected_types[relation]:
                 return True
         return False
 
@@ -729,67 +737,22 @@ class QueryCandidateExtender:
         :param query_candidate:
         :return:
         """
-        matches_answer_type = True
-        if query_candidate.query.target_type.type == AnswerType.DATE:
-            if not self.relation_has_date_target(relation):
-                matches_answer_type = False
-        elif query_candidate.query.target_type.type == AnswerType.CLASS:
-            # Relations that have a date as target are not welcome here.
-            if self.relation_has_date_target(relation):
-                matches_answer_type = False
-            else:
-                matches_answer_type = False
-                for target_class in query_candidate.query.target_type.target_classes:
-                    if self.relation_answers_target_class(relation,
-                                                          target_class):
-                        matches_answer_type = True
-                        break
-        # Only return a date if we know it is requested.
-        elif self.relation_has_date_target(relation):
-            matches_answer_type = False
-        query_candidate.matches_answer_type = matches_answer_type
+        matches_answer_type = 0.0
+        for target_class, prob in query_candidate.query.target_type.target_classes:
+            matches = False
+            if target_class == 'UNK':
+                matches = False
+            if target_class == 'date' and self.relation_has_date_target(relation):
+                matches = True
+            if target_class == 'count' and self.relation_points_to_count(relation):
+                matches = True
+            elif self.relation_answers_target_class(relation, target_class):
+                matches = True
+
+            if matches:
+                logger.debug("%s matches target_class: %s", relation, target_class)
+                matches_answer_type += prob
         return matches_answer_type
-
-    def compute_answer_type_match(self, relation, query_candidate):
-        """Check to extent the relation matches the answer type.
-
-        Returns a continuous score: 0 for no match, 1 for perfect match.
-        :param relation:
-        :param query_candidate:
-        :return:
-        """
-        if query_candidate.query.target_type.type == AnswerType.DATE:
-            if not self.relation_has_date_target(relation):
-                return 90.0
-            else:
-                return 0.0
-        # This is for a hard selection of classes.
-        elif query_candidate.query.target_type.type == AnswerType.CLASS:
-            # Relations that have a date as target are not welcome here.
-            if self.relation_has_date_target(relation):
-                return 90.0
-            for target_class in query_candidate.query.target_type.target_classes:
-                if self.relation_answers_target_class(relation, target_class):
-                    return 10.0
-            return 90.0
-        elif query_candidate.query.target_type.type == AnswerType.SOFT_CLASS:
-            class_word = query_candidate.query.target_type.target_classes[0]
-            if relation in self.relation_target_type_distributions and \
-                            class_word in self.word_type_counts:
-                dist_a = filter_type_distribution(
-                    self.word_type_counts[class_word])
-                dist_b = filter_type_distribution(
-                    self.relation_target_type_distributions[relation])
-                # return kl_divergence(dist_a, dist_b, alpha=0.1)
-                return cosine_similarity(dist_a, dist_b)
-            else:
-                return 90.0
-        # AnswerType is OTHER
-        else:
-            # Only return a date if we know it is requested.
-            if self.relation_has_date_target(relation):
-                return 90.0
-            return 0.0
 
     def get_relation_suggestions(self, query_candidate):
         """Return the relation suggestions for the candidate.
@@ -831,8 +794,8 @@ class QueryCandidateExtender:
             # match = self.compute_answer_type_match(rel, query_candidate, )
             # logger.info((rel, match))
             at_match = self.relation_matches_answer_type(rel, query_candidate)
-            # Do we care about the answer type?
-            if self.parameters.restrict_answer_type and not at_match:
+            # Do we require an answer type match?
+            if self.parameters.restrict_answer_type and at_match <  0.3:
                 continue
 
             # Try to match remaining token to the relation.
@@ -934,8 +897,8 @@ class QueryCandidateExtender:
             for relation_match in relation_matches:
                 at_match = self.relation_matches_answer_type(
                     relation_match.relation[1], query_candidate)
-                # Check if target relation has correc type.
-                if self.parameters.restrict_answer_type and not at_match:
+                # Check if target relation has correct type.
+                if self.parameters.restrict_answer_type and at_match < 0.3:
                     continue
                 # Use the target part of the mediated relation to look up cardinality.
                 if relation_match.relation[1] in self.relation_counts:
@@ -1005,7 +968,7 @@ class QueryCandidateExtender:
             # Only consider unused relations that have correct type.
             relations = [r for r in relations
                          if
-                         self.relation_matches_answer_type(r, query_candidate)
+                         self.relation_matches_answer_type(r, query_candidate) > 0.3
                          and r not in filled_relation_slots]
         else:
             relations = [r for r in relations

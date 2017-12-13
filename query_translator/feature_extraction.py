@@ -7,11 +7,17 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 
-from .query_candidate import QueryCandidate
 from collections import defaultdict
 import math
+import logging
 from itertools import chain
 from entity_linker.entity_linker import KBEntity
+
+
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
+                    level=logging.INFO)
 
 N_GRAM_STOPWORDS = {'be', 'do', '?', 'the', 'of', 'is', 'are', 'in', 'was',
                     'did', 'does', 'a', 'for', 'have', 'there', 'on', 'has',
@@ -57,7 +63,10 @@ def get_query_text_tokens(candidate, include_mid=False):
             entity_tokens[t] = em
     query_text_tokens = ['<start>']
     # Replace entity tokens with "ENTITY"
-    for t in candidate.query.query_tokens:
+    for t in candidate.query.tokens:
+        # ignore punctuation
+        if t.pos_ == 'PUNCT':
+            continue
         if t in entity_tokens:
             if include_mid and isinstance(entity_tokens[t].entity.entity, KBEntity):
                 mid = entity_tokens[t].entity.entity.id
@@ -74,13 +83,18 @@ def get_query_text_tokens(candidate, include_mid=False):
                 else:
                     query_text_tokens.append('<entity>')
         else:
-            query_text_tokens.append(t.token)
+            query_text_tokens.append(t.orth_.lower())
     return query_text_tokens
 
+def pattern_complexity(candidate):
+    """
+    Determines the complexity of a pattern for which
+    we use the number of relations in the pattern.
+    """
+    return candidate.pattern.count('R')
 
-def simple_features(candidate,
-                    generic_features=True,
-                    entity_features=True):
+
+def simple_features(candidate):
     """Extract features from the a single candidate.
 
     :type candidate: QueryCandidate
@@ -89,22 +103,28 @@ def simple_features(candidate,
     """
     # The number of literal entities.
     n_literal_entities = 0
+    # The number of entities matched in the question and matched in a text query
+    n_text_and_question_entities = 0
     # The sum of surface_score * mention_length over all entity mentions.
     em_token_score = 0.0
     # A flag whether the candidate contains a mediator.
     is_mediator = 0.0
     # The number of relations that are matched literally at least once.
     n_literal_relations = 0
-    # The number of tokens that are part of a literal entity match.
+    # The number of relations that are matched by word at least once.
+    n_word_relations = 0
+    # The number of relations that are matched by word weakly at least once.
+    n_word_weak_relations = 0
+    # The number of relations that are matched by derivative at least once.
+    n_derivative_relations = 0
+    # The length of tokens that are part of a literal entity match.
     literal_entities_length = 0
-    # The number of tokens that match literal in a relation.
-    n_literal_relation_tokens = 0
+    # The length of tokens that match literally in a relation.
+    literal_relation_tokens_length = 0
     # The number of tokens that match via weak synoynms in a relation.
     n_weak_relation_tokens = 0
-    # The number of tokens that match via derivation in a relation.
-    n_derivation_relation_tokens = 0
-    # The number of tokens that match via relation context in a relation.
-    n_context_relation_tokens = 0
+    # The length of tokens that match via derivation in a relation.
+    derivation_relation_tokens_length = 0
     # The sum of all weak match scores.
     sum_weak_relation_tokens = 0
     # The sum of all weak match scores.
@@ -123,10 +143,12 @@ def simple_features(candidate,
         n_entity_tokens += len(em.entity.tokens)
         if em.entity.perfect_match or em.entity.surface_score > threshold:
             n_literal_entities += 1
-            literal_entities_length += len(em.entity.tokens)
+            literal_entities_length += len(em.entity.tokens.text)
+        if em.entity.text_match:
+            n_text_and_question_entities += 1
         em_surface_scores.append(em.entity.surface_score)
         em_score = em.entity.surface_score
-        em_score *= len(em.entity.tokens)
+        em_score *= len(em.entity.tokens.text)
         em_token_score += em_score
         if em.entity.score > 0:
             em_pop_scores.append(math.log(em.entity.score))
@@ -140,25 +162,26 @@ def simple_features(candidate,
         if rm.name_match:
             for (t, _) in rm.name_match.token_names:
                 token_name_match_score[t] += 1.0
+                literal_relation_tokens_length += len(t.text)
             n_literal_relations += 1
         if rm.words_match:
             for (t, s) in rm.words_match.token_scores:
                 token_word_match_score[t] += s
+            n_word_relations += 1
         if rm.name_weak_match:
             for (t, _, s) in rm.name_weak_match.token_name_scores:
                 token_weak_match_score[t] += s
+            n_word_weak_relations += 1
         if rm.derivation_match:
             for (t, _) in rm.derivation_match.token_names:
                 token_derivation_match_score[t] += 1.0
+                derivation_relation_tokens_length += len(t.text)
+            n_derivative_relations += 1
         # cardinality is only set for the answer relation.
         if rm.cardinality != -1: # this is a tuple but gets initalized as -1
             # Number of facts in the relation (like in FreebaseEasy).
             cardinality = rm.cardinality[0]
 
-    n_literal_relation_tokens = len(token_name_match_score)
-    n_derivation_relation_tokens = len(token_derivation_match_score)
-    n_context_relation_tokens = len(token_word_match_score)
-    n_weak_relation_tokens = len(token_weak_match_score)
     sum_weak_relation_tokens = round(sum(token_weak_match_score.values()), 2)
     sum_context_relation_tokens = round(sum(token_word_match_score.values()), 6)
     avg_em_surface_score = round(sum(em_surface_scores) / len(em_surface_scores), 2)
@@ -175,52 +198,47 @@ def simple_features(candidate,
                      token_name_match_score,
                      token_word_match_score]
     n_rel_tokens = len(set.union(*[set(x.keys()) for x in token_matches]))
-    # If we ignore entity features we need to compute coverage differently
-    if not entity_features:
-        coverage = (n_rel_tokens /
-                    float(len(candidate.query.query_tokens)))
-    else:
-        coverage = ((n_rel_tokens + n_entity_tokens) /
-                    float(len(candidate.query.query_tokens)))
+
+    coverage = ((n_rel_tokens + n_entity_tokens) /
+                len(candidate.query.tokens))
     features = {}
+    relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0
-    result_size_1_to_20 = 1 if 1 <= result_size <= 20 else 0
-    result_size_gt_20 = 1 if result_size >= 20 else 0
-    matches_answer_type = 1 if candidate.matches_answer_type else 0
-    if generic_features:
-        if entity_features:
-            features.update({
-                'n_literal_entities': n_literal_entities,
-                'n_entity_matches': n_entity_matches,
-                'literal_entities_length': literal_entities_length,
-                'avg_em_surface_score': avg_em_surface_score,
-                'sum_em_surface_score': sum_em_surface_score,
-                'avg_em_popularity': avg_em_popularity,
-                'sum_em_popularity': sum_em_popularity,
-                'total_literal_length': (literal_entities_length
-                                         + n_literal_relations),
-            })
-        features.update({
-            # "Relation Features"
-            'n_relations': len(candidate.get_relation_names()),
-            'n_literal_relations': n_literal_relations,
-            'n_literal_relation_tokens': n_literal_relation_tokens,
-            'n_derivation_relation_tokens': n_derivation_relation_tokens,
-            'n_context_relation_tokens': n_context_relation_tokens,
-            'n_weak_relation_tokens': n_weak_relation_tokens,
-            'sum_weak_relation_tokens': sum_weak_relation_tokens,
-            'sum_context_relation_tokens': sum_context_relation_tokens,
-            'cardinality': cardinality,
-            # Changed this
-            # 'is_mediator': is_mediator,
-            # 'em_token_score': em_token_score,
-            # "General Features
-            'coverage': coverage,
-            'matches_answer_type': matches_answer_type,
-            'result_size_0': result_size_0,
-            'result_size_1_to_20': result_size_1_to_20,
-            'result_size_gt_20': result_size_gt_20,
-        })
+    matches_answer_type = candidate.matches_answer_type
+    features.update({
+        # "General Features
+        'pattern_complexity': pattern_complexity(candidate),
+        'coverage': coverage,
+        'matches_answer_type': matches_answer_type,
+        'result_size_0': result_size_0,
+        'total_literal_length': (literal_entities_length
+                                 + literal_relation_tokens_length),
+    })
+    features.update({
+        # "Entity Features"
+        'n_literal_entities': n_literal_entities,
+        'n_entity_matches': n_entity_matches,
+        'n_text_and_question_entities': n_text_and_question_entities,
+        'literal_entities_length': literal_entities_length,
+        'avg_em_surface_score': avg_em_surface_score,
+        'sum_em_surface_score': sum_em_surface_score,
+        'avg_em_popularity': avg_em_popularity,
+        'sum_em_popularity': sum_em_popularity,
+    })
+    features.update({
+        # "Relation Features"
+        'n_relations': len(candidate.get_relation_names()),
+        'relation_match': relation_match,
+        'n_literal_relations': n_literal_relations,
+        'literal_relation_tokens_length': literal_relation_tokens_length,
+        'n_word_relations': n_word_relations,
+        'n_word_weak_relations': n_word_weak_relations,
+        'n_derivative_relations': n_derivative_relations,
+        'derivation_relation_tokens_length': derivation_relation_tokens_length,
+        'sum_weak_relation_tokens': sum_weak_relation_tokens,
+        'sum_context_relation_tokens': sum_context_relation_tokens,
+        'cardinality': cardinality,
+    })
     return features
 
 
@@ -248,15 +266,6 @@ def ngram_features(candidate, ngram_dict):
     return ngram_features
 
 
-def split_relation(relation):
-    """Split a relation into individual tokens
-
-    :param relation:
-    :return:
-    """
-    return relation.split('.')
-
-
 def extract_ngram_features(candidates, ngram_dict=None):
     features = []
     for c in candidates:
@@ -266,8 +275,7 @@ def extract_ngram_features(candidates, ngram_dict=None):
 
 def extract_features(candidates,
                      rel_score_model=None,
-                     deep_rel_score_model=None,
-                     ds_deep_rel_score_model=None):
+                     deep_rel_score_model=None):
     """Extract features for multiple candidates at once.
 
     :param candidates:
@@ -275,17 +283,15 @@ def extract_features(candidates,
     """
     all_features = []
     for c in candidates:
-        all_features.append(simple_features(c))
-    if ds_deep_rel_score_model:
-        ds_deep_rel_scores = ds_deep_rel_score_model.score_multiple(candidates)
-        for i, f in enumerate(all_features):
-            f['ds_deep_relation_scores'] = ds_deep_rel_scores[i].score
+        feature_dict = simple_features(c)
+        all_features.append(feature_dict)
+
     if deep_rel_score_model:
         deep_rel_scores = deep_rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
-            f['deep_relation_score'] = deep_rel_scores[i].score
+            f['deep_relation_score'] = float(deep_rel_scores[i].score)
     if rel_score_model:
         rel_scores = rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
-            f['relation_score'] = rel_scores[i].score
+            f['relation_score'] = float(rel_scores[i].score)
     return all_features

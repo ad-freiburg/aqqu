@@ -45,7 +45,7 @@ class RelationOracle:
 
     def is_relation_in_query(self, query, relation, reverse_relations):
         if query.query_text in self.query_relations:
-            query_rels = self.query_relations[query.query_text]
+            query_rels = self.query_relations[query.text]
             reverse_relation = None
             if relation in reverse_relations:
                 reverse_relation = reverse_relations[relation]

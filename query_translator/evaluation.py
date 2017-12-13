@@ -34,14 +34,12 @@ class EvaluationQuery(object):
     provide.
     """
 
-    def __init__(self, q_id, utterance, target_result, target_sparql):
+    def __init__(self, q_id, utterance, target_results, target_sparqls):
         self.id = q_id
         self.utterance = utterance
-        self.target_result = target_result
-        self.target_sparql = target_sparql
+        self.target_results = target_results
+        self.target_sparqls = target_sparqls
         # When processed, the ranked list of candidates returned.
-        # TODO(Elmar): RENAME THIS!!!! VERY CONFUSING!!!
-        # TODO(schnelle): Indeed I'm quite confused
         self.eval_candidates = []
         self.oracle_position = -1
         # These are the final results for this query.
@@ -79,13 +77,38 @@ class EvaluationQuery(object):
     @staticmethod
     def queries_from_json_file(filename):
         """Load evaluation queries from a file."""
-        def object_decoder(q):
-            return EvaluationQuery(int(q['id']),
-                                   q['utterance'],
-                                   q['result'],
-                                   q.get('targetOrigSparql', None))
-        eval_queries = json.load(open(filename, 'r', encoding = 'utf-8'),
-                                 object_hook=object_decoder)
+        queries_json = json.load(open(filename, 'r', encoding='utf-8'))
+        eval_queries = []
+        if isinstance(queries_json, list):
+            # classic format
+            for query in queries_json:
+                eval_queries.append(
+                    EvaluationQuery(int(query['id']),
+                                    query['utterance'],
+                                    [query['result']],
+                                    [query.get('targetOrigSparql', None)]))
+        elif isinstance(queries_json, dict):
+            # WebQSP format
+            questions = queries_json['Questions']
+            for idn, question in enumerate(questions):
+                utterance = question['RawQuestion']
+                possible_results = []
+                possible_target_sparqls = []
+                for parse in question['Parses']:
+                    possible_target_sparqls.append(parse['Sparql'])
+                    results = []
+                    for answer in parse['Answers']:
+                        atype = answer['AnswerType']
+                        if atype == 'Entity':
+                            results.append(answer['EntityName'])
+                        elif atype == 'Value':
+                            results.append(answer['AnswerArgument'])
+                    possible_results.append(results)
+                eval_queries.append(
+                    EvaluationQuery(idn, utterance,
+                                    possible_results,
+                                    possible_target_sparqls))
+
         return sorted(eval_queries, key=lambda x: x.id)
 
 
@@ -156,14 +179,13 @@ def evaluate_translator(translator, queries, n_queries=9999,
                     q.utterance.lower().startswith('in how many'):
                 continue
         if ignore_invalid:
-            if len(q.target_result) == 0:
+            if len(q.target_results) == 0:
                 # Changed this, because it is debatable whether that is
                 # unanswerable bc the answer can be produced.
-                # or len(q.target_result) == 1 and q.target_result[0] == '0':
                 continue
         logger.info("Translating query (id=%s) %s of %s for evaluation." %
                     (q.id, n_translated_queries + 1, len(evaluation_queries)))
-        results = translator.translate_and_execute_query(q.utterance,
+        _, results = translator.translate_and_execute_query(q.utterance,
                                                          n_top=n_top)
         for result in results:
             candidate = result.query_candidate
@@ -202,6 +224,9 @@ def write_result_output(queries, output_file="eval_out.log"):
 
     The output contains utterance, gold result and predicted result for each
     query. This can be evaluated with a separate script.
+
+    TODO(schnelle): this is currently broken for WebQSP
+
     :param queries:
     :param output_file:
     :return:
@@ -210,7 +235,8 @@ def write_result_output(queries, output_file="eval_out.log"):
     with open(output_file, 'w') as f:
         for q in queries:
             q_text = q.utterance
-            result_text = json.dumps(q.target_result)
+            
+            result_text = json.dumps(q.target_results[0])
             actual_result = []
             if q.eval_candidates:
                 actual_result = q.eval_candidates[0].prediction
@@ -273,52 +299,60 @@ def evaluate_single_candidate(candidate, eval_query):
     Return precision, recall, f1, false_positives, false_negatives
     :type candidate: EvaluationCandidate
     :type eval_query: EvaluationQuery
-    :rtype: CandidateEvaluationResult
+    :rtype: list[CandidateEvaluationResult]
     :return:
     """
-    true_positives = 0.0
-    false_positives = []
-    false_negatives = []
-    gold_result_set = parse_to_set(eval_query.target_result)
+    candidate_results = []
+    target_results = eval_query.target_results
+    gold_result_sets = [parse_to_set(result) 
+                        for result in target_results]
     prediction_set = parse_to_set(candidate.prediction)
-    # This is fast but ignores the case where entities with identical name
-    # occur multiple times but in different quantities in predicted and
-    # gold list. The effect overall is negligible (<0.1%), however.
-    if len(candidate.prediction) == len(eval_query.target_result) and \
-               len(gold_result_set) != len(prediction_set):
-        logger.debug("Result set has different size than result list.")
-    num_gold = len(gold_result_set)
-    num_predicted = len(prediction_set)
-    for res in prediction_set:
-        if res in gold_result_set:
-            true_positives += 1.0
-            gold_result_set.remove(res)
+    for results_num, gold_result_set in enumerate(gold_result_sets):
+        true_positives = 0.0
+        false_positives = []
+        false_negatives = []
+        # This is fast but ignores the case where entities with identical name
+        # occur multiple times but in different quantities in predicted and
+        # gold list. The effect overall is negligible (<0.1%), however.
+        if len(candidate.prediction) == len(target_results[results_num]) and \
+                len(gold_result_set) != len(prediction_set):
+            logger.debug("Result set has different size than result list.")
+        num_gold = len(gold_result_set)
+        num_predicted = len(prediction_set)
+        for res in prediction_set:
+            if res in gold_result_set:
+                true_positives += 1.0
+                gold_result_set.remove(res)
+            else:
+                false_positives.append(res)
+        false_negatives.extend(gold_result_set)
+        if num_gold == 0:
+            if num_predicted == 0:
+                precision = 1.0
+                recall = 1.0
+                f1 = 1.0
+            else:
+                precision = 0.0
+                recall = 0.0
+                f1 = 0.0
         else:
-            false_positives.append(res)
-    false_negatives.extend(gold_result_set)
-    if num_gold == 0:
-        if num_predicted == 0:
-            precision = 1.0
-            recall = 1.0
-            f1 = 1.0
-        else:
-            precision = 0.0
-            recall = 0.0
+            if num_predicted == 0:
+                precision = 0.0
+            else:
+                precision = true_positives / float(num_predicted)
+            recall = true_positives / float(num_gold)
             f1 = 0.0
-    else:
-        if num_predicted == 0:
-            precision = 0.0
-        else:
-            precision = true_positives / float(num_predicted)
-        recall = true_positives / float(num_gold)
-        f1 = 0.0
-        if precision + recall > 0:
-            f1 = 2.0 * precision * recall / (precision + recall)
-        if f1 == 1.0:
-            logger.debug("Perfect match: %s = %s." %
-                         (candidate.prediction, eval_query.target_result))
-    return CandidateEvaluationResult(precision, recall, f1,
-                                     false_positives, false_negatives)
+            if precision + recall > 0:
+                f1 = 2.0 * precision * recall / (precision + recall)
+            if f1 == 1.0:
+                logger.debug("Perfect match: %s = %s." %
+                             (candidate.prediction,
+                              target_results[results_num]))
+        candidate_results.append(CandidateEvaluationResult(precision,
+                                                           recall, f1,
+                                                           false_positives,
+                                                           false_negatives))
+    return candidate_results
 
 
 def compare_evaluation_runs(queries_a, queries_b):
@@ -390,7 +424,7 @@ def evaluate(queries, output_file="eval_out.log"):
     num_candidates = 0
     for q in queries:
         q.reset_results()
-        gold_results = q.target_result
+        gold_results = q.target_results
         candidates = q.eval_candidates
         if len(gold_results) == 0:
             num_q_no_answer += 1
@@ -414,19 +448,24 @@ def evaluate(queries, output_file="eval_out.log"):
         else:
             num_candidates += len(candidates)
             for i, prediction in enumerate(candidates):
-                candidate_eval = prediction.evaluation_result
+                best_candidate_eval = prediction.evaluation_result
                 # Only compute if not already computed.
-                if not candidate_eval:
-                    candidate_eval = evaluate_single_candidate(prediction, q)
-                    prediction.evaluation_result = candidate_eval
+                if not best_candidate_eval:
+                    candidate_evals = evaluate_single_candidate(prediction, q)
+                    # TODO(schnelle) for WebQSP we currently simply count
+                    # the best result
+                    best_candidate_eval = sorted(candidate_evals,
+                                                 key=lambda ev: ev.f1,
+                                                 reverse=True)[0]
+                    prediction.evaluation_result = best_candidate_eval
                 if i == 0:
-                    q.precision = candidate_eval.precision
-                    q.recall = candidate_eval.recall
-                    q.f1 = candidate_eval.f1
-                    q.false_negatives = candidate_eval.false_negatives
-                    q.false_positives = candidate_eval.false_positives
-                if q.oracle_f1 < candidate_eval.f1:
-                    q.oracle_f1 = candidate_eval.f1
+                    q.precision = best_candidate_eval.precision
+                    q.recall = best_candidate_eval.recall
+                    q.f1 = best_candidate_eval.f1
+                    q.false_negatives = best_candidate_eval.false_negatives
+                    q.false_positives = best_candidate_eval.false_positives
+                if q.oracle_f1 < best_candidate_eval.f1:
+                    q.oracle_f1 = best_candidate_eval.f1
                     q.oracle_position = i + 1
     num_queries = len(queries)
     num_unanswered_queries = float(len([q for q in queries
@@ -442,12 +481,12 @@ def evaluate(queries, output_file="eval_out.log"):
     oracle_top_10 = len([p for p in oracle_positions if p <= 10])
     oracle_top_100 = len([p for p in oracle_positions if p <= 100])
     perfect_with_oracle = len([q for q in queries if q.oracle_f1 == 1.0])
-    oracle_accuracy = float(perfect_with_oracle) / num_queries
-    oracle_top_2 = float(oracle_top_2) / num_queries
-    oracle_top_3 = float(oracle_top_3) / num_queries
-    oracle_top_5 = float(oracle_top_5) / num_queries
-    oracle_top_10 = float(oracle_top_10) / num_queries
-    oracle_top_100 = float(oracle_top_100) / num_queries
+    oracle_accuracy = perfect_with_oracle / num_queries
+    oracle_top_2f = oracle_top_2 / num_queries
+    oracle_top_3f = oracle_top_3 / num_queries
+    oracle_top_5f = oracle_top_5 / num_queries
+    oracle_top_10f = oracle_top_10 / num_queries
+    oracle_top_100f = oracle_top_100 / num_queries
 
     # Simple averages.
     average_f1 = sum([q.f1 for q in queries]) / num_queries
@@ -499,11 +538,11 @@ def evaluate(queries, output_file="eval_out.log"):
                                       accuracy,
                                       oracle_accuracy,
                                       oracle_average_f1,
-                                      oracle_top_2,
-                                      oracle_top_3,
-                                      oracle_top_5,
-                                      oracle_top_10,
-                                      oracle_top_100,
+                                      oracle_top_2f,
+                                      oracle_top_3f,
+                                      oracle_top_5f,
+                                      oracle_top_10f,
+                                      oracle_top_100f,
                                       avg_oracle_position,
                                       avg_num_candidates)
     if output_file:

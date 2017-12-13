@@ -8,7 +8,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 from urllib3 import HTTPConnectionPool, Retry
 import logging
-import globals
+import freebase
 import csv
 import io
 import json
@@ -29,7 +29,7 @@ def normalize_freebase_output(text):
     """
     if len(text) > 1 and text.startswith('"') and text.endswith('"'):
         text = text[1:-1]
-    return globals.remove_freebase_ns(text)
+    return freebase.remove_freebase_ns(text)
 
 
 def filter_results_language(results, language):

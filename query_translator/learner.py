@@ -10,7 +10,7 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 import logging
-import globals
+import config_helper
 from query_translator.ranker import MLModel
 import scorer_globals
 from query_translator.translator import QueryTranslator
@@ -18,7 +18,7 @@ from .evaluation import EvaluationQuery, load_eval_queries, \
     evaluate_translator, evaluate
 import os
 from . import ranker
-import pickle as pickle
+import pickle
 import functools
 import random
 from joblib import Parallel, delayed
@@ -295,10 +295,10 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description='Learn or test a'
                                                  ' scorer model.')
-    parser.add_argument('--no-cached',
+    parser.add_argument('--cached',
                         default=False,
                         action='store_true',
-                        help='Don\'t use cached data if available.')
+                        help='Use cached data if available.')
     parser.add_argument('--config',
                         default='config.cfg',
                         help='The configuration file to use.')
@@ -334,10 +334,10 @@ def main():
 
     args = parser.parse_args()
     # Read global config.
-    globals.read_configuration(args.config)
+    config_helper.read_configuration(args.config)
     # Fix randomness.
     random.seed(999)
-    use_cache = not args.no_cached
+    use_cache = args.cached
     if args.which == 'train':
         train(args.scorer_name, use_cache)
     elif args.which == 'test':
