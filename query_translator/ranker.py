@@ -299,7 +299,8 @@ class AqquModel(MLModel, Ranker):
     def learn_deep_rel_score_model(self, queries, test_queries):
         rel_model = DeepCNNAqquRelScorer.init_from_config()
         extend_deep_model = config_helper.config.get('Ranker',
-                                                     'extend-deep-model')
+                                                     'extend-deep-model',
+                                                     fallback=None)
         rel_model.learn_model(queries, test_queries,
                               extend_model=extend_deep_model)
         return rel_model
