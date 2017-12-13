@@ -309,8 +309,7 @@ class QueryCandidate:
         :return:
         """
         # Cause the candidate to cache the result count.
-        if self.cached_result_count == -1:
-            self.get_result_count()
+        self.get_result_count()
         d = dict(self.__dict__)
         del d['backend']
         del d['extension_history']
@@ -326,15 +325,20 @@ class QueryCandidate:
         self.backend = None
         self.extension_history = []
 
-    def get_result_count(self, use_cached_value=True):
+    def get_result_count(self):
         """
         Returns the number of results of the SPARQL
         query when executed against the sparql backend
         for this query candidate.
         :return:
         """
-        if use_cached_value and self.cached_result_count > -1:
+        if self.cached_result_count > -1:
             return self.cached_result_count
+
+        if self.query_result:
+            self.cached_result_count = len(self.query_result)
+            return self.cached_result_count
+
         if self.backend.supports_count:
             sparql_query = self.to_sparql_query(count_query=True)
             query_result = self.backend.query(sparql_query)
@@ -350,9 +354,8 @@ class QueryCandidate:
                 logger.warn(
                     "Count query returned funky value: %s." % query_result[0][0])
         else:
-            sparql_query = self.to_sparql_query(count_query=True)
-            query_result = self.backend.query(sparql_query)
-            result = len(query_result)
+            self.retrieve_result()
+            result = len(self.query_result)
 
         # For count queries only check if there is a count or not.
         if self.query.is_count_query:
@@ -361,14 +364,16 @@ class QueryCandidate:
         self.cached_result_count = result
         return result
 
-    def retrieve_result(self, include_name=True):
+    def retrieve_result(self, include_name=True, force_retrieve=False):
         """
-        Retrieves the results of the SPARQL for this candidate
-        query when executed against the sparql backend
+        Retrieves the results using the SPARQL backend if
+        it has not been retrieved yet or if force_retrieve is True
+        so that afterwards self.query_result is available
         """
-        sparql_query = self.to_sparql_query(include_name=include_name)
-        query_result = self.backend.query(sparql_query)
-        self.query_result = query_result
+        if force_retrieve or not self.query_result
+            sparql_query = self.to_sparql_query(include_name=include_name)
+            query_result = self.backend.query(sparql_query)
+            self.query_result = query_result
 
     def get_relation_suggestions(self):
         """
