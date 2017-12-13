@@ -255,6 +255,12 @@ class DeepCNNAqquRelScorer():
         if extend_model:
             self.load_model(os.path.dirname(extend_model),
                             os.path.basename(extend_model))
+            # some variables are created after loading and need to be
+            # initialized without overwriting trained values.
+            # We can fix this manually for global_step but AdamOptimizer
+            # creates hidden vars that we don't easily get to
+            # see https://stackoverflow.com/q/35164529
+            old_vars = set(tf.global_variables())
         elif self.embeddings_file and not extend_model:
             [self.embedding_size, self.vocab,
              self.embeddings] = self.extract_vectors(self.embeddings_file)
@@ -301,14 +307,20 @@ class DeepCNNAqquRelScorer():
                     # optimizer = tf.train.AdagradOptimizer(0.1)
                     # optimizer = tf.train.RMSPropOptimizer(0.01)
                     # grads_and_vars = optimizer.compute_gradients(self.loss)
-                    global_step = \
+                    self.global_step = \
                         tf.Variable(0, name="global_step", trainable=False)
                     # train_op = \
                     #   optimizer.apply_gradients(grads_and_vars,
-                    #                             global_step=global_step)
+                    #                             global_step=self.global_step)
                     train_op = optimizer.minimize(self.loss)
 
-                    self.sess.run(tf.global_variables_initializer())
+                    if not extend_model:
+                        self.sess.run(tf.global_variables_initializer())
+                    else:
+                        new_vars = set(tf.global_variables()) - old_vars
+                        self.sess.run(tf.variables_initializer(new_vars))
+                        # kill those references
+                        new_vars, old_vars = None, None
                     self.saver = tf.train.Saver(save_relative_paths=True)
                     tf.set_random_seed(42)
 
@@ -356,7 +368,7 @@ class DeepCNNAqquRelScorer():
                             self.dropout_keep_prob: 0.9
                         }
                         _, summary, step, loss, probs = self.sess.run(
-                            [train_op, self.summary, global_step, self.loss, self.probs],
+                            [train_op, self.summary, self.global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
                         self.writer.add_summary(summary, epoch*train_size+n_batch*batch_size)
@@ -509,7 +521,8 @@ class DeepCNNAqquRelScorer():
             os.makedirs(model_path)
 
         logger.info("Writing model to %s." % model_path)
-        self.saver.save(self.sess, model_path, global_step=100)
+        self.saver.save(self.sess, model_path,
+                        global_step=tf.train.global_step(self.sess, self.global_step))
 
         vocab_path = os.path.join(path, model_name+'.vocab')
         joblib.dump([self.embeddings, self.vocab, self.embedding_size], vocab_path)
@@ -583,6 +596,9 @@ class DeepCNNAqquRelScorer():
                 feature_extraction.get_query_text_tokens(candidate),
                 candidate.get_relation_names()
                 ) for candidate in candidates]
+            #for candidate_rel in candidate_relations:
+            #    logger.info('query_tokens: %r', candidate_rel[0])
+            #    logger.info('relation_tokens: %r', candidate_rel[1])
             if not candidates:
                 break
             words, rel_features = \
@@ -617,7 +633,7 @@ class DeepCNNAqquRelScorer():
 
         self.input_s = tf.placeholder(tf.int32, [None, self.sentence_len],
                                       name="input_s")
-        self.input_r = tf.placeholder(tf.int32, 
+        self.input_r = tf.placeholder(tf.int32,
                                       [None, self.relation_len],
                                       name="input_r")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes],
@@ -625,7 +641,7 @@ class DeepCNNAqquRelScorer():
         self.dropout_keep_prob = tf.placeholder(tf.float32,
                                                 name="dropout_keep_prob")
 
-        embedded_chars_expanded = None
+        embedded_input_s_expanded = None
         embedded_input_r_expanded = None
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
             W = tf.Variable(
@@ -633,11 +649,11 @@ class DeepCNNAqquRelScorer():
                 name="W",
                 trainable=False)
             embedded_input_r = tf.nn.embedding_lookup(W, self.input_r)
-            embedded_chars = tf.nn.embedding_lookup(W, self.input_s)
+            embedded_input_s = tf.nn.embedding_lookup(W, self.input_s)
             embedded_input_r_expanded = tf.expand_dims(
                 embedded_input_r,
                 -1)
-            embedded_chars_expanded = tf.expand_dims(embedded_chars,
+            embedded_input_s_expanded = tf.expand_dims(embedded_input_s,
                                                      -1)
 
         # Convolution layers for query text, one conv-maxpool per filter size
@@ -652,7 +668,7 @@ class DeepCNNAqquRelScorer():
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    embedded_chars_expanded,
+                    embedded_input_s_expanded,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
