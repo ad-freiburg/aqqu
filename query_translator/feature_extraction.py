@@ -9,8 +9,15 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 from collections import defaultdict
 import math
+import logging
 from itertools import chain
 from entity_linker.entity_linker import KBEntity
+
+
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
+                    level=logging.INFO)
 
 N_GRAM_STOPWORDS = {'be', 'do', '?', 'the', 'of', 'is', 'are', 'in', 'was',
                     'did', 'does', 'a', 'for', 'have', 'there', 'on', 'has',
@@ -76,7 +83,7 @@ def get_query_text_tokens(candidate, include_mid=False):
                 else:
                     query_text_tokens.append('<entity>')
         else:
-            query_text_tokens.append(t.orth_)
+            query_text_tokens.append(t.orth_.lower())
     return query_text_tokens
 
 def pattern_complexity(candidate):
