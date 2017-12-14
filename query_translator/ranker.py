@@ -788,11 +788,8 @@ class AqquModel(MLModel, Ranker):
                 num_fold, n_folds))
             test_fold = [train_queries[i] for i in test_idx]
             train_fold = [train_queries[i] for i in train_idx]
-            #write_dl_examples(train_fold,"train", num_fold)
-            #write_dl_examples(test_fold, "test", num_fold)
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
-
 
             rel_model = self.learn_rel_score_model(train_fold,
                                                    ngrams_dict=ngrams_dict)
@@ -1538,42 +1535,6 @@ def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
             else:
                 labels.append(0)
     return labels, features
-
-
-def write_dl_examples(queries, name, fold_num):
-    from feature_extraction import get_query_text_tokens
-    file_name = "dl_examples_%s_fold_%s.txt" % (name, str(fold_num))
-    logger.info("Writing examples to %s" % name)
-    rev_rels = data.read_reverse_relations("data/reverse-relations")
-    med_rels = data.read_mediator_relations("data/mediator-relations")
-    no_rev_rels = set()
-    with open(file_name, "w") as f:
-        for query in queries:
-            candidates = [x.query_candidate for x in query.eval_candidates]
-            for i, candidate in enumerate(candidates):
-                relations = candidate.get_relation_names()
-                correct_directions = []
-                for r in relations:
-                    if r in med_rels:
-                        if r in rev_rels:
-                            correct_directions.append(rev_rels[r])
-                        elif r not in no_rev_rels:
-                            logger.warn("%s has no reverse relation" % r)
-                            no_rev_rels.add(r)
-                            continue
-                        else:
-                            continue
-                    else:
-                        correct_directions.append(r)
-                if not correct_directions:
-                    continue
-                rel = "+".join(sorted(correct_directions))
-                f1 = query.eval_candidates[i].evaluation_result.f1
-                text = " ".join(get_query_text_tokens(candidate, include_mid=True))
-                f.write("%d\t%d\t%.2f\t%s\t%s\t%s\n" % (query.id, i,
-                                                        f1, query.utterance,
-                                                        text, rel))
-
 
 
 def construct_ngram_examples(queries, f_extractor):
