@@ -370,7 +370,7 @@ class QueryCandidate:
         it has not been retrieved yet or if force_retrieve is True
         so that afterwards self.query_result is available
         """
-        if force_retrieve or not self.query_result
+        if force_retrieve or not self.query_result:
             sparql_query = self.to_sparql_query(include_name=include_name)
             query_result = self.backend.query(sparql_query)
             self.query_result = query_result
@@ -883,7 +883,6 @@ class QueryCandidateRelation(QueryCandidateNode):
         self.name = name
         self.source_node = source_node
         self.target_node = target_node
-        self.reversed = False
         self.score = None
         self.query_candidate.relations.append(self)
 
