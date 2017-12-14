@@ -312,7 +312,8 @@ class DeepCNNAqquRelScorer():
                     # train_op = \
                     #   optimizer.apply_gradients(grads_and_vars,
                     #                             global_step=self.global_step)
-                    train_op = optimizer.minimize(self.loss)
+                    train_op = optimizer.minimize(self.loss,
+                                                  global_step=self.global_step)
 
                     if not extend_model:
                         self.sess.run(tf.global_variables_initializer())
