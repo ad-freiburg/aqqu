@@ -292,8 +292,8 @@ class QueryCandidate:
     def get_relation_names(self):
         return sorted([r.name for r in self.relations])
 
-    def get_unsorted_relation_names(self):
-        return [r.canonical_name for r in self.relations]
+    def get_canonical_relation_names(self):
+        return sorted([r.name for r in self.relations])
 
     def get_entity_names(self):
         return sorted([me.entity.name for me in self.matched_entities])
