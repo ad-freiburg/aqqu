@@ -34,12 +34,12 @@ class DeepCNNAqquRelScorer():
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
         self.filter_sizes = (1, 2, 3, 4)
-        #pad = max(self.filter_sizes) - 1
+        self.pad = 0 #max(self.filter_sizes) - 1
         self.sentence_len = self.max_query_len
         # 3 1-word domains, 3 2-word sub domains
         # and 3 3-word relation names plus 2 paddings
         # between domain, sub-domain, relation 20 which is 
-        # as long max_query_len
+        # as long as max_query_len
         self.relation_len = 3 + 6 + 9 + 2
         self.sess = None
         self.probs = None
@@ -50,6 +50,10 @@ class DeepCNNAqquRelScorer():
         self.input_y = None
         self.dropout_keep_prob = None
         self.summary = None
+
+        self.optimizer = None
+        self.global_step = None
+        self.train_op = None
 
     @staticmethod
     def init_from_config():
@@ -243,6 +247,17 @@ class DeepCNNAqquRelScorer():
             self.build_deep_model(embeddings,
                                   embedding_size,
                                   filter_sizes=self.filter_sizes)
+
+            gpu_options = tf.GPUOptions(
+                per_process_gpu_memory_fraction=0.9)
+            session_conf = tf.ConfigProto(
+                allow_soft_placement=True,
+                log_device_placement=False,
+                device_count={'GPU': 1},
+                gpu_options=gpu_options)
+            self.sess = tf.Session(config=session_conf)
+            self.saver = tf.train.Saver(save_relative_paths=True)
+
         self.writer.add_graph(self.g)
 
     def learn_relation_model(self, train_pos, train_neg, extend_model=None,
@@ -255,12 +270,6 @@ class DeepCNNAqquRelScorer():
         if extend_model:
             self.load_model(os.path.dirname(extend_model),
                             os.path.basename(extend_model))
-            # some variables are created after loading and need to be
-            # initialized without overwriting trained values.
-            # We can fix this manually for global_step but AdamOptimizer
-            # creates hidden vars that we don't easily get to
-            # see https://stackoverflow.com/q/35164529
-            old_vars = set(tf.global_variables())
         elif self.embeddings_file and not extend_model:
             [self.embedding_size, self.vocab,
              self.embeddings] = self.extract_vectors(self.embeddings_file)
@@ -289,40 +298,13 @@ class DeepCNNAqquRelScorer():
 
         dev_scores = []
         with self.g.as_default():
-            # when a model was loaded it already inits a session
-            if not self.sess:
-                gpu_options = tf.GPUOptions(
-                    per_process_gpu_memory_fraction=0.9)
-                session_conf = tf.ConfigProto(
-                    allow_soft_placement=True,
-                    log_device_placement=False,
-                    device_count={'GPU': 1},
-                    gpu_options=gpu_options)
-                self.sess = tf.Session(config=session_conf)
-
             with self.g.device("/gpu:0"):
                 with self.sess.as_default():
                     tf.set_random_seed(42)
-                    optimizer = tf.train.AdamOptimizer()
-                    # optimizer = tf.train.AdagradOptimizer(0.1)
-                    # optimizer = tf.train.RMSPropOptimizer(0.01)
-                    # grads_and_vars = optimizer.compute_gradients(self.loss)
-                    self.global_step = \
-                        tf.Variable(0, name="global_step", trainable=False)
-                    # train_op = \
-                    #   optimizer.apply_gradients(grads_and_vars,
-                    #                             global_step=self.global_step)
-                    train_op = optimizer.minimize(self.loss,
-                                                  global_step=self.global_step)
 
                     if not extend_model:
                         self.sess.run(tf.global_variables_initializer())
-                    else:
-                        new_vars = set(tf.global_variables()) - old_vars
-                        self.sess.run(tf.variables_initializer(new_vars))
-                        # kill those references
-                        new_vars, old_vars = None, None
-                    self.saver = tf.train.Saver(save_relative_paths=True)
+
                     tf.set_random_seed(42)
 
                     def run_dev_batches(dev_features, dev_qids, dev_f1, dev_train,
@@ -369,7 +351,7 @@ class DeepCNNAqquRelScorer():
                             self.dropout_keep_prob: 0.9
                         }
                         _, summary, step, loss, probs = self.sess.run(
-                            [train_op, self.summary, self.global_step, self.loss, self.probs],
+                            [self.train_op, self.summary, self.global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
                         self.writer.add_summary(summary, epoch*train_size+n_batch*batch_size)
@@ -425,10 +407,11 @@ class DeepCNNAqquRelScorer():
     def create_batch_features(self, batch):
         num_questions = len(batch)
         # How much to add left and right.
-        words = np.zeros(shape=(num_questions, self.sentence_len),
+        words = np.zeros(shape=(num_questions,
+                                2*self.pad+self.sentence_len),
                          dtype=int)
         rel_features = np.zeros(shape=(num_questions,
-                                       self.relation_len),
+                                       2*self.pad+self.relation_len),
                                 dtype=int)
         oov_words = set()
         for i, example in enumerate(batch):
@@ -447,8 +430,10 @@ class DeepCNNAqquRelScorer():
                             text_sequence)
                 text_sequence = text_sequence[:self.max_query_len]
 
-            for word_num, word_id in enumerate(text_sequence):
+            word_num = self.pad
+            for word_id in text_sequence:
                 words[i, word_num] = word_id
+                word_num += 1
 
             rel_splits = self.split_relations_into_words(relations)
 
@@ -485,7 +470,7 @@ class DeepCNNAqquRelScorer():
             #  'x', 'r, 'p', '',
             #  'c', 'd', 'y', 'q', '', ''..]
             group_sizes = [3, 6, 9]
-            word_num = 0
+            word_num = self.pad
             for group_num, group in enumerate(grouped_rel_parts):
                 flat_group = list(chain(*group))
                 for word_id in flat_group[-group_sizes[group_num]:]:
@@ -551,11 +536,11 @@ class DeepCNNAqquRelScorer():
                 self.build_deep_model(self.embeddings,
                                       self.embedding_size,
                                       filter_sizes=self.filter_sizes)
-                saver = tf.train.Saver(save_relative_paths=True)
+                self.saver = tf.train.Saver(save_relative_paths=True)
                 session_conf = tf.ConfigProto(
                     allow_soft_placement=True)
                 self.sess = tf.Session(config=session_conf)
-                saver.restore(self.sess, ckpt.model_checkpoint_path)
+                self.saver.restore(self.sess, ckpt.model_checkpoint_path)
             self.writer.add_graph(self.g)
 
 
@@ -632,10 +617,11 @@ class DeepCNNAqquRelScorer():
         logger.info("embedding_size: %s", embedding_size)
         logger.info("n_rel_parts: %s", self.n_rel_parts)
 
-        self.input_s = tf.placeholder(tf.int32, [None, self.sentence_len],
+        self.input_s = tf.placeholder(tf.int32,
+                                      [None, 2*self.pad+self.sentence_len],
                                       name="input_s")
         self.input_r = tf.placeholder(tf.int32,
-                                      [None, self.relation_len],
+                                      [None, 2*self.pad+self.relation_len],
                                       name="input_r")
         self.input_y = tf.placeholder(tf.float32, [None, num_classes],
                                       name="input_y")
@@ -679,7 +665,8 @@ class DeepCNNAqquRelScorer():
                 # Maxpooling over the outputs
                 pooled = tf.nn.max_pool(
                     h,
-                    ksize=[1, self.sentence_len - filter_size + 1, 1, 1],
+                    ksize=[1, 2*self.pad+self.sentence_len - filter_size + 1,
+                           1, 1],
                     strides=[1, 1, 1, 1],
                     padding='VALID',
                     name="pool-q")
@@ -712,7 +699,7 @@ class DeepCNNAqquRelScorer():
                 # Maxpooling over the outputs
                 pooled = tf.nn.max_pool(
                     h,
-                    ksize=[1, self.relation_len - filter_size + 1,
+                    ksize=[1, 2*self.pad+self.relation_len - filter_size + 1,
                            1, 1],
                     strides=[1, 1, 1, 1],
                     padding='VALID',
@@ -783,6 +770,12 @@ class DeepCNNAqquRelScorer():
             self.loss = tf.reduce_mean(similar_losses + dissimilar_losses, name='loss')
             #self.loss = tf.reduce_mean(tf.square(self.input_y - scores), name='loss')
             tf.summary.scalar('loss', self.loss)
+        # for training
+        with tf.name_scope('training'):
+            self.global_step = \
+                tf.Variable(0, name="global_step", trainable=False)
+            self.optimizer = tf.train.AdamOptimizer()
+            self.train_op = self.optimizer.minimize(self.loss)
 
         self.summary = tf.summary.merge_all()
 
