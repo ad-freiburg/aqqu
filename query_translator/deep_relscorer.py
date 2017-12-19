@@ -323,7 +323,7 @@ class DeepCNNAqquRelScorer():
                                 self.input_y: input_y,
                                 self.input_s: x_b,
                                 self.input_r: x_rel_b,
-                                self.dropout_keep_prob: 0.9
+                                self.dropout_keep_prob: 1.0
                             }
                             summary, loss, p = self.sess.run(
                                 [self.summary, self.loss, self.probs],
@@ -663,7 +663,7 @@ class DeepCNNAqquRelScorer():
                 # Apply nonlinearity
                 h = tf.nn.elu(tf.nn.bias_add(conv, b), name="elu")
                 # Maxpooling over the outputs
-                pooled = tf.nn.max_pool(
+                pooled = tf.nn.avg_pool(
                     h,
                     ksize=[1, 2*self.pad+self.sentence_len - filter_size + 1,
                            1, 1],
@@ -697,7 +697,7 @@ class DeepCNNAqquRelScorer():
                 # Apply nonlinearity
                 h = tf.nn.elu(tf.nn.bias_add(conv, b), name="elu")
                 # Maxpooling over the outputs
-                pooled = tf.nn.max_pool(
+                pooled = tf.nn.avg_pool(
                     h,
                     ksize=[1, 2*self.pad+self.relation_len - filter_size + 1,
                            1, 1],

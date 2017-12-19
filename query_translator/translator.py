@@ -31,6 +31,7 @@ class Query:
         self.target_type = None  # type: AnswerType
         self.content_tokens = None  # type: spacy.tokens.Span
         self.identified_entities = None  # type: Iterable[IdentifiedEntity]
+        self.text_entities = None  # type: Iterable[IdentifiedEntity]
         self.relation_oracle = None
         self.is_count_query = False
 
@@ -133,9 +134,10 @@ class QueryTranslator(object):
         query_doc = self.nlp(query_text)
         # Create a query object.
         query = Query(query_doc)
-        entities = self.entity_linker.identify_entities_in_tokens(
+        entities, text_entities = self.entity_linker.identify_entities_in_tokens(
             query.tokens)
         query.identified_entities = entities
+        query.text_entities = text_entities
         return query
 
     def translate_and_execute_query(self, query, n_top=200):

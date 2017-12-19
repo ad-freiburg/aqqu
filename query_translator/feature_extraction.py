@@ -12,6 +12,7 @@ import math
 import logging
 from itertools import chain
 from entity_linker.entity_linker import KBEntity
+from freebase import get_mid_from_qualified_string
 
 
 logger = logging.getLogger(__name__)
@@ -107,8 +108,6 @@ def simple_features(candidate):
     n_text_and_question_entities = 0
     # The sum of surface_score * mention_length over all entity mentions.
     em_token_score = 0.0
-    # A flag whether the candidate contains a mediator.
-    is_mediator = 0.0
     # The number of relations that are matched literally at least once.
     n_literal_relations = 0
     # The number of relations that are matched by word at least once.
@@ -121,8 +120,6 @@ def simple_features(candidate):
     literal_entities_length = 0
     # The length of tokens that match literally in a relation.
     literal_relation_tokens_length = 0
-    # The number of tokens that match via weak synoynms in a relation.
-    n_weak_relation_tokens = 0
     # The length of tokens that match via derivation in a relation.
     derivation_relation_tokens_length = 0
     # The sum of all weak match scores.
@@ -205,6 +202,24 @@ def simple_features(candidate):
     relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0
     matches_answer_type = candidate.matches_answer_type
+
+    # Text query features are only used when a text query was run
+    # during entity identification. They require fetching the entire result
+    text_answer_ratio = 0.0
+    if candidate.query.text_entities:
+        # fetch the results, this is expensive but
+        # at least for those candidates that are not pruned
+        # we need to do it anyway and it's not done again
+        candidate.retrieve_result()
+        text_entity_map = {te.entity.id: te
+                           for te in candidate.query.text_entities}
+        for row in candidate.query_result:
+            result_mid = get_mid_from_qualified_string(row[0])
+            if result_mid in text_entity_map:
+                text_answer_ratio += 1.0
+        text_answer_ratio /= len(candidate.query_result) \
+            if candidate.query_result else 0.0
+
     features.update({
         # "General Features
         'pattern_complexity': pattern_complexity(candidate),
@@ -219,6 +234,7 @@ def simple_features(candidate):
         'n_literal_entities': n_literal_entities,
         'n_entity_matches': n_entity_matches,
         'n_text_and_question_entities': n_text_and_question_entities,
+        'text_answer_ratio': text_answer_ratio,
         'literal_entities_length': literal_entities_length,
         'avg_em_surface_score': avg_em_surface_score,
         'sum_em_surface_score': sum_em_surface_score,
