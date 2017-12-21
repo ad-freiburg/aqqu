@@ -237,6 +237,7 @@ class AqquModel(MLModel, Ranker):
                  top_ngram_percentile=5,
                  rel_regularization_C=None,
                  learn_deep_rel_model=True,
+                 learn_ngram_rel_model=True,
                  **kwargs):
         MLModel.__init__(self, name, train_dataset)
         Ranker.__init__(self, name, **kwargs)
@@ -250,6 +251,7 @@ class AqquModel(MLModel, Ranker):
         self.relation_scorer = None
         self.deep_relation_scorer = None
         self.learn_deep_rel_model = learn_deep_rel_model
+        self.learn_ngram_rel_model = learn_ngram_rel_model
         self.pruner = None
         self.scaler = None
         self.kwargs = kwargs
@@ -265,10 +267,11 @@ class AqquModel(MLModel, Ranker):
                 = joblib.load(model_file)
             self.model = model
             self.scaler = scaler
-            relation_scorer = RelationNgramScorer(self.get_model_name(),
-                                                  self.rel_regularization_C)
-            relation_scorer.load_model()
-            self.relation_scorer = relation_scorer
+            if self.learn_ngram_rel_model:
+                relation_scorer = RelationNgramScorer(self.get_model_name(),
+                                                      self.rel_regularization_C)
+                relation_scorer.load_model()
+                self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
                 self.deep_relation_scorer = \
                     DeepCNNAqquRelScorer.init_from_config()
@@ -331,10 +334,12 @@ class AqquModel(MLModel, Ranker):
         dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
                                                               ngrams_dict=n_grams_dict)
         features = np.hstack([features, sub_features])
-        logger.info("Training final relation scorer.")
-        rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
-        self.relation_scorer = rel_model
+        if self.learn_ngram_rel_model:
+            logger.info("Training relation scorer.")
+            rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
+            self.relation_scorer = rel_model
         if self.learn_deep_rel_model:
+            logger.info("Training deep relation scorer.")
             deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
             self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
@@ -376,7 +381,8 @@ class AqquModel(MLModel, Ranker):
         joblib.dump([self.model, self.label_encoder,
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
-        self.relation_scorer.store_model()
+        if self.learn_ngram_rel_model:
+            self.relation_scorer.store_model()
         if self.learn_deep_rel_model:
             model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
             self.deep_relation_scorer.store_model(
@@ -524,9 +530,11 @@ class AqquModel(MLModel, Ranker):
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
 
-            rel_model = self.learn_rel_score_model(train_fold,
-                                                   ngrams_dict=ngrams_dict)
-            rel_scores = rel_model.score_multiple(test_candidates)
+            rel_scores = []
+            if self.learn_ngram_rel_model:
+                rel_model = self.learn_rel_score_model(train_fold,
+                                                       ngrams_dict=ngrams_dict)
+                rel_scores = rel_model.score_multiple(test_candidates)
             deep_rel_scores = []
             if self.learn_deep_rel_model:
                 deep_rel_model = self.learn_deep_rel_score_model(train_fold,
@@ -535,7 +543,8 @@ class AqquModel(MLModel, Ranker):
             c_index = 0
             for i in test_idx:
                 for c in qc_indices[i]:
-                    features[c, 0] = rel_scores[c_index].score
+                    if self.learn_ngram_rel_model:
+                        features[c, 0] = rel_scores[c_index].score
                     if self.learn_deep_rel_model:
                         features[c, 1] = deep_rel_scores[c_index].score
                     c_index += 1
