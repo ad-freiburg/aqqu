@@ -217,7 +217,7 @@ def simple_features(candidate):
             result_mid = get_mid_from_qualified_string(row[0])
             if result_mid in text_entity_map:
                 text_answer_ratio += 1.0
-        text_answer_ratio /= len(candidate.query_result) \
+        text_answer_ratio = text_answer_ratio / len(candidate.query_result) \
             if candidate.query_result else 0.0
 
     features.update({
