@@ -42,13 +42,13 @@ def main():
         sys.stdout.flush()
         query = sys.stdin.readline().strip()
         logger.info("Translating query: %s" % query)
-        _, results = translator.translate_and_execute_query(query)
+        _, candidates = translator.translate_and_execute_query(query)
         logger.info("Done translating query: %s" % query)
         logger.info("#candidates: %s" % len(results))
-        if len(results) > 0:
-            best_candidate = results[0].query_candidate
+        if len(candidates) > 0:
+            best_candidate = results[0]
             sparql_query = best_candidate.to_sparql_query()
-            result_rows = results[0].query_result_rows
+            result_rows = best_candidate.query_result
             result = []
             # Usually we get a name + mid.
             for r in result_rows:

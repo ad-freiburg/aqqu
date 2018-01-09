@@ -185,11 +185,10 @@ def evaluate_translator(translator, queries, n_queries=9999,
                 continue
         logger.info("Translating query (id=%s) %s of %s for evaluation." %
                     (q.id, n_translated_queries + 1, len(evaluation_queries)))
-        _, results = translator.translate_and_execute_query(q.utterance,
+        _, candidates = translator.translate_and_execute_query(q.utterance,
                                                          n_top=n_top)
-        for result in results:
-            candidate = result.query_candidate
-            query_result_rows = result.query_result_rows
+        for candidate in candidates:
+            query_result_rows = candidate.query_result
             # Only want the readable name.
             result_strs = []
             for r in query_result_rows:

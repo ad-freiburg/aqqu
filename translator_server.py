@@ -12,11 +12,11 @@ import config_helper
 import scorer_globals
 import flask
 import spacy
-from query_translator.query_candidate import RelationMatch, EntityMatch,\
+from query_translator.query_candidate import RelationMatch,\
     QueryCandidate, QueryCandidateNode
-from query_translator.translator import QueryTranslator, Query,\
-    TranslationResult
+from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
+
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
                            ": %(module)s : %(message)s",
@@ -145,12 +145,12 @@ def map_relation_matches(rel_matches: Iterable[RelationMatch])\
     return results
 
 
-def map_entity_matches(ent_matches: Iterable[EntityMatch])\
+def map_entity_matches(ent_matches: Iterable[entity_linker.IdentifiedEntity])\
                         -> List[Dict[str, Any]]:
     """
-    Maps EntityMatches to a list of JSON compatible dicts
+    Maps IdentifiedEntities to a list of JSON compatible dicts
     """
-    return [{'mid': em.entity.entity.sparql_name()} for em in ent_matches]
+    return [{'mid': em.entity.sparql_name()} for em in ent_matches]
 
 
 def map_query_graph(node: QueryCandidateNode, visited: set)\
@@ -175,18 +175,16 @@ def map_query_graph(node: QueryCandidateNode, visited: set)\
 
     mid = None
     if node.entity_match:
-        mid = node.entity_match.entity.entity.sparql_name()
+        mid = node.entity_match.entity.sparql_name()
     return {'mid': mid,
             'out_relations': out_relations}
 
 
-def map_query_candidate(candidate: QueryCandidate,
-                        result_rows: Iterable[List[Union[str, int]]])\
-                                                    -> Dict[str, Any]:
+def map_candidate(candidate: QueryCandidate) -> Dict[str, Any]:
     """
     Turns a QueryCandidate into a result dict suitable for JSON encoding
     """
-    answers = map_results_list(result_rows)
+    answers = map_results_list(candidate.query_result)
     relation_matches = map_relation_matches(candidate.matched_relations)
     entity_matches = map_entity_matches(candidate.matched_entities)
     visited = set()  # type: Set[Any]
@@ -205,23 +203,21 @@ def map_query_candidate(candidate: QueryCandidate,
         }
 
 
-def map_translations(raw_query: str, parsed_query: Query,
-                     translations: Iterable[TranslationResult])\
+def map_candidates(raw_query: str, parsed_query: Query,
+                   candidates: Iterable[QueryCandidate])\
                                              -> Dict[str, Any]:
     """
     Turns the final translations which are lists of namedtuple with
     query_candidate and query_result into a result map suitable for JSON
     encoding
     """
-    candidates = []  # type: List[dict]
-    for translation in translations:
-        candidates.append(map_query_candidate(
-            translation.query_candidate,
-            translation.query_result_rows))
+    candidate_dicts = []  # type: List[dict]
+    for candidate in candidates:
+        candidate_dicts.append(map_candidate(candidate))
 
     return {'raw_query': raw_query,
             'parsed_query': map_query(parsed_query),
-            'candidates': candidates}
+            'candidates': candidate_dicts}
 
 def main() -> None:
     """
@@ -256,12 +252,12 @@ def main() -> None:
         """
         raw_query = flask.request.args.get('q')
         LOG.info("Translating query: %s", raw_query)
-        parsed_query, translations = translator.translate_and_execute_query(
+        parsed_query, candidates = translator.translate_and_execute_query(
             raw_query)
         LOG.info("Done translating query: %s", raw_query)
-        LOG.info("#candidates: %s", len(translations))
-        return flask.jsonify(map_translations(
-            raw_query, parsed_query, translations))
+        LOG.info("#candidates: %s", len(candidates))
+        return flask.jsonify(map_candidates(
+            raw_query, parsed_query, candidates))
 
     APP.run(use_reloader=False, host='0.0.0.0', threaded=False,
             port=args.port, debug=False)

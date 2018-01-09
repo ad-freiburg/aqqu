@@ -237,25 +237,6 @@ class NameWeakMatch:
         return "RelationNameSynonym: %s" % s
 
 
-class EntityMatch:
-    """
-    Describes a match of an entity in the tokens.
-    TODO(schnelle) it might make sense to remove this class and
-    use IdentifiedEntity directly
-    """
-
-    def __init__(self, entity):
-        self.entity = entity
-
-    def __deepcopy__(self, memo):
-        # No need to copy the identified entity.
-        m = EntityMatch(self.entity)
-        return m
-
-    def as_string(self):
-        return self.entity.as_string()
-
-
 class QueryCandidate:
     """
     The contained object pointing to a root node.
@@ -275,7 +256,7 @@ class QueryCandidate:
         self.root_node = root_node
         if root_node:
             self.nodes.append(root_node)
-        # A set of EntityMatches.
+        # A set of IdentifiedEntities.
         self.matched_entities = set()
         # A set of RelationMatches.
         self.matched_relations = set()
@@ -304,12 +285,15 @@ class QueryCandidate:
         # An indicator whether the candidate matches the answer type
         self.matches_answer_type = None
         self.feature_dict = None
+        # The result of the query represented by this candidate.
+        # This is only set when execturing retrieve_result()
+        self.query_result = None
 
     def get_relation_names(self):
         return sorted([r.name for r in self.relations])
 
-    def get_unsorted_relation_names(self):
-        return [r.canonical_name for r in self.relations]
+    def get_canonical_relation_names(self):
+        return sorted([r.name for r in self.relations])
 
     def get_entity_names(self):
         return sorted([me.entity.name for me in self.matched_entities])
@@ -325,8 +309,7 @@ class QueryCandidate:
         :return:
         """
         # Cause the candidate to cache the result count.
-        if self.cached_result_count == -1:
-            self.get_result_count()
+        self.get_result_count()
         d = dict(self.__dict__)
         del d['backend']
         del d['extension_history']
@@ -342,15 +325,20 @@ class QueryCandidate:
         self.backend = None
         self.extension_history = []
 
-    def get_result_count(self, use_cached_value=True):
+    def get_result_count(self):
         """
         Returns the number of results of the SPARQL
         query when executed against the sparql backend
         for this query candidate.
         :return:
         """
-        if use_cached_value and self.cached_result_count > -1:
+        if self.cached_result_count > -1:
             return self.cached_result_count
+
+        if self.query_result:
+            self.cached_result_count = len(self.query_result)
+            return self.cached_result_count
+
         if self.backend.supports_count:
             sparql_query = self.to_sparql_query(count_query=True)
             query_result = self.backend.query(sparql_query)
@@ -366,9 +354,8 @@ class QueryCandidate:
                 logger.warn(
                     "Count query returned funky value: %s." % query_result[0][0])
         else:
-            sparql_query = self.to_sparql_query(count_query=True)
-            query_result = self.backend.query(sparql_query)
-            result = len(query_result)
+            self.retrieve_result()
+            result = len(self.query_result)
 
         # For count queries only check if there is a count or not.
         if self.query.is_count_query:
@@ -377,16 +364,16 @@ class QueryCandidate:
         self.cached_result_count = result
         return result
 
-    def get_result(self, include_name=True):
+    def retrieve_result(self, include_name=True, force_retrieve=False):
         """
-        Returns the results of the SPARQL
-        query when executed against the sparql backend
-        for this query candidate.
-        :return:
+        Retrieves the results using the SPARQL backend if
+        it has not been retrieved yet or if force_retrieve is True
+        so that afterwards self.query_result is available
         """
-        sparql_query = self.to_sparql_query(include_name=include_name)
-        query_result = self.backend.query(sparql_query)
-        return query_result
+        if force_retrieve or not self.query_result:
+            sparql_query = self.to_sparql_query(include_name=include_name)
+            query_result = self.backend.query(sparql_query)
+            self.query_result = query_result
 
     def get_relation_suggestions(self):
         """
@@ -492,9 +479,9 @@ class QueryCandidate:
 
     def add_entity_match(self, entity_match):
         self.matched_entities.add(entity_match)
-        self.matched_tokens.update(entity_match.entity.tokens)
+        self.matched_tokens.update(entity_match.tokens)
         self.unmatched_tokens = self.unmatched_tokens - set(
-            entity_match.entity.tokens)
+            entity_match.tokens)
 
     def __deepcopy__(self, memo):
         # Create a new empty query candidate
@@ -702,7 +689,7 @@ class QueryCandidate:
         match_score = 0
         for e in elements:
             if e.entity_match is not None:
-                match_score += e.entity_match.entity.score
+                match_score += e.entity_match.score
         return len(self.covered_tokens()), match_score
 
 
@@ -737,7 +724,7 @@ class QueryCandidateNode:
                                                 allow_new_match=allow_new_match)
 
     def set_entity_match(self, identified_entity):
-        self.entity_match = EntityMatch(identified_entity)
+        self.entity_match = identified_entity
         self.query_candidate.add_entity_match(self.entity_match)
 
     def as_string(self):
@@ -896,7 +883,6 @@ class QueryCandidateRelation(QueryCandidateNode):
         self.name = name
         self.source_node = source_node
         self.target_node = target_node
-        self.reversed = False
         self.score = None
         self.query_candidate.relations.append(self)
 

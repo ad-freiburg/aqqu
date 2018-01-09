@@ -237,6 +237,7 @@ class AqquModel(MLModel, Ranker):
                  top_ngram_percentile=5,
                  rel_regularization_C=None,
                  learn_deep_rel_model=True,
+                 learn_ngram_rel_model=True,
                  **kwargs):
         MLModel.__init__(self, name, train_dataset)
         Ranker.__init__(self, name, **kwargs)
@@ -250,6 +251,7 @@ class AqquModel(MLModel, Ranker):
         self.relation_scorer = None
         self.deep_relation_scorer = None
         self.learn_deep_rel_model = learn_deep_rel_model
+        self.learn_ngram_rel_model = learn_ngram_rel_model
         self.pruner = None
         self.scaler = None
         self.kwargs = kwargs
@@ -265,10 +267,11 @@ class AqquModel(MLModel, Ranker):
                 = joblib.load(model_file)
             self.model = model
             self.scaler = scaler
-            relation_scorer = RelationNgramScorer(self.get_model_name(),
-                                                  self.rel_regularization_C)
-            relation_scorer.load_model()
-            self.relation_scorer = relation_scorer
+            if self.learn_ngram_rel_model:
+                relation_scorer = RelationNgramScorer(self.get_model_name(),
+                                                      self.rel_regularization_C)
+                relation_scorer.load_model()
+                self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
                 self.deep_relation_scorer = \
                     DeepCNNAqquRelScorer.init_from_config()
@@ -331,10 +334,12 @@ class AqquModel(MLModel, Ranker):
         dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
                                                               ngrams_dict=n_grams_dict)
         features = np.hstack([features, sub_features])
-        logger.info("Training final relation scorer.")
-        rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
-        self.relation_scorer = rel_model
+        if self.learn_ngram_rel_model:
+            logger.info("Training relation scorer.")
+            rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
+            self.relation_scorer = rel_model
         if self.learn_deep_rel_model:
+            logger.info("Training deep relation scorer.")
             deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
             self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
@@ -376,7 +381,8 @@ class AqquModel(MLModel, Ranker):
         joblib.dump([self.model, self.label_encoder,
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
-        self.relation_scorer.store_model()
+        if self.learn_ngram_rel_model:
+            self.relation_scorer.store_model()
         if self.learn_deep_rel_model:
             model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
             self.deep_relation_scorer.store_model(
@@ -521,15 +527,14 @@ class AqquModel(MLModel, Ranker):
                 num_fold, n_folds))
             test_fold = [train_queries[i] for i in test_idx]
             train_fold = [train_queries[i] for i in train_idx]
-            #write_dl_examples(train_fold,"train", num_fold)
-            #write_dl_examples(test_fold, "test", num_fold)
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
 
-
-            rel_model = self.learn_rel_score_model(train_fold,
-                                                   ngrams_dict=ngrams_dict)
-            rel_scores = rel_model.score_multiple(test_candidates)
+            rel_scores = []
+            if self.learn_ngram_rel_model:
+                rel_model = self.learn_rel_score_model(train_fold,
+                                                       ngrams_dict=ngrams_dict)
+                rel_scores = rel_model.score_multiple(test_candidates)
             deep_rel_scores = []
             if self.learn_deep_rel_model:
                 deep_rel_model = self.learn_deep_rel_score_model(train_fold,
@@ -538,7 +543,8 @@ class AqquModel(MLModel, Ranker):
             c_index = 0
             for i in test_idx:
                 for c in qc_indices[i]:
-                    features[c, 0] = rel_scores[c_index].score
+                    if self.learn_ngram_rel_model:
+                        features[c, 0] = rel_scores[c_index].score
                     if self.learn_deep_rel_model:
                         features[c, 1] = deep_rel_scores[c_index].score
                     c_index += 1
@@ -977,14 +983,14 @@ class LiteralRanker(Ranker):
             # "us supreme court" <-> "Supreme Court of the United States"
             # (prob = 0.983) "mozart" <-> "Wolfgang Amadeus Mozart"
             threshold = 0.8
-            if em.entity.perfect_match or em.entity.surface_score > threshold:
+            if em.perfect_match or em.surface_score > threshold:
                 literal_entities += 1
-                literal_length += len(em.entity.tokens)
-            em_score = em.entity.surface_score
-            em_score *= len(em.entity.tokens)
+                literal_length += len(em.tokens)
+            em_score = em.surface_score
+            em_score *= len(em.tokens)
             em_token_score += em_score
-            if em.entity.score > 0:
-                em_popularity += math.log(em.entity.score)
+            if em.score > 0:
+                em_popularity += math.log(em.score)
         matched_tokens = dict()
         for rm in query_candidate.matched_relations:
             rm_relation_length += len(rm.relation)
@@ -1271,42 +1277,6 @@ def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
             else:
                 labels.append(0)
     return labels, features
-
-
-def write_dl_examples(queries, name, fold_num):
-    from feature_extraction import get_query_text_tokens
-    file_name = "dl_examples_%s_fold_%s.txt" % (name, str(fold_num))
-    logger.info("Writing examples to %s" % name)
-    rev_rels = data.read_reverse_relations("data/reverse-relations")
-    med_rels = data.read_mediator_relations("data/mediator-relations")
-    no_rev_rels = set()
-    with open(file_name, "w") as f:
-        for query in queries:
-            candidates = [x.query_candidate for x in query.eval_candidates]
-            for i, candidate in enumerate(candidates):
-                relations = candidate.get_relation_names()
-                correct_directions = []
-                for r in relations:
-                    if r in med_rels:
-                        if r in rev_rels:
-                            correct_directions.append(rev_rels[r])
-                        elif r not in no_rev_rels:
-                            logger.warn("%s has no reverse relation" % r)
-                            no_rev_rels.add(r)
-                            continue
-                        else:
-                            continue
-                    else:
-                        correct_directions.append(r)
-                if not correct_directions:
-                    continue
-                rel = "+".join(sorted(correct_directions))
-                f1 = query.eval_candidates[i].evaluation_result.f1
-                text = " ".join(get_query_text_tokens(candidate, include_mid=True))
-                f.write("%d\t%d\t%.2f\t%s\t%s\t%s\n" % (query.id, i,
-                                                        f1, query.utterance,
-                                                        text, rel))
-
 
 
 def construct_ngram_examples(queries, f_extractor):

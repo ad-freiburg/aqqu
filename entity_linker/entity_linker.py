@@ -364,7 +364,7 @@ class EntityLinker:
                                      reverse=True)
         logging.info("Entity identification took %.2f ms. Identified %s entities." % (duration,
                                                                                       len(identified_entities)))
-        return identified_entities
+        return identified_entities, None
 
     def _filter_identical_entities(self, identified_entities):
         '''
