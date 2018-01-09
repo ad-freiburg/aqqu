@@ -10,8 +10,8 @@ import joblib
 import config_helper
 import tensorflow as tf
 from gensim import models
-
 from sklearn import utils
+
 from . import feature_extraction
 
 logger = logging.getLogger(__name__)
@@ -304,6 +304,8 @@ class DeepCNNAqquRelScorer():
 
                     if not extend_model:
                         self.sess.run(tf.global_variables_initializer())
+                    else:
+                        self.sess.run(tf.initialize_variables([self.global_step]))
 
                     tf.set_random_seed(42)
 
@@ -331,13 +333,13 @@ class DeepCNNAqquRelScorer():
                             total_loss += loss
                             n_batch += 1
                             probs += [p[i, 0] for i in range(p.shape[0])]
-                            self.writer.add_summary(summary, n_batch)
 
                         avg_f1, oracle_avg_f1 = self.evaluate_dev(dev_qids, dev_f1, probs)
                         dev_scores.append(avg_f1)
                         #logger.info("Dev loss: %.2f" % total_loss)
                         logger.info("%s avg_f1: %.2f oracle_avg_f1: %.2f" % (dev_train,
                         100 * avg_f1, 100 * oracle_avg_f1))
+                        return avg_f1, oracle_avg_f1
 
                     def train_step(batch, epoch, n_batch, batch_size, train_size):
                         """
@@ -362,7 +364,7 @@ class DeepCNNAqquRelScorer():
                     batch_size = 50
                     for epoch in range(num_epochs):
                         # Need to shuffle the batches in each epoch.
-                        logger.info("Starting epoch %d" % (epoch + 1))
+                        logger.info("Starting epoch %d", epoch)
 
                         n_labels, n_wf, n_rf = self.random_sample(len(train_pos_labels), train_neg_labels, train_neg_word_features, train_neg_rel_features)
                         train_labels = np.vstack([n_labels, train_pos_labels])
@@ -376,9 +378,10 @@ class DeepCNNAqquRelScorer():
                                                                 train_word_features,
                                                                 train_rel_featuers):
                             train_step(batch, epoch, batch_num, batch_size, train_size)
-                        if epoch % 10 == 0 and dev_examples:
-                            run_dev_batches(dev_features, dev_qids, dev_f1s, 
-                                            dev_train="Dev")
+                        if epoch % 5 == 0 and dev_examples:
+                            avg_f1, oracle_avg_f1 = run_dev_batches(
+                                dev_features, dev_qids, dev_f1s, dev_train="Dev")
+                            tf.summary.scalar('avg_f1', 100*avg_f1)
                     if dev_scores:
                         logger.info("Dev avg_f1 history:")
                         logger.info(" ".join(["%d:%f" % (i + 1, f)
@@ -628,34 +631,78 @@ class DeepCNNAqquRelScorer():
         self.dropout_keep_prob = tf.placeholder(tf.float32,
                                                 name="dropout_keep_prob")
 
-        embedded_input_s_expanded = None
-        embedded_input_r_expanded = None
+        embedded_input_r = None
+        embedded_input_s = None
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
-            W = tf.Variable(
+            Wembed = tf.Variable(
                 embeddings,
-                name="W",
+                name="Wembed",
                 trainable=False)
-            embedded_input_r = tf.nn.embedding_lookup(W, self.input_r)
-            embedded_input_s = tf.nn.embedding_lookup(W, self.input_s)
-            embedded_input_r_expanded = tf.expand_dims(
-                embedded_input_r,
-                -1)
-            embedded_input_s_expanded = tf.expand_dims(embedded_input_s,
-                                                     -1)
+            embedded_input_r = tf.nn.embedding_lookup(Wembed, self.input_r)
+            embedded_input_s = tf.nn.embedding_lookup(Wembed, self.input_s)
+
+        embedded_input_s_attended = None
+        embedded_input_r_attended = None
+        with tf.name_scope('input-attention'):
+            a_input_norm_r = tf.nn.l2_normalize(embedded_input_r, 1)
+            a_input_norm_s = tf.nn.l2_normalize(embedded_input_s, 1)
+            Attn_match = tf.matmul(a_input_norm_r, a_input_norm_s,
+                    transpose_b=True,
+                    name='Attn_match')
+
+            W_attn_r = tf.Variable(
+                tf.truncated_normal([2*self.pad+self.relation_len,
+                                     embedding_size],
+                                    stddev=0.1,
+                                    seed=386),
+                name="W_attn_r")
+
+            W_attn_s = tf.Variable(
+                tf.truncated_normal([2*self.pad+self.sentence_len,
+                                     embedding_size],
+                                    stddev=0.1,
+                                    seed=386),
+                name="W_attn_s")
+
+            # ;-( https://stackoverflow.com/questions/38235555
+            with tf.name_scope('matmul_r'):
+                Attn_match_transpose_flattened = tf.reshape(
+                    tf.transpose(Attn_match),
+                    [-1, 2*self.pad+self.relation_len])
+                Attn_r = tf.matmul(Attn_match_transpose_flattened, W_attn_r,
+                                   name='Attn_r')
+                Attn_r = tf.reshape(Attn_r, [-1, 2*self.pad+self.relation_len,
+                                             embedding_size])
+            with tf.name_scope('matmul_s'):
+                Attn_match_flattened = tf.reshape(
+                    Attn_match,
+                    [-1, 2*self.pad+self.sentence_len])
+
+                Attn_s = tf.matmul(Attn_match_flattened, W_attn_s,
+                                   name='Attn_s')
+                Attn_s = tf.reshape(Attn_s, [-1, 2*self.pad+self.sentence_len,
+                                             embedding_size])
+
+            embedded_input_r_attended = tf.stack([Attn_r, embedded_input_r],
+                                                 axis=3)
+            embedded_input_s_attended = tf.stack([Attn_s, embedded_input_s],
+                                                 axis=3)
+
+
 
         # Convolution layers for query text, one conv-maxpool per filter size
         pooled_outputs = []
-        for i, filter_size in enumerate(filter_sizes):
+        for filter_size in filter_sizes:
             with tf.name_scope("conv-maxpool-q-%s" % filter_size):
                 # Convolution Layer
-                filter_shape = [filter_size, embedding_size, 1, num_filters]
+                filter_shape = [filter_size, embedding_size, 2, num_filters]
                 W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
                                                     seed=123),
                                 name="W")
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    embedded_input_s_expanded,
+                    embedded_input_s_attended,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
@@ -663,7 +710,7 @@ class DeepCNNAqquRelScorer():
                 # Apply nonlinearity
                 h = tf.nn.elu(tf.nn.bias_add(conv, b), name="elu")
                 # Maxpooling over the outputs
-                pooled = tf.nn.avg_pool(
+                pooled = tf.nn.max_pool(
                     h,
                     ksize=[1, 2*self.pad+self.sentence_len - filter_size + 1,
                            1, 1],
@@ -679,17 +726,17 @@ class DeepCNNAqquRelScorer():
 
         # Convolution layers for relations, one conv-maxpool per filter size
         pooled_outputs = []
-        for i, filter_size in enumerate(filter_sizes):
+        for filter_size in filter_sizes:
             with tf.name_scope("conv-maxpool-r-%s" % filter_size):
                 # Convolution Layer
-                filter_shape = [filter_size, embedding_size, 1, num_filters]
+                filter_shape = [filter_size, embedding_size, 2, num_filters]
                 W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
                                                     seed=123),
                                 name="W")
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    embedded_input_r_expanded,
+                    embedded_input_r_attended,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
@@ -697,7 +744,7 @@ class DeepCNNAqquRelScorer():
                 # Apply nonlinearity
                 h = tf.nn.elu(tf.nn.bias_add(conv, b), name="elu")
                 # Maxpooling over the outputs
-                pooled = tf.nn.avg_pool(
+                pooled = tf.nn.max_pool(
                     h,
                     ksize=[1, 2*self.pad+self.relation_len - filter_size + 1,
                            1, 1],
