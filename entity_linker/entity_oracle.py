@@ -61,15 +61,23 @@ class EntityOracle:
                         if mid.startswith('/type/datetime') \
                                 or mid.startswith('/un/'):
                             e = DateValue(span_str, get_value_for_year(span_str))
-                            ie = IdentifiedEntity(span, e.name, e, perfect_match=True)
+                            ie = IdentifiedEntity(span, e.name, e,
+                                                  types=['Date'],
+                                                  category='Date',
+                                                  perfect_match=True)
                             identified_entities.append(ie)
                         else:
                             entity = self.entity_index.get_entity_for_mid(mid)
                             if entity:
+                                types = self.entity_index.get_types_for_mid(mid, 1)
+                                category = self.entity_index.get_category_for_mid(mid)
                                 ie = IdentifiedEntity(span,
                                                       entity.name,
-                                                      entity, entity.score,
-                                                      1.0,
+                                                      entity,
+                                                      types=types,
+                                                      category=category,
+                                                      score=entity.score,
+                                                      surface_score=1.0,
                                                       perfect_match=True)
                                 identified_entities.append(ie)
                             else:

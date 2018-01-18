@@ -11,7 +11,6 @@ from collections import defaultdict
 import math
 import logging
 from itertools import chain
-from entity_linker.entity_linker import KBEntity
 from freebase import get_mid_from_qualified_string
 
 
@@ -32,7 +31,7 @@ N_GRAM_STOPWORDS = {'be', 'do', '?', 'the', 'of', 'is', 'are', 'in', 'was',
                     'and', 'an', 'as'}
 
 
-def get_n_grams(tokens, n=2):
+def get_ngrams(tokens, n=2):
     """Return n-grams for the given text tokens.
 
     n-grams are "_"-concatenated tokens.
@@ -43,21 +42,23 @@ def get_n_grams(tokens, n=2):
     return grams
 
 
-def get_n_grams_features(candidate):
+def get_ngram_features(candidate):
     """Get ngram features from the query of the candidate.
 
     :type candidate: QueryCandidate
     :param candidate:
     :return:
     """
-    query_text_tokens = [x.lower() for x in get_query_text_tokens(candidate)]
+    query_text_tokens = [x.lower()
+                         for x in
+                         get_query_text_tokens(candidate)]
     # First get bi-grams.
-    n_grams = get_n_grams(query_text_tokens, n=2)
+    ngrams = get_ngrams(query_text_tokens, n=2)
     # Then get uni-grams.
-    return chain(n_grams, get_n_grams(query_text_tokens, n=1))
+    return chain(ngrams, get_ngrams(query_text_tokens, n=1))
 
 
-def get_query_text_tokens(candidate, include_mid=False):
+def get_query_text_tokens(candidate):
     """
     Return the query text for the candidate.
     :param candidate:
@@ -75,20 +76,15 @@ def get_query_text_tokens(candidate, include_mid=False):
         if t.pos_ == 'PUNCT':
             continue
         if t in entity_tokens:
-            if include_mid and isinstance(entity_tokens[t].entity, KBEntity):
-                mid = entity_tokens[t].entity.id
-                # Don't repeat the same mid.
-                if len(query_text_tokens) > 0 and query_text_tokens[-1] == mid:
-                    continue
-                query_text_tokens.append(mid)
-            else:
-                # Don't replace if the previous token is an entity token.
-                # This conflates multiple tokens for the same entity
-                # but also multiple entities
-                if len(query_text_tokens) > 0 and query_text_tokens[-1] == '<entity>':
-                    continue
-                else:
-                    query_text_tokens.append('<entity>')
+            # Don't replace if the previous token is an entity token.
+            # This conflates multiple tokens for the same entity
+            # but also multiple entities
+            entity = entity_tokens[t]
+            placeholder = '['+entity.category.lower().replace(' ', '_')+']'
+            if query_text_tokens and query_text_tokens[-1] == placeholder:
+                # only need one per mention
+                continue
+            query_text_tokens.append(placeholder)
         else:
             query_text_tokens.append(t.orth_.lower())
     return query_text_tokens
@@ -278,7 +274,7 @@ def ngram_features(candidate, ngram_dict):
 
     relations = sorted(candidate.get_relation_names())
     all_rels = '_'.join(relations)
-    n_grams = get_n_grams_features(candidate)
+    n_grams = get_ngram_features(candidate)
     for ng in n_grams:
         # Ignore ngrams that only consist of stopfwords.
         if set(ng).issubset(N_GRAM_STOPWORDS):

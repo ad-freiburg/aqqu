@@ -108,16 +108,18 @@ class DateValue(Value):
         return self.value == other.value
 
 
-class IdentifiedEntity():
+class IdentifiedEntity:
     """An entity identified in some text."""
 
     def __init__(self, tokens,
                  name, entity,
+                 types,
+                 category,
                  score=0, surface_score=0,
                  perfect_match=False,
                  text_match=False,
                  text_query=False,
-                 entity_types=None):
+                 ):
         # A readable name to be displayed to the user.
         self.name = name
         # The tokens that matched this entity.
@@ -136,7 +138,9 @@ class IdentifiedEntity():
         # A flag indicating if this entity was obtained via text query
         self.text_query = text_query
         # The possible types of this entity in order of relevance descending
-        self.types = entity_types
+        self.types = types
+        # The FreebaseEasy category of this entity
+        self.category = category
 
     def as_string(self):
         t = ','.join(["%s" % t.orth_
@@ -165,11 +169,13 @@ class IdentifiedEntity():
                 self.tokens,
                 self.name,
                 copy.deepcopy(self.entity, memo),
+                copy.deepcopy(self.types, memo),
+                copy.deepcopy(self.category, memo),
                 copy.deepcopy(self.score, memo),
                 copy.deepcopy(self.surface_score, memo),
                 copy.deepcopy(self.perfect_match, memo),
-                copy.deepcopy(self.text_match, memo),
-                copy.deepcopy(self.types, memo))
+                copy.deepcopy(self.text_match, memo)
+                )
         return res
 
 
@@ -294,45 +300,58 @@ class EntityLinker:
                 if re.match(self.year_re, t.orth_):
                     year = t.orth_
                     e = DateValue(year, get_value_for_year(year))
-                    # TODO(schnelle) the year is currently used in training but should be more specific
-                    # tokens[i:i+1] gives us a span so it's consistent with other entities
-                    ie = IdentifiedEntity(tokens[i:i+1], e.name, e, perfect_match=True, entity_types=['Year'])
+                    # TODO(schnelle) the year is currently used in training but
+                    # should be more specific tokens[i:i+1] gives us a span so
+                    # it's consistent with other entities
+                    ie = IdentifiedEntity(tokens[i:i+1], e.name, e,
+                                          types=['Date'],
+                                          category='Date',
+                                          perfect_match=True)
                     identified_dates.append(ie)
         return identified_dates
 
     def identify_in_tokens(self, tokens, min_surface_score=0.1, lax_mode=False):
         '''
-        Actual entity identification function with a special lax mode where we are less
-        strict
+        Actual entity identification function with a special lax mode where we
+        are less strict
         '''
         n_tokens = len(tokens)
         identified_entities = []
         for start in range(n_tokens):
             for end in range(start + 1, n_tokens + 1):
                 entity_tokens = tokens[start:end]
-                if not lax_mode and not self.is_entity_occurrence(tokens, start, end):
+                if not lax_mode and not self.is_entity_occurrence(tokens,
+                                                                  start, end):
                     continue
-                entity_str = entity_tokens.text 
-                logger.debug("Checking if '{0}' is an entity.".format(entity_str))
-                entities = self.entity_index.get_entities_for_surface(entity_str)
-                logger.debug("Found {0} raw entities".format(len(entities)))
+                entity_str = entity_tokens.text
+                logger.debug("Checking if '%s' is an entity.", entity_str)
+                entities = self.entity_index.get_entities_for_surface(
+                    entity_str)
+                logger.debug("Found %r raw entities", len(entities))
                 # No suggestions.
-                if len(entities) == 0:
+                if not entities:
                     continue
-                for e, surface_score in entities:
+                for ent, surface_score in entities:
                     # Ignore entities with low surface score.
                     if surface_score < min_surface_score:
                         continue
                     perfect_match = False
-                    # Check if the main name of the entity exactly matches the text.
-                    if self._text_matches_main_name(e, entity_str):
+                    # Check if the main name of the entity exactly matches the
+                    # text.
+                    if self._text_matches_main_name(ent, entity_str):
                         perfect_match = True
-                    types = self.entity_index.get_types_for_mid(e.id, self.max_types)
-                    ie = IdentifiedEntity(tokens[start:end],
-                                          e.name, e, e.score, surface_score,
-                                          perfect_match, entity_types=types)
+                    types = self.entity_index.get_types_for_mid(ent.id,
+                                                                self.max_types)
+                    category = self.entity_index.get_category_for_mid(ent.id)
+                    ide = IdentifiedEntity(tokens[start:end],
+                                           ent.name, ent,
+                                           types=types,
+                                           category=category,
+                                           score=ent.score,
+                                           surface_score=surface_score, 
+                                           perfect_match=perfect_match)
                     # self.boost_entity_score(ie)
-                    identified_entities.append(ie)
+                    identified_entities.append(ide)
         return identified_entities
 
     def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):

@@ -63,9 +63,9 @@ class QueryTranslator(object):
         scorer = ranker.SimpleScoreRanker('DefaultScorer')
         entity_index = EntityIndex.init_from_config()
         entity_linker = scorer.parameters.\
-                entity_linker_class.init_from_config(
-                        scorer.get_parameters(),
-                        entity_index)
+            entity_linker_class.init_from_config(
+                scorer.get_parameters(),
+                entity_index)
         answer_type_identifier = AnswerTypeIdentifier.init_from_config()
         return QueryTranslator(backend, query_extender,
                                entity_linker, nlp, scorer, entity_index,

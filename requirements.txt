@@ -12,7 +12,7 @@ dill==0.2.7
 Flask==0.12.2
 Flask-Compress==1.4.0
 ftfy==4.4.3
-gensim==2.2.0
+gensim==3.2.0
 html5lib==0.9999999
 idna==2.5
 itsdangerous==0.24

@@ -27,6 +27,7 @@ LOG = logging.getLogger(__name__)
 
 CONTROL_PREFIX = b'ctl:'
 ETYPES_PREFIX = b'ets:'
+ECATEGORY_PREFIX = b'cat:'
 ENTITY_PREFIX = b'ent:'
 SURFACE_PREFIX = b'srf:'
 
@@ -63,7 +64,7 @@ def timestamp():
     return datetime.datetime.utcnow().isoformat().encode('utf-8')
 
 
-class EntityIndex(object):
+class EntityIndex:
     """
     A memory based index for finding entities by their surface form,
     their name and their types ordered by relevance.
@@ -73,10 +74,12 @@ class EntityIndex(object):
                  entity_list_file,
                  surface_map_file,
                  entity_index_prefix,
-                 entity_types_map_file):
+                 entity_types_map_file,
+                 entity_category_map_file):
         self.entity_list_file = entity_list_file
         self.surface_map_file = surface_map_file
         self.entity_types_map_file = entity_types_map_file
+        self.entity_category_map_file = entity_category_map_file
         self.entity_db = self._get_entity_db(entity_index_prefix)
         LOG.info("Done initializing surface index.")
 
@@ -97,6 +100,8 @@ class EntityIndex(object):
             self._build_entity_vocabulary(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'entity_types_loaded'):
             self._build_entity_types(entity_db)
+        if not entity_db.get(CONTROL_PREFIX+b'entity_categories_loaded'):
+            self._build_entity_categories(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'surfaces_loaded'):
             self._build_surface_index(entity_db)
         # Now we can reopen in read-only mode so as to allow
@@ -130,7 +135,7 @@ class EntityIndex(object):
 
     def _build_entity_types(self, entity_db):
         """
-        Create mapping from MID to offset/ID.
+        Create mapping from MID to entity type.
         """
         LOG.info("Building entity -> types db")
 
@@ -146,6 +151,30 @@ class EntityIndex(object):
                 entity_db.put(ETYPES_PREFIX+mid, cols[1])
         entity_db.put(CONTROL_PREFIX+b'entity_types_loaded', timestamp())
         LOG.info("Loaded %s entity -> types mappings", num_lines)
+
+    def _build_entity_categories(self, entity_db):
+        """
+        Create mapping from MID to FreebaseEasy categories
+        """
+        LOG.info("Building entity -> category db")
+
+        # Remember the offset for each type list
+        num_lines = 0
+        with open(self.entity_category_map_file, 'rb') as in_file:
+            for line in in_file:
+                num_lines += 1
+                if num_lines % 1000000 == 0:
+                    LOG.info('Read %s lines', num_lines)
+                cols = line.strip().split(b'\t')
+                mid = cols[0]
+                if len(cols) < 2:
+                    LOG.info('Missing category for: %s', mid)
+                    category = b'Unknown'
+                else:
+                    category = cols[1]
+                entity_db.put(ECATEGORY_PREFIX+mid, category)
+        entity_db.put(CONTROL_PREFIX+b'entity_categories_loaded', timestamp())
+        LOG.info("Loaded %s entity -> category mappings", num_lines)
 
     def _build_entity_vocabulary(self, entity_db):
         """
@@ -181,8 +210,11 @@ class EntityIndex(object):
                                                  'entity-index-prefix')
         entity_types_map = config_options.get('EntityIndex',
                                               'entity-types-map')
+        entity_category_map = config_options.get('EntityIndex',
+                                                 'entity-category-map')
         return EntityIndex(entity_list_file, entity_surface_map,
-                           entity_index_prefix, entity_types_map)
+                           entity_index_prefix, entity_types_map,
+                           entity_category_map)
 
     def get_entity_for_mid(self, mid: str) -> 'entity_linker.KBEntity':
         """Returns the entity object for the MID or None if the MID is unknown.
@@ -214,6 +246,18 @@ class EntityIndex(object):
         types = EntityIndex._bytes_to_types(line)
         # Note: list[:None] == list[:]
         return types[:max_len]
+
+    def get_category_for_mid(self, mid):
+        """
+        Returns the FreebaseEasy category for the entity with the given mid
+        """
+        mid = mid.encode('utf-8')
+        category_raw = self.entity_db.get(ECATEGORY_PREFIX+mid)
+        if not category_raw:
+            LOG.debug("No category known for mid: '%s'.", mid)
+            return 'Unknown'
+
+        return category_raw.decode('utf-8')
 
     def get_entities_for_surface(self, surface):
         """Return all entities for the surface form.
@@ -258,7 +302,6 @@ class EntityIndex(object):
         """
         types = [t.decode('utf-8') for t in line.strip().split(b' ')]
         return types
-
 
 
 def main():

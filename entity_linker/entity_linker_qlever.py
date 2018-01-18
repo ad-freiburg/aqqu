@@ -79,9 +79,17 @@ class EntityLinkerQlever(EntityLinker):
         entities = []
         for row in results:
             kbe = KBEntity(row[1], row[0], int(row[2]), [])
+            types = self.entity_index.get_types_for_mid(kbe.id,
+                                                        self.max_types)
+            category = self.entity_index.get_category_for_mid(kbe.id)
             identified = IdentifiedEntity([],
-                                          kbe.name, kbe, kbe.score, 1,
-                                          False, text_query=True)
+                                          kbe.name, kbe,
+                                          types=types,
+                                          category=category,
+                                          score=kbe.score, 
+                                          surface_score=1,
+                                          perfect_match=False,
+                                          text_query=True)
             entities.append(identified)
         return sorted(entities, key=lambda ie: ie.score, reverse=True)
 

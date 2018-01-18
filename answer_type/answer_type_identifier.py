@@ -120,7 +120,7 @@ def gq_read(gq_path, entity_index):
             # skip it
             if len(em_answer.types) == 1 and em_answer.types[0] == 'UNK':
                 continue
-
+            # TODO handle entity categories
             answer_tokens = [DummyToken(tok)
                              for tok in em_answer.tokens]
             ie_answer = IdentifiedEntity(answer_tokens,

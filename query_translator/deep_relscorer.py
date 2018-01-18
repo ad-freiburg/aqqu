@@ -9,7 +9,7 @@ import numpy as np
 import joblib
 import config_helper
 import tensorflow as tf
-from gensim import models
+from gensim.models import Word2Vec
 from sklearn import utils
 
 from . import feature_extraction
@@ -45,6 +45,7 @@ class DeepCNNAqquRelScorer():
         self.probs = None
         self.loss = None
 
+        self.Wembed = None
         self.input_s = None
         self.input_r = None
         self.input_y = None
@@ -76,11 +77,13 @@ class DeepCNNAqquRelScorer():
         np.random.seed(123)
         global gensim_model
         if gensim_model is None:
-            gensim_model = models.Word2Vec.load(gensim_model_fname)
+            logger.info("Loading word vectors from %s", gensim_model_fname)
+            gensim_model = Word2Vec.load(
+                gensim_model_fname)
         vector_size = gensim_model.vector_size
         vocab = {}
         # +1 for UNK +1 for PAD, + 1 for ENTITY, + 1 for STRTS
-        num_words = len(gensim_model.vocab) + 3
+        num_words = len(gensim_model.wv.vocab) + 4
         logger.info("#words: %d", num_words)
         vectors = np.zeros(shape=(num_words, vector_size), dtype=np.float32)
         # Vector for PAD, 0 is reserved for PAD
@@ -101,7 +104,7 @@ class DeepCNNAqquRelScorer():
         vectors[STRTS_ID] = np.random.uniform(-0.05, 0.05,
                                               vector_size)
         #tmin, tmax, tavg = 0.0, 0.0, 0.0
-        for w in gensim_model.vocab:
+        for w in gensim_model.wv.vocab:
             vector_index = len(vocab)
             vocab[w] = vector_index
             vectors[vector_index, :] = gensim_model[w]
@@ -226,7 +229,7 @@ class DeepCNNAqquRelScorer():
                                   dev_examples, dev_qids, dev_f1s)
 
 
-    def init_new_model(self, embeddings, embedding_size):
+    def init_new_model(self):
         """
         Initialize an empty model for learning from scratch
         """
@@ -244,9 +247,7 @@ class DeepCNNAqquRelScorer():
 
         with self.g.as_default():
             tf.set_random_seed(42)
-            self.build_deep_model(embeddings,
-                                  embedding_size,
-                                  filter_sizes=self.filter_sizes)
+            self.build_deep_model(filter_sizes=self.filter_sizes)
 
             gpu_options = tf.GPUOptions(
                 per_process_gpu_memory_fraction=0.9)
@@ -276,7 +277,7 @@ class DeepCNNAqquRelScorer():
             self.extend_vocab_for_relwords(train_pos)
             self.extend_vocab_for_relwords(train_neg)
             self.UNK_ID = self.vocab[DeepCNNAqquRelScorer.UNK]
-            self.init_new_model(self.embeddings, self.embedding_size)
+            self.init_new_model()
 
         # because extract_vectors sets the seed and isn't always executed
         np.random.seed(123)
@@ -322,6 +323,7 @@ class DeepCNNAqquRelScorer():
                             labels = [1 for _ in range(x_b.shape[0])]
                             input_y = np.array(labels, dtype=float).reshape((len(labels), 1))
                             feed_dict = {
+                                self.Wembed: self.embeddings,
                                 self.input_y: input_y,
                                 self.input_s: x_b,
                                 self.input_r: x_rel_b,
@@ -347,6 +349,7 @@ class DeepCNNAqquRelScorer():
                         """
                         y_batch, x_batch, x_rel_batch = batch
                         feed_dict = {
+                            self.Wembed: self.embeddings,
                             self.input_y: y_batch,
                             self.input_s: x_batch,
                             self.input_r: x_rel_batch,
@@ -536,9 +539,7 @@ class DeepCNNAqquRelScorer():
                 os.makedirs(log_name)
             self.writer = tf.summary.FileWriter(log_name)
             with self.g.as_default():
-                self.build_deep_model(self.embeddings,
-                                      self.embedding_size,
-                                      filter_sizes=self.filter_sizes)
+                self.build_deep_model(filter_sizes=self.filter_sizes)
                 self.saver = tf.train.Saver(save_relative_paths=True)
                 session_conf = tf.ConfigProto(
                     allow_soft_placement=True)
@@ -554,6 +555,7 @@ class DeepCNNAqquRelScorer():
             candidate.get_relation_names()
             )])
         feed_dict = {
+            self.Wembed: self.embeddings,
             self.input_s: words,
             self.input_r: rel_features,
             self.dropout_keep_prob: 1.0
@@ -585,14 +587,12 @@ class DeepCNNAqquRelScorer():
                 feature_extraction.get_query_text_tokens(candidate),
                 candidate.get_relation_names()
                 ) for candidate in candidates]
-            #for candidate_rel in candidate_relations:
-            #    logger.info('query_tokens: %r', candidate_rel[0])
-            #    logger.info('relation_tokens: %r', candidate_rel[1])
             if not candidates:
                 break
             words, rel_features = \
                 self.create_batch_features(candidate_relations)
             feed_dict = {
+                self.Wembed: self.embeddings,
                 self.input_s: words,
                 self.input_r: rel_features,
                 self.dropout_keep_prob: 1.0
@@ -612,12 +612,13 @@ class DeepCNNAqquRelScorer():
         assert len(result) == len(score_candidates)
         return result
 
-    def build_deep_model(self, embeddings, embedding_size,
+    def build_deep_model(self,
                          filter_sizes=(2, 3, 4), num_filters=128,
                          n_hidden_nodes_1=200,
                          num_classes=1):
         logger.info("sentence_len: %s", self.sentence_len)
-        logger.info("embedding_size: %s", embedding_size)
+        embedding_size = self.embeddings.shape[1]
+        logger.info("embedding_shape: %r", self.embeddings.shape)
         logger.info("n_rel_parts: %s", self.n_rel_parts)
 
         self.input_s = tf.placeholder(tf.int32,
@@ -633,13 +634,20 @@ class DeepCNNAqquRelScorer():
 
         embedded_input_r = None
         embedded_input_s = None
+        with tf.device('/cpu:0'), tf.name_scope("load_embeddings"):
+            # to handle embeddings > 2 GB we need to use a placeholder
+            # see https://stackoverflow.com/q/46712934
+            #self.Wembed = tf.Variable(
+            #    embeddings,
+            #    name="Wembed",
+            #    trainable=False)
+            self.Wembed = tf.placeholder(
+                tf.float32, self.embeddings.shape,
+                name='Wembed')
+
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
-            Wembed = tf.Variable(
-                embeddings,
-                name="Wembed",
-                trainable=False)
-            embedded_input_r = tf.nn.embedding_lookup(Wembed, self.input_r)
-            embedded_input_s = tf.nn.embedding_lookup(Wembed, self.input_s)
+            embedded_input_r = tf.nn.embedding_lookup(self.Wembed, self.input_r)
+            embedded_input_s = tf.nn.embedding_lookup(self.Wembed, self.input_s)
 
         embedded_input_s_attended = None
         embedded_input_r_attended = None
@@ -668,7 +676,7 @@ class DeepCNNAqquRelScorer():
             with tf.name_scope('matmul_r'):
                 Attn_match_transpose_flattened = tf.reshape(
                     tf.transpose(Attn_match),
-                    [-1, 2*self.pad+self.relation_len])
+                    [-1, 2*self.pad+self.relation_len]) 
                 Attn_r = tf.matmul(Attn_match_transpose_flattened, W_attn_r,
                                    name='Attn_r')
                 Attn_r = tf.reshape(Attn_r, [-1, 2*self.pad+self.relation_len,
@@ -676,7 +684,7 @@ class DeepCNNAqquRelScorer():
             with tf.name_scope('matmul_s'):
                 Attn_match_flattened = tf.reshape(
                     Attn_match,
-                    [-1, 2*self.pad+self.sentence_len])
+                    [-1, 2*self.pad+self.sentence_len]) 
 
                 Attn_s = tf.matmul(Attn_match_flattened, W_attn_s,
                                    name='Attn_s')

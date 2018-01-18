@@ -17,7 +17,6 @@ from .deep_relscorer import DeepCNNAqquRelScorer
 import random
 import config_helper
 import numpy as np
-from functools import partial
 from random import Random
 from sklearn import utils
 from sklearn import metrics
@@ -68,7 +67,7 @@ def Compare2Key(key_func, cmp_func):
             return cmp_func(key_func(self.obj), key_func(other.obj)) != 0
     return K
 
-class RankScore(object):
+class RankScore:
     """A simple score for each candidate.
     """
 
@@ -78,7 +77,7 @@ class RankScore(object):
     def as_string(self):
         return "%s" % self.score
 
-class RankerParameters(object):
+class RankerParameters:
     """A class that holds parameters for the ranker."""
 
     def __init__(self):
@@ -117,7 +116,7 @@ class RankerParameters(object):
         return suffix
 
 
-class Ranker(object):
+class Ranker:
     """Superclass for rankers.
 
     The default is to compute a score for each candidate
@@ -315,7 +314,7 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
-        f_extract = partial(f_ext.extract_features)
+        f_extract = f_ext.extract_features
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate onc
         labels, features = construct_train_examples(train_queries,
