@@ -16,4 +16,4 @@ RUN python3 -m spacy download en
 COPY . /app/
 WORKDIR /app/
 RUN python3 setup.py build_ext --inplace
-CMD ["python",  "-m", "query_translator.learner", "train", "WQSP_Ranker"]
+CMD ["python3",  "-m", "query_translator.learner", "train", "WQSP_Ranker"]

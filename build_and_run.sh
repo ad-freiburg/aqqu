@@ -22,12 +22,14 @@ if [ $# -gt 2 ];then
 fi
 echo "-----------------------------------------------------------------"
 echo Executing $DOCKER_CMD build -t "aqqu_$1_$2" -f "Dockerfile.$1" .
-$DOCKER_CMD build -t "aqqu_$1_$2" -f "Dockerfile.$1" .
+$DOCKER_CMD build -t "aqqu_$1_$2" --build-arg LEARNER_BASE=$2 -f "Dockerfile.$1" .
 echo "-----------------------------------------------------------------"
+
+VOLUME="$(pwd)/$DATA_DIR:/app/data"
 if [ "$1" == "learner" ]; then
-	echo Executing $DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
-	$DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
+	echo "Learner"
+	$DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" -v $VOLUME  "aqqu_$1_$2"
 else
-	echo Executing $DOCKER_CMD run --rm -p 0.0.0.0:$PORT:8090 -d --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
-	$DOCKER_CMD run --rm -d -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" -v "$(pwd)/$DATA_DIR:/app/data" "aqqu_$1_$2"
+	echo "Backend"
+	$DOCKER_CMD run --rm -d -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" -v $VOLUME "aqqu_$1_$2"
 fi
