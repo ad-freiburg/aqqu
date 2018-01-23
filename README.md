@@ -15,15 +15,30 @@ Setup is easy if all pre-requisites are met.
 * RAM: 40 GB for training the large WebQuestions models
 * Disk: about 40 GB for all pre-requisite data
 
-## Commands to run training in nvidia-docker
+## Get the Dataset
+
+All data required for learning can be found under
+`/nfs/datastets/aqqu_input_data`, all other data is generated automatically.
+
+    cp -r /nfs/datasets/aqqu_input_data/* input/
+
+## Train with the provided script
+
+    ./build_and_run.sh learner <user_provided_name> <port>
+
+## Run with the provided script
+
+    ./build_and_run.sh backend <user_provided_name> <port>
+
+## Commands to run training in nvidia-docker manually
 
     nvidia-docker build -t tf_aqqu_learner -f Dockerfile.learner .
-    nvidia-docker run --rm -it --name tf_aqqu_learner_inst -v $(pwd)/data/:/app/data tf_aqqu_learner
+    nvidia-docker run --rm -it --name tf_aqqu_learner_inst -v $(pwd)/data/:/app/data -v $(pwd)/input/:/app/input tf_aqqu_learner
 
-## Commands to run the backend in nvidia-docker
+## Commands to run the backend in nvidia-docker manually
 
     nvidia-docker build -t tf_aqqu_backend -f Dockerfile.backend .
-    nvidia-docker run --rm -it --name tf_aqqu_backend_inst -v $(pwd)/data/:/app/data tf_aqqu_backend
+    nvidia-docker run --rm -it --name tf_aqqu_backend_inst -v $(pwd)/data/:/app/data -v $(pwd)/input/:/app/input  tf_aqqu_backend
 
 
 

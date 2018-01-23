@@ -339,6 +339,7 @@ class EntityLinker:
                     # Check if the main name of the entity exactly matches the
                     # text.
                     if self._text_matches_main_name(ent, entity_str):
+                        logger.debug("Perfect match: %s", entity_str)
                         perfect_match = True
                     types = self.entity_index.get_types_for_mid(ent.id,
                                                                 self.max_types)
