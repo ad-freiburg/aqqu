@@ -11,8 +11,8 @@ if [ ! -d $DATA_DIR ]; then
 	DATA_DIR="../aqqu/data"
 fi
 
-if [ $# -lt 2 ] || [ "$1" != "backend" ] && [ "$1" != "learner" ]; then
-	echo "Usage: $0 [backend|learner] name [PORT]"
+if [ $# -lt 2 ] || [ "$1" != "backend" ] && [ "$1" != "learner" ] && [ "$1" != "debug" ]; then
+	echo "Usage: $0 [backend|debug|learner] name [PORT]"
 	exit 1
 fi
 
@@ -29,7 +29,10 @@ VOLUME="$(pwd)/$DATA_DIR:/app/data"
 if [ "$1" == "learner" ]; then
 	echo "Learner"
 	$DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" -v $VOLUME  "aqqu_$1_$2"
-else
+elif [ "$1" == "backend" ]; then
 	echo "Backend"
 	$DOCKER_CMD run --rm -d -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" -v $VOLUME "aqqu_$1_$2"
+else
+	echo "Debug"
+	$DOCKER_CMD run --rm -it -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" -v $VOLUME "aqqu_$1_$2"
 fi
