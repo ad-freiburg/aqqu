@@ -31,14 +31,23 @@ All data required for learning can be found under
     ./build_and_run.sh backend <user_provided_name> <port>
 
 ## Commands to run training in nvidia-docker manually
-
+    NAME=nameit
     nvidia-docker build -t tf_aqqu_learner -f Dockerfile.learner .
-    nvidia-docker run --rm -it --name tf_aqqu_learner_inst -v $(pwd)/data/:/app/data -v $(pwd)/input/:/app/input tf_aqqu_learner
+    nvidia-docker run --rm -it --name tf_aqqu_learner_inst 
+       -v $(pwd)/data/:/app/data \
+       -v $(pwd)/input/:/app/input \
+       -v $(pwd)/models/:/app/models \
+       aqqu_learner_$NAME
 
 ## Commands to run the backend in nvidia-docker manually
 
-    nvidia-docker build -t tf_aqqu_backend -f Dockerfile.backend .
-    nvidia-docker run --rm -it --name tf_aqqu_backend_inst -v $(pwd)/data/:/app/data -v $(pwd)/input/:/app/input  tf_aqqu_backend
+    NAME=nameit
+    nvidia-docker build -t tf_aqqu_backend --build-arg LEARNER_BASE=$NAME -f Dockerfile.backend .
+    nvidia-docker run --rm -it --name tf_aqqu_backend_inst \
+       -v $(pwd)/data/:/app/data \
+       -v $(pwd)/input/:/app/input \
+       -v $(pwd)/models/:/app/models \
+       aqqu_backend_$NAME
 
 
 

@@ -25,13 +25,26 @@ echo "-----------------------------------------------------------------"
 
 INPUT_VOLUME="$(pwd)/$INPUT_DIR:/app/input"
 WORKDATA_VOLUME="$(pwd)/$WORKDATA_DIR:/app/data"
+MODELS_VOLUME="aqqu_learner_$2_models_vol:/app/models"
 if [ "$1" == "learner" ]; then
 	echo "Learner"
-	$DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" -v $INPUT_VOLUME  -v $WORKDATA_VOLUME "aqqu_$1_$2"
+	$DOCKER_CMD run --rm -it --name "aqqu_$1_$2_inst" \
+		-v $INPUT_VOLUME \
+		-v $WORKDATA_VOLUME \
+		-v $MODELS_VOLUME \
+		"aqqu_$1_$2"
 elif [ "$1" == "backend" ]; then
 	echo "Backend"
-	$DOCKER_CMD run --rm -d -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" -v $INPUT_VOLUME  -v $WORKDATA_VOLUME "aqqu_$1_$2"
+	$DOCKER_CMD run --rm -d -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" \
+		-v $INPUT_VOLUME  \
+		-v $WORKDATA_VOLUME \
+		-v $MODELS_VOLUME \
+		"aqqu_$1_$2"
 else
 	echo "Debug"
-	$DOCKER_CMD run --rm -it -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" -v $INPUT_VOLUME  -v $WORKDATA_VOLUME "aqqu_$1_$2"
+	$DOCKER_CMD run --rm -it -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" \
+		-v $INPUT_VOLUME  \
+		-v $WORKDATA_VOLUME \
+		-v $MODELS_VOLUME \
+		"aqqu_$1_$2"
 fi
