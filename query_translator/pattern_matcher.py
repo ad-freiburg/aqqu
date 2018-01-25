@@ -1018,6 +1018,7 @@ class QueryCandidateExtender:
                 match.cardinality = max_count
                 new_query_candidate = query_candidate.extend_with_relation_and_variable(
                     max_rel,
+                    max_rel,
                     match,
                     True)
                 new_query_candidate.target_nodes = [
