@@ -1,5 +1,7 @@
 ARG LEARNER_BASE
 FROM aqqu_learner_$LEARNER_BASE
 EXPOSE 8090
+
 COPY . /app/
-CMD ["python3",  "-m", "translator_server", "WQSP_Ranker"]
+ENTRYPOINT ["python3",  "-m", "translator_server"]
+CMD ["WQSP_Ranker"]
