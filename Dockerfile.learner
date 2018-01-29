@@ -1,15 +1,16 @@
 FROM gcr.io/tensorflow/tensorflow:latest-gpu-py3
 RUN apt-get update && apt-get install -y python3-pip make
 
-COPY . /app/
+COPY requirements.txt /app/
 WORKDIR /app/
-# App specific rules follow
+# App specific setup rules follow
 RUN apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
 RUN pip3 install -r requirements.txt
 RUN python3 -m spacy download en
-RUN python3 setup.py build_ext --inplace
 
+COPY . /app/
+RUN python3 setup.py build_ext --inplace
 VOLUME ["/app/models", "/app/data", "/app/input"]
 
 ENTRYPOINT ["python3",  "-m", "query_translator.learner"]
-CMD ["train", "WQSP_Ranker"]
+CMD ["train", "WQ_Ranker_tiny"]
