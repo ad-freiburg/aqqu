@@ -612,7 +612,7 @@ class CandidatePruner(MLModel):
         neg_class_weight /= total_weight
         # with old ranking 1.0 works best, followed by 1.2
         # with new ranking 1.5 works a lot better
-        pos_class_boost = 1.0
+        pos_class_boost = 1.2
         label_encoder = LabelEncoder()
         logger.info(X[-1])
         labels = label_encoder.fit_transform(labels)
