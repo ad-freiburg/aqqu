@@ -30,6 +30,10 @@ scorer_list = [ranker.AqquModel('F917_Ranker',
                                 "webquestionstrain",
                                 top_ngram_percentile=5,
                                 rel_regularization_C=1e-5),
+               ranker.AqquModel('WQ_Ranker_tiny',
+                                "webquestionstrain_tiny",
+                                top_ngram_percentile=5,
+                                rel_regularization_C=1e-5),
                ranker.AqquModel('WQSP_Ranker',
                                 "wqsptrain",
                                 top_ngram_percentile=5,
@@ -114,6 +118,9 @@ DATASETS = OrderedDict(
      ('webquestionstrain_2of2',
       'evaluation-data/'
       'webquestions.train_2of2.json'),
+     ('webquestionstrain_tiny',
+      'evaluation-data/'
+      'webquestions.train_tiny.json'),
      ('free917test',
       'evaluation-data/'
       'free917.test.json'),
