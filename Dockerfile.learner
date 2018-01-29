@@ -13,4 +13,4 @@ RUN python3 setup.py build_ext --inplace
 VOLUME ["/app/models", "/app/data", "/app/input"]
 
 ENTRYPOINT ["python3",  "-m", "query_translator.learner"]
-CMD ["train", "WQ_Ranker_tiny"]
+CMD ["train", "WQ_Ranker"]
