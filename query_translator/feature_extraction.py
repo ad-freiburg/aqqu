@@ -307,7 +307,8 @@ def extract_features(candidates,
     if deep_rel_score_model:
         deep_rel_scores = deep_rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
-            f['deep_relation_score'] = float(deep_rel_scores[i].score)
+            deep_rel_score_raw = float(deep_rel_scores[i].score)
+            f['deep_relation_score'] = max(0.0, deep_rel_score_raw)
     if rel_score_model:
         rel_scores = rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
