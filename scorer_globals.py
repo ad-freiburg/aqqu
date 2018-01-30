@@ -34,6 +34,15 @@ scorer_list = [ranker.AqquModel('F917_Ranker',
                                 "webquestionstrain_tiny",
                                 top_ngram_percentile=5,
                                 rel_regularization_C=1e-5),
+
+               ranker.AqquModel('SQ_Ranker_tiny',
+                                "sqtrain_tiny",
+                                top_ngram_percentile=5,
+                                rel_regularization_C=1e-5),
+               ranker.AqquModel('SQ_Ranker',
+                                "sqtrain",
+                                top_ngram_percentile=5,
+                                rel_regularization_C=1e-5),
                ranker.AqquModel('WQSP_Ranker',
                                 "wqsptrain",
                                 top_ngram_percentile=5,
@@ -91,7 +100,16 @@ scorers_dict = OrderedDict(
 
 # A dict of dataset name and file.
 DATASETS = OrderedDict(
-    [('free917train',
+    [('sqtrain_tiny',
+      'evaluation-data/'
+      'simple_questions_train_tiny.tsv'),
+     ('sqtrain',
+      'evaluation-data/'
+      'simple_questions_train.tsv'),
+     ('sqvalidate',
+      'evaluation-data/'
+      'simple_questions_valid.tsv'),
+     ('free917train',
       'evaluation-data/'
       'free917.train.json'),
      ('webquestionstrain',

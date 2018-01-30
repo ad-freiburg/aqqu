@@ -5,12 +5,13 @@ Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-from collections import namedtuple
-from dateutil import parser as dateparser
 import logging
 import random
 import json
 import time
+from collections import namedtuple
+
+from dateutil import parser as dateparser
 
 logger = logging.getLogger(__name__)
 
@@ -24,21 +25,32 @@ def load_eval_queries(dataset):
     """
     import scorer_globals
     dataset_file = scorer_globals.DATASETS[dataset]
-    return EvaluationQuery.queries_from_json_file(dataset_file)
+    eval_queries = []
+    if dataset_file.endswith('.json'):
+        eval_queries = EvaluationQuery.queries_from_json_file(
+            dataset_file)
+    else:
+        eval_queries = EvaluationQuery.queries_from_simple_questions(
+            dataset_file)
+    return eval_queries
 
 
-class EvaluationQuery(object):
+
+class EvaluationQuery:
     """A query from a dataaset to be evaluated / processed.
 
     This class serves as the structure which ground-truth queries must
     provide.
     """
 
-    def __init__(self, q_id, utterance, target_results, target_sparqls):
+    def __init__(self, q_id, utterance,
+                 targets_mids, targets_names, targets_sparqls):
         self.id = q_id
         self.utterance = utterance
-        self.target_results = target_results
-        self.target_sparqls = target_sparqls
+        # targets are mid strings or numeric/date/.. values
+        self.targets_mids = targets_mids
+        self.targets_names = targets_names
+        self.targets_sparqls = targets_sparqls
         # When processed, the ranked list of candidates returned.
         self.eval_candidates = []
         self.oracle_position = -1
@@ -75,6 +87,33 @@ class EvaluationQuery(object):
         return d
 
     @staticmethod
+    def queries_from_simple_questions(filename):
+        """Load evaluation queries from SimpleQuestion TSV files"""
+        # SimpleQuestions uses a simple TSV format with
+        # <subject_url>\t<predicate_url>\t<object_url>\n
+        skip_len = len('www.freebase.com/')
+
+        def sq_normalize(url):
+            """Normalize a SimpleQuestions URLs:
+            URLs here have the form: www.freebase.com/m/04whkz5 but we want
+            mids of the form m.04whkz5
+            """
+            return url[skip_len:].replace('/', '.')
+
+        eval_queries = []
+        with open(filename, 'r', encoding='utf-8') as sq_file:
+            for idn, line in enumerate(sq_file):
+                _, _, obj_url, utterance = line.split('\t')
+                obj_mid = sq_normalize(obj_url)
+                mids = [obj_mid]
+                eval_queries.append(
+                    EvaluationQuery(idn, utterance.strip(),
+                                    [mids],
+                                    None,
+                                    None))
+        return eval_queries
+
+    @staticmethod
     def queries_from_json_file(filename):
         """Load evaluation queries from a file."""
         queries_json = json.load(open(filename, 'r', encoding='utf-8'))
@@ -85,6 +124,7 @@ class EvaluationQuery(object):
                 eval_queries.append(
                     EvaluationQuery(int(query['id']),
                                     query['utterance'],
+                                    None,
                                     [query['result']],
                                     [query.get('targetOrigSparql', None)]))
         elif isinstance(queries_json, dict):
@@ -92,43 +132,51 @@ class EvaluationQuery(object):
             questions = queries_json['Questions']
             for idn, question in enumerate(questions):
                 utterance = question['RawQuestion']
-                possible_results = []
-                possible_target_sparqls = []
+                possible_targets = []
+                possible_targets_names = []
+                possible_targets_sparqls = []
                 for parse in question['Parses']:
-                    possible_target_sparqls.append(parse['Sparql'])
+                    possible_targets_sparqls.append(parse['Sparql'])
+                    result_names = []
                     results = []
                     for answer in parse['Answers']:
                         atype = answer['AnswerType']
                         if atype == 'Entity':
-                            results.append(answer['EntityName'])
+                            result_names.append(answer['EntityName'])
                         elif atype == 'Value':
-                            results.append(answer['AnswerArgument'])
-                    possible_results.append(results)
+                            result_names.append(answer['AnswerArgument'])
+                        # results are mid strings or numeric/date/.. values
+                        results = answer['AnswerArgument']
+                    possible_targets_names.append(result_names)
+                    possible_targets.append(results)
                 eval_queries.append(
                     EvaluationQuery(idn, utterance,
-                                    possible_results,
-                                    possible_target_sparqls))
+                                    possible_targets,
+                                    possible_targets_names,
+                                    possible_targets_sparqls))
 
         return sorted(eval_queries, key=lambda x: x.id)
 
 
-class EvaluationCandidate(object):
+class EvaluationCandidate:
     """A candidate that was executed and can be evaluated."""
-    def __init__(self, query_candidate, executed_sparql, prediction):
+    def __init__(self, query_candidate,
+                 executed_sparql, prediction, prediction_names):
         self.query_candidate = query_candidate
         self.executed_sparql = executed_sparql
         self.prediction = prediction
+        self.prediction_names = prediction_names
         # Is set when evaluated.
         self.evaluation_result = None
 
     def __getstate__(self):
-        """When pickling we don't store the actual result."""
+        """Used during pickeling"""
         d = dict(self.__dict__)
         # d['prediction'] = []
         return d
 
 
-class CandidateEvaluationResult(object):
+class CandidateEvaluationResult:
     """The evaluation result for a single candidate."""
 
     def __init__(self, precision, recall, f1, false_positives,
@@ -179,26 +227,30 @@ def evaluate_translator(translator, queries, n_queries=9999,
                     q.utterance.lower().startswith('in how many'):
                 continue
         if ignore_invalid:
-            if len(q.target_results) == 0:
+            if not q.targets_mids and not q.targets_names:
                 # Changed this, because it is debatable whether that is
                 # unanswerable bc the answer can be produced.
                 continue
-        logger.info("Translating query (id=%s) %s of %s for evaluation." %
-                    (q.id, n_translated_queries + 1, len(evaluation_queries)))
-        _, candidates = translator.translate_and_execute_query(q.utterance,
-                                                         n_top=n_top)
+        logger.info("Translating query (id=%s) %s of %s for evaluation.",
+                    q.id, n_translated_queries + 1, len(evaluation_queries))
+        _, candidates = translator.translate_and_execute_query(
+            q.utterance,
+            n_top=n_top)
         for candidate in candidates:
             query_result_rows = candidate.query_result
-            # Only want the readable name.
+
             result_strs = []
-            for r in query_result_rows:
-                if len(r) > 1 and r[1]:
-                    result_strs.append(r[1])
+            result_target_mids = []
+            for row in query_result_rows:
+                result_target_mids.append(row[0])
+                if len(row) > 1 and row[1]:
+                    result_strs.append(row[1])
                 else:
-                    result_strs.append(r[0])
+                    result_strs.append(row[0])
             executed_sparql = candidate.to_sparql_query(include_name=True)
             eval_candidate = EvaluationCandidate(candidate,
                                                  executed_sparql,
+                                                 result_target_mids,
                                                  result_strs)
             q.eval_candidates.append(eval_candidate)
         translated_queries.append(q)
@@ -231,14 +283,17 @@ def write_result_output(queries, output_file="eval_out.log"):
     :return:
     """
     logger.info("Writing results to %s." % output_file)
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
         for q in queries:
             q_text = q.utterance
-            
-            result_text = json.dumps(q.target_results[0])
+
+            if q.targets_names:
+                result_text = json.dumps(q.targets_names[0])
+            else:
+                result_text = json.dumps(q.targets_mids[0])
             actual_result = []
             if q.eval_candidates:
-                actual_result = q.eval_candidates[0].prediction
+                actual_result = q.eval_candidates[0].prediction_names
             actual_result_text = json.dumps(actual_result)
             f.write("%s\t%s\t%s\n" % (q_text, result_text,
                                       actual_result_text))
@@ -302,29 +357,43 @@ def evaluate_single_candidate(candidate, eval_query):
     :return:
     """
     candidate_results = []
-    target_results = eval_query.target_results
-    gold_result_sets = [parse_to_set(result) 
-                        for result in target_results]
-    prediction_set = parse_to_set(candidate.prediction)
-    for results_num, gold_result_set in enumerate(gold_result_sets):
+    # we prefer to target (m)ids but some datasets only have
+    # the ground truth as human readable entity names so fallback to
+    # that
+    targeting_mids = True
+    if eval_query.targets_mids:
+        gold_targets_list = eval_query.targets_mids
+    else:
+        gold_targets_list = eval_query.targets_names
+        targeting_mids = False
+    gold_targets_sets = [parse_to_set(targets)
+                         for targets in gold_targets_list]
+
+    if targeting_mids:
+        prediction_set = parse_to_set(candidate.prediction)
+    else:
+        prediction_set = parse_to_set(candidate.prediction_names)
+
+    for results_num, gold_target_set in enumerate(gold_targets_sets):
         true_positives = 0.0
         false_positives = []
         false_negatives = []
         # This is fast but ignores the case where entities with identical name
         # occur multiple times but in different quantities in predicted and
         # gold list. The effect overall is negligible (<0.1%), however.
-        if len(candidate.prediction) == len(target_results[results_num]) and \
-                len(gold_result_set) != len(prediction_set):
+        if len(candidate.prediction_names) == \
+           len(gold_targets_list[results_num]) and \
+           len(gold_target_set) != len(prediction_set):
             logger.debug("Result set has different size than result list.")
-        num_gold = len(gold_result_set)
+        num_gold = len(gold_target_set)
         num_predicted = len(prediction_set)
         for res in prediction_set:
-            if res in gold_result_set:
+            if res in gold_target_set:
                 true_positives += 1.0
-                gold_result_set.remove(res)
+                gold_target_set.remove(res)
             else:
                 false_positives.append(res)
-        false_negatives.extend(gold_result_set)
+        false_negatives.extend(gold_target_set)
         if num_gold == 0:
             if num_predicted == 0:
                 precision = 1.0
@@ -344,9 +413,9 @@ def evaluate_single_candidate(candidate, eval_query):
             if precision + recall > 0:
                 f1 = 2.0 * precision * recall / (precision + recall)
             if f1 == 1.0:
-                logger.debug("Perfect match: %s = %s." %
-                             (candidate.prediction,
-                              target_results[results_num]))
+                logger.debug("Perfect match: %s = %s.",
+                             candidate.prediction_names,
+                             gold_targets_list[results_num])
         candidate_results.append(CandidateEvaluationResult(precision,
                                                            recall, f1,
                                                            false_positives,
@@ -421,28 +490,31 @@ def evaluate(queries, output_file="eval_out.log"):
                                                        'avg_num_candidates'])
     num_q_no_answer = 0
     num_candidates = 0
-    for q in queries:
-        q.reset_results()
-        gold_results = q.target_results
-        candidates = q.eval_candidates
-        if len(gold_results) == 0:
+    for query in queries:
+        query.reset_results()
+        if query.targets_mids:
+            gold_targets_list = query.targets_mids
+        else:
+            gold_targets_list = query.targets_names
+        candidates = query.eval_candidates
+        if not gold_targets_list:
             num_q_no_answer += 1
         # We have no gold answer and no candidates.
-        if len(gold_results) == 0 and len(candidates) == 0:
-                q.precision = 1.0
-                q.recall = 1.0
-                q.f1 = 1.0
-                q.oracle_f1 = 1.0
-                q.false_negatives = []
-                q.false_positives = []
+        if not gold_targets_list and not candidates:
+                query.precision = 1.0
+                query.recall = 1.0
+                query.f1 = 1.0
+                query.oracle_f1 = 1.0
+                query.false_negatives = []
+                query.false_positives = []
         # No results -> precision = recall = f1 = 0.
         # We have a gold answer but no candidates.
-        if len(gold_results) > 0 and len(candidates) == 0:
-            q.precision = 0.0
-            q.recall = 0.0
-            q.f1 = 0.0
-            q.false_negatives = gold_results
-            q.false_positives = []
+        if gold_targets_list and not candidates:
+            query.precision = 0.0
+            query.recall = 0.0
+            query.f1 = 0.0
+            query.false_negatives = gold_targets_list
+            query.false_positives = []
         # We have candidates (but maybe no gold answer).
         else:
             num_candidates += len(candidates)
@@ -450,7 +522,8 @@ def evaluate(queries, output_file="eval_out.log"):
                 best_candidate_eval = prediction.evaluation_result
                 # Only compute if not already computed.
                 if not best_candidate_eval:
-                    candidate_evals = evaluate_single_candidate(prediction, q)
+                    candidate_evals = evaluate_single_candidate(
+                        prediction, query)
                     # TODO(schnelle) for WebQSP we currently simply count
                     # the best result
                     best_candidate_eval = sorted(candidate_evals,
@@ -458,18 +531,19 @@ def evaluate(queries, output_file="eval_out.log"):
                                                  reverse=True)[0]
                     prediction.evaluation_result = best_candidate_eval
                 if i == 0:
-                    q.precision = best_candidate_eval.precision
-                    q.recall = best_candidate_eval.recall
-                    q.f1 = best_candidate_eval.f1
-                    q.false_negatives = best_candidate_eval.false_negatives
-                    q.false_positives = best_candidate_eval.false_positives
-                if q.oracle_f1 < best_candidate_eval.f1:
-                    q.oracle_f1 = best_candidate_eval.f1
-                    q.oracle_position = i + 1
+                    query.precision = best_candidate_eval.precision
+                    query.recall = best_candidate_eval.recall
+                    query.f1 = best_candidate_eval.f1
+                    query.false_negatives = best_candidate_eval.false_negatives
+                    query.false_positives = best_candidate_eval.false_positives
+                if query.oracle_f1 < best_candidate_eval.f1:
+                    query.oracle_f1 = best_candidate_eval.f1
+                    query.oracle_position = i + 1
     num_queries = len(queries)
     num_unanswered_queries = float(len([q for q in queries
                                         if not q.eval_candidates]))
-    num_answered_queries = float(len([q for q in queries if q.eval_candidates]))
+    num_answered_queries = float(len(
+        [q for q in queries if q.eval_candidates]))
     completely_correct = float(len([q for q in queries if q.f1 == 1.0]))
     oracle_positions = [q.oracle_position
                         for q in queries if q.oracle_position > 0]
