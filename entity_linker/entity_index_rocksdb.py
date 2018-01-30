@@ -271,11 +271,16 @@ class EntityIndex:
         if not line:
             return []
         cols = line.split(b'\t')
+
+        mids_dedup = set()
         result = []
         for i in range(0, len(cols), 2):
             surface_score = float(cols[i])
-            mid_str = cols[i+1].decode('utf-8')
-            entity = self.get_entity_for_mid(mid_str)
+            mid = cols[i+1].decode('utf-8')
+            if mid in mids_dedup:
+                continue
+            mids_dedup.add(mid)
+            entity = self.get_entity_for_mid(mid)
             if entity:
                 result.append((entity, surface_score))
         return result
