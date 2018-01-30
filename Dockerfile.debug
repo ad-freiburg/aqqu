@@ -3,5 +3,6 @@ FROM aqqu_learner_$LEARNER_BASE
 EXPOSE 8090
 
 COPY . /app/
+RUN python3 setup.py build_ext --inplace
 ENTRYPOINT ["python3",  "-m", "translator_server"]
 CMD ["WQSP_Ranker"]
