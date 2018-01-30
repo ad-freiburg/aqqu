@@ -612,7 +612,7 @@ class CandidatePruner(MLModel):
         neg_class_weight /= total_weight
         # with old ranking 1.0 works best, followed by 1.2
         # with new ranking 1.5 works a lot better
-        pos_class_boost = 1.2
+        pos_class_boost = 1.8
         label_encoder = LabelEncoder()
         logger.info(X[-1])
         labels = label_encoder.fit_transform(labels)
@@ -673,7 +673,9 @@ class CandidatePruner(MLModel):
         p = self.model.predict(X)
         # c = self.prune_label_encoder.inverse_transform(p)
         for candidate, predict in zip(query_candidates, p):
-            if predict == 1:
+            # TODO the pruner should learn to always prune empty
+            # answers but currently it doesn't so check that separately
+            if predict == 1 and candidate.get_result_count() > 0:
                 remaining.append(candidate)
         # TODO: improve this code
         new_features = np.zeros(shape=(len(remaining), features.shape[1]))
