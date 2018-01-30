@@ -19,7 +19,7 @@ if [ $# -gt 2 ];then
 	PORT=$3
 fi
 echo "-----------------------------------------------------------------"
-echo Executing $DOCKER_CMD build -t "aqqu_$1_$2" -f "Dockerfile.$1" .
+echo Executing $DOCKER_CMD build
 $DOCKER_CMD build -t "aqqu_$1_$2" --build-arg LEARNER_BASE=$2 -f "Dockerfile.$1" .
 echo "-----------------------------------------------------------------"
 
