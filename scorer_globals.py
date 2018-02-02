@@ -34,7 +34,6 @@ scorer_list = [ranker.AqquModel('F917_Ranker',
                                 "webquestionstrain_tiny",
                                 top_ngram_percentile=5,
                                 rel_regularization_C=1e-5),
-
                ranker.AqquModel('SQ_Ranker_tiny',
                                 "sqtrain_tiny",
                                 top_ngram_percentile=5,
@@ -56,6 +55,10 @@ scorer_list = [ranker.AqquModel('F917_Ranker',
                ranker.AqquModel('WQSP_EQL_Ranker',
                                 "wqsptrain",
                                 entity_linker_class=EntityLinkerQlever,
+                                top_ngram_percentile=5,
+                                rel_regularization_C=1e-5),
+               ranker.AqquModel('WQSP_Ranker_tiny',
+                                "wqsptrain_tiny",
                                 top_ngram_percentile=5,
                                 rel_regularization_C=1e-5),
                ranker.AqquModel('WQ_Ranker_no_deep',
@@ -118,6 +121,9 @@ DATASETS = OrderedDict(
      ('wqsptrain',
       'evaluation-data/'
       'WebQSP.train.json'),
+     ('wqsptrain_tiny',
+      'evaluation-data/'
+      'WebQSP_tiny.train.json'),
      ('free917train_1of2',
       'evaluation-data/'
       'free917.train_1of2.json'),
