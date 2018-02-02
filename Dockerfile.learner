@@ -1,4 +1,4 @@
-ARG TENSORFLOW # needs docker > 17.05
+ARG TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-py3
 FROM $TENSORFLOW
 RUN apt-get update && apt-get install -y python3-pip make
 
