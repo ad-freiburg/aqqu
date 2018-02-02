@@ -1,6 +1,5 @@
-#ARG TENSORFLOW # needs docker > 17.05
-#FROM $TENSORFLOW
-FROM gcr.io/tensorflow/tensorflow:latest-gpu-py3
+ARG TENSORFLOW # needs docker > 17.05
+FROM $TENSORFLOW
 RUN apt-get update && apt-get install -y python3-pip make
 
 COPY requirements.txt /app/
@@ -14,4 +13,4 @@ COPY . /app/
 RUN python3 setup.py build_ext --inplace
 VOLUME ["/app/models", "/app/data", "/app/input"]
 ENTRYPOINT ["python3",  "-m", "query_translator.learner"]
-CMD ["train", "SQ_Ranker"]
+CMD ["train", "WQSP_Ranker_tiny"]
