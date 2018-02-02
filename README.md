@@ -30,10 +30,15 @@ All data required for learning can be found under
 
     ./build_and_run.sh backend <user_provided_name> <port>
 
+## Disabling GPU
+To disable GPU use run above commands with the environment variable `NO_GPU=1`
+
 ## Commands to run training in nvidia-docker manually
     NAME=nameit
-    nvidia-docker build -t tf_aqqu_learner -f Dockerfile.learner .
+    nvidia-docker build -t tf_aqqu_learner --build-arg TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3 \
+       -f Dockerfile.learner .
     nvidia-docker run --rm -it --name tf_aqqu_learner_inst 
+       --build-arg TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3
        -v $(pwd)/data/:/app/data \
        -v $(pwd)/input/:/app/input \
        -v $(pwd)/models/:/app/models \
@@ -43,7 +48,7 @@ All data required for learning can be found under
 
     NAME=nameit
     nvidia-docker build -t tf_aqqu_backend --build-arg LEARNER_BASE=$NAME -f Dockerfile.backend .
-    nvidia-docker run --rm -it --name tf_aqqu_backend_inst \
+    nvidia-docker run --rm -it --name tf_aqqu_backend_inst \ 
        -v $(pwd)/data/:/app/data \
        -v $(pwd)/input/:/app/input \
        -v $(pwd)/models/:/app/models \

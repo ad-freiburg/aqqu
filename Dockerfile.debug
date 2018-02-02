@@ -1,5 +1,5 @@
-ARG LEARNER_BASE
-FROM aqqu_learner_$LEARNER_BASE
+ARG NAME
+FROM aqqu_learner_$NAME
 EXPOSE 8090
 
 COPY . /app/

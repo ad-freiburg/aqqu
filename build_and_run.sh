@@ -1,7 +1,10 @@
 #!/bin/bash
+TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-py3
+
 which nvidia-docker
-if [ $? -eq 0 ]; then
+if [ $? -eq 0 ] && ! [ -v NO_GPU ]; then
 	DOCKER_CMD=`/usr/bin/which nvidia-docker`
+	TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3
 else
 	DOCKER_CMD=`/usr/bin/which docker`
 fi
@@ -10,7 +13,7 @@ INPUT_DIR="./input"
 WORKDATA_DIR="./data"
 
 if [ $# -lt 2 ] || [ "$1" != "backend" ] && [ "$1" != "learner" ] && [ "$1" != "debug" ]; then
-	echo "Usage: $0 [backend|debug|learner] name [PORT]"
+	echo "Usage: $0 [learner|backend|debug] name [PORT]"
 	exit 1
 fi
 
@@ -20,7 +23,7 @@ if [ $# -gt 2 ];then
 fi
 echo "-----------------------------------------------------------------"
 echo Executing $DOCKER_CMD build
-$DOCKER_CMD build -t "aqqu_$1_$2" --build-arg LEARNER_BASE=$2 -f "Dockerfile.$1" .
+$DOCKER_CMD build -t "aqqu_$1_$2" --build-arg NAME=$2 --build-arg TENSORFLOW=$TENSORFLOW -f "Dockerfile.$1" .
 echo "-----------------------------------------------------------------"
 
 INPUT_VOLUME="$(pwd)/$INPUT_DIR:/app/input"
