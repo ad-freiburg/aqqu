@@ -44,13 +44,20 @@ class EvaluationQuery:
     """
 
     def __init__(self, q_id, utterance,
-                 targets_mids, targets_names, targets_sparqls):
+                 targets_mids, targets_names,
+                 target_parses, targets_sparqls):
         self.id = q_id
         self.utterance = utterance
         # targets are mid strings or numeric/date/.. values
+        # one LIST per target interpretation
         self.targets_mids = targets_mids
         self.targets_names = targets_names
         self.targets_sparqls = targets_sparqls
+        # the targeted parses if available in and implemented for the dataset
+        # represented using the ER(T), ERMR(T), ERMRER(T) patterns and string
+        # entitiy ids details TBD
+        # one parse per target interpretation
+        self.target_parses = target_parses
         # When processed, the ranked list of candidates returned.
         self.eval_candidates = []
         self.oracle_position = -1
@@ -60,7 +67,12 @@ class EvaluationQuery:
         self.precision = 0.0
         self.recall = 0.0
         self.f1 = 0.0
+        self.parse_score = 0.0
+        self.parse_match = False
         self.oracle_f1 = 0.0
+        self.oracle_parse_score = 0.0
+        self.oracle_parse_match = False
+        self.oracle_parse_score = 0.0
         self.false_negatives = []
         self.false_positives = []
 
@@ -73,7 +85,11 @@ class EvaluationQuery:
         self.precision = 0.0
         self.recall = 0.0
         self.f1 = 0.0
+        self.parse_score = 0.0
+        self.parse_match = False
         self.oracle_f1 = 0.0
+        self.oracle_parse_score = 0.0
+        self.oracle_parse_match = False
         self.false_negatives = []
         self.false_positives = []
 
@@ -103,13 +119,16 @@ class EvaluationQuery:
         eval_queries = []
         with open(filename, 'r', encoding='utf-8') as sq_file:
             for idn, line in enumerate(sq_file):
-                _, _, obj_url, utterance = line.split('\t')
+                subj_url, pred_url, obj_url, utterance = line.split('\t')
+                subj_mid = sq_normalize(subj_url)
                 obj_mid = sq_normalize(obj_url)
+                pred_mid = sq_normalize(pred_url)
                 mids = [obj_mid]
                 eval_queries.append(
                     EvaluationQuery(idn, utterance.strip(),
                                     [mids],
                                     None,
+                                    [(subj_mid, pred_mid)],
                                     None))
         return eval_queries
 
@@ -126,6 +145,7 @@ class EvaluationQuery:
                                     query['utterance'],
                                     None,
                                     [query['result']],
+                                    None,
                                     [query.get('targetOrigSparql', None)]))
         elif isinstance(queries_json, dict):
             # WebQSP format
@@ -146,13 +166,14 @@ class EvaluationQuery:
                         elif atype == 'Value':
                             result_names.append(answer['AnswerArgument'])
                         # results are mid strings or numeric/date/.. values
-                        results = answer['AnswerArgument']
+                        results.append(answer['AnswerArgument'])
                     possible_targets_names.append(result_names)
                     possible_targets.append(results)
                 eval_queries.append(
                     EvaluationQuery(idn, utterance,
                                     possible_targets,
                                     possible_targets_names,
+                                    None,
                                     possible_targets_sparqls))
 
         return sorted(eval_queries, key=lambda x: x.id)
@@ -179,12 +200,13 @@ class EvaluationCandidate:
 class CandidateEvaluationResult:
     """The evaluation result for a single candidate."""
 
-    def __init__(self, precision, recall, f1, false_positives,
+    def __init__(self, precision, recall, f1, parse_score, false_positives,
                  false_negatives):
         self.precision = precision
         self.recall = recall
         self.f1 = f1
-        self.is_correct = True if f1 == 1.0 else False
+        self.parse_score = parse_score
+        self.parse_match = parse_score > 0.99
         self.false_positives = false_positives
         self.false_negatives = false_negatives
 
@@ -346,6 +368,24 @@ def parse_to_set(result_list):
         result_set.add(r)
     return result_set
 
+def compute_parse_match(candidate, parse):
+    match = 0.0
+
+    ents = {ie.entity.sparql_name()
+            for ie in candidate.query_candidate.matched_entities}
+    rel_names = candidate.query_candidate.get_canonical_relation_names()
+    for idx, gold_part in enumerate(parse):
+        # parses a subgraphs of a bipartite graph where entities are always
+        # connected by relations. Thus in a subgraph description of the form
+        # (E, R, M, R, E, R, T) starting with an entity every second element
+        # must be a relation/entity.
+        if idx % 2 == 0 and gold_part in ents:
+            match += 1.0
+        elif idx % 2 == 1 and rel_names[idx // 2] == gold_part:
+            match += 1.0
+    match /= len(parse)
+    return match
+
 
 def evaluate_single_candidate(candidate, eval_query):
     """Compare the prediction against the gold results for a single candidate.
@@ -357,24 +397,31 @@ def evaluate_single_candidate(candidate, eval_query):
     :return:
     """
     candidate_results = []
+    # first check if the candidate matches a ground truth parse if that is
+    # available
+    parse_matches = []
+    best_parse_match = 0.0
+    if eval_query.target_parses:
+        for parse in eval_query.target_parses:
+            parse_matches.append(compute_parse_match(candidate, parse))
+        best_parse_match = max(parse_matches)
+
     # we prefer to target (m)ids but some datasets only have
     # the ground truth as human readable entity names so fallback to
     # that
-    targeting_mids = True
-    if eval_query.targets_mids:
-        gold_targets_list = eval_query.targets_mids
-    else:
-        gold_targets_list = eval_query.targets_names
-        targeting_mids = False
+    gold_targets_list = eval_query.targets_mids if eval_query.targets_mids \
+       else eval_query.targets_names
+
     gold_targets_sets = [parse_to_set(targets)
                          for targets in gold_targets_list]
 
-    if targeting_mids:
-        prediction_set = parse_to_set(candidate.prediction)
-    else:
-        prediction_set = parse_to_set(candidate.prediction_names)
+    prediction_set = parse_to_set(candidate.prediction if candidate.prediction \
+        else candidate.prediction_names)
 
-    for results_num, gold_target_set in enumerate(gold_targets_sets):
+    logger.debug('prediction_set: %r', prediction_set)
+
+    for results_num, gold_targets_set in enumerate(gold_targets_sets):
+        logger.debug('gold_targets_set: %r', gold_targets_set)
         true_positives = 0.0
         false_positives = []
         false_negatives = []
@@ -383,17 +430,17 @@ def evaluate_single_candidate(candidate, eval_query):
         # gold list. The effect overall is negligible (<0.1%), however.
         if len(candidate.prediction_names) == \
            len(gold_targets_list[results_num]) and \
-           len(gold_target_set) != len(prediction_set):
+           len(gold_targets_set) != len(prediction_set):
             logger.debug("Result set has different size than result list.")
-        num_gold = len(gold_target_set)
+        num_gold = len(gold_targets_set)
         num_predicted = len(prediction_set)
         for res in prediction_set:
-            if res in gold_target_set:
+            if res in gold_targets_set:
                 true_positives += 1.0
-                gold_target_set.remove(res)
+                gold_targets_set.remove(res)
             else:
                 false_positives.append(res)
-        false_negatives.extend(gold_target_set)
+        false_negatives.extend(gold_targets_set)
         if num_gold == 0:
             if num_predicted == 0:
                 precision = 1.0
@@ -412,12 +459,13 @@ def evaluate_single_candidate(candidate, eval_query):
             f1 = 0.0
             if precision + recall > 0:
                 f1 = 2.0 * precision * recall / (precision + recall)
-            if f1 == 1.0:
+            if f1 > 0.99:
                 logger.debug("Perfect match: %s = %s.",
                              candidate.prediction_names,
                              gold_targets_list[results_num])
         candidate_results.append(CandidateEvaluationResult(precision,
                                                            recall, f1,
+                                                           best_parse_match,
                                                            false_positives,
                                                            false_negatives))
     return candidate_results
@@ -438,8 +486,8 @@ def compare_evaluation_runs(queries_a, queries_b):
     if len(queries_a) != len(queries_b):
         logger.error("Number of queries of different runs is different.")
         raise RuntimeError
-    correct_queries_a = {q_a.id for q_a in queries_a if q_a.f1 == 1.0}
-    correct_queries_b = {q_b.id for q_b in queries_b if q_b.f1 == 1.0}
+    correct_queries_a = {q_a.id for q_a in queries_a if q_a.f1 > 0.99}
+    correct_queries_b = {q_b.id for q_b in queries_b if q_b.f1 > 0.99}
     # Create maps from id to query dictionary.
     query_map_a = {q_a.id: q_a for q_a in queries_a}
     query_map_b = {q_b.id: q_b for q_b in queries_b}
@@ -470,6 +518,7 @@ def evaluate(queries, output_file="eval_out.log"):
     EvaluationResult = namedtuple('EvaluationResult', ['avg_precision',
                                                        'avg_recall',
                                                        'avg_f1',
+                                                       'parse_acc',
                                                        'macro_f1',
                                                        'macro_f1_xao',
                                                        'avg_precision_xao',
@@ -481,6 +530,7 @@ def evaluate(queries, output_file="eval_out.log"):
                                                        'accuracy',
                                                        'oracle_accuracy',
                                                        'oracle_avg_f1',
+                                                       'oracle_parse_acc',
                                                        'oracle_top_2',
                                                        'oracle_top_3',
                                                        'oracle_top_5',
@@ -504,7 +554,11 @@ def evaluate(queries, output_file="eval_out.log"):
                 query.precision = 1.0
                 query.recall = 1.0
                 query.f1 = 1.0
+                query.parse_score = 1.0
+                query.parse_match = True
                 query.oracle_f1 = 1.0
+                query.oracle_parse_score = 1.0
+                query.oracle_parse_match = True
                 query.false_negatives = []
                 query.false_positives = []
         # No results -> precision = recall = f1 = 0.
@@ -513,6 +567,8 @@ def evaluate(queries, output_file="eval_out.log"):
             query.precision = 0.0
             query.recall = 0.0
             query.f1 = 0.0
+            query.parse_score = 0.0
+            query.parse_match = False
             query.false_negatives = gold_targets_list
             query.false_positives = []
         # We have candidates (but maybe no gold answer).
@@ -534,17 +590,21 @@ def evaluate(queries, output_file="eval_out.log"):
                     query.precision = best_candidate_eval.precision
                     query.recall = best_candidate_eval.recall
                     query.f1 = best_candidate_eval.f1
+                    query.parse_score = best_candidate_eval.parse_score
+                    query.parse_match = query.parse_score > 0.99
                     query.false_negatives = best_candidate_eval.false_negatives
                     query.false_positives = best_candidate_eval.false_positives
                 if query.oracle_f1 < best_candidate_eval.f1:
                     query.oracle_f1 = best_candidate_eval.f1
+                    query.oracle_parse_score = best_candidate_eval.parse_score
+                    query.oracle_parse_match = best_candidate_eval.parse_score > 0.99
                     query.oracle_position = i + 1
     num_queries = len(queries)
     num_unanswered_queries = float(len([q for q in queries
                                         if not q.eval_candidates]))
     num_answered_queries = float(len(
         [q for q in queries if q.eval_candidates]))
-    completely_correct = float(len([q for q in queries if q.f1 == 1.0]))
+    completely_correct = float(len([q for q in queries if q.f1 > 0.99]))
     oracle_positions = [q.oracle_position
                         for q in queries if q.oracle_position > 0]
     avg_oracle_position = sum(oracle_positions) / float(len(oracle_positions))
@@ -553,7 +613,7 @@ def evaluate(queries, output_file="eval_out.log"):
     oracle_top_5 = len([p for p in oracle_positions if p <= 5])
     oracle_top_10 = len([p for p in oracle_positions if p <= 10])
     oracle_top_100 = len([p for p in oracle_positions if p <= 100])
-    perfect_with_oracle = len([q for q in queries if q.oracle_f1 == 1.0])
+    perfect_with_oracle = len([q for q in queries if q.oracle_f1 > 0.99])
     oracle_accuracy = perfect_with_oracle / num_queries
     oracle_top_2f = oracle_top_2 / num_queries
     oracle_top_3f = oracle_top_3 / num_queries
@@ -566,6 +626,11 @@ def evaluate(queries, output_file="eval_out.log"):
     oracle_average_f1 = sum([q.oracle_f1 for q in queries]) / num_queries
     average_recall = sum([q.recall for q in queries]) / num_queries
     average_precision = sum([q.precision for q in queries]) / num_queries
+
+    # Parse match accuracy
+    parse_accuracy = len([1 for q in queries if q.parse_match]) / num_queries
+    oracle_parse_accuracy = len(
+        [1 for q in queries if q.oracle_parse_match]) / num_queries
 
     # Macro F1 that considers all queries
     macro_f1 = 0.0
@@ -600,6 +665,7 @@ def evaluate(queries, output_file="eval_out.log"):
     overall_result = EvaluationResult(average_precision,
                                       average_recall,
                                       average_f1,
+                                      parse_accuracy,
                                       macro_f1,
                                       macro_f1_xao,
                                       average_precision_xao,
@@ -611,6 +677,7 @@ def evaluate(queries, output_file="eval_out.log"):
                                       accuracy,
                                       oracle_accuracy,
                                       oracle_average_f1,
+                                      oracle_parse_accuracy,
                                       oracle_top_2f,
                                       oracle_top_3f,
                                       oracle_top_5f,

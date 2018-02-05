@@ -669,21 +669,20 @@ class CandidatePruner(MLModel):
 
     def prune_candidates(self, query_candidates, features):
         remaining = []
+        remaining_idxs = []
         X = self.scaler.transform(features)
         p = self.model.predict(X)
-        # c = self.prune_label_encoder.inverse_transform(p)
-        for candidate, predict in zip(query_candidates, p):
+
+        for cand_idx, (cand, predict) in enumerate(zip(query_candidates, p)):
             # TODO the pruner should learn to always prune empty
             # answers but currently it doesn't so check that separately
-            if predict == 1 and candidate.get_result_count() > 0:
-                remaining.append(candidate)
-        # TODO: improve this code
+            if predict == 1 and cand.get_result_count() > 0:
+                remaining.append(cand)
+                remaining_idxs.append(cand_idx)
+
         new_features = np.zeros(shape=(len(remaining), features.shape[1]))
-        next = 0
-        for i, predict in enumerate(p):
-            if predict == 1:
-                new_features[next, :] = features[i, :]
-                next += 1
+        for new_idx, cand_idx in enumerate(remaining_idxs):
+                new_features[new_idx, :] = features[cand_idx, :]
         return remaining, new_features
 
 
