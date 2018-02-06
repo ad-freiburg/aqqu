@@ -1,6 +1,0 @@
-ARG NAME
-FROM aqqu_learner_$NAME
-EXPOSE 8090
-
-ENTRYPOINT ["python3",  "-m", "translator_server"]
-CMD ["WQSP_Ranker"]

@@ -12,5 +12,5 @@ RUN python3 -m spacy download en
 COPY . /app/
 RUN python3 setup.py build_ext --inplace
 VOLUME ["/app/models", "/app/data", "/app/input"]
-ENTRYPOINT ["python3",  "-m", "query_translator.learner"]
-CMD ["train", "WQSP_Ranker_tiny"]
+ENTRYPOINT ["python3",  "-m"]
+CMD ["query_translator.learner", "train", "WQSP_Ranker_tiny"]

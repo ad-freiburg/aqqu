@@ -3,8 +3,8 @@ data
 models
 input
 results
-webserver
 venv
 venv3
 build
+virtuoso-db
 eval_out.log translation_webserver.log

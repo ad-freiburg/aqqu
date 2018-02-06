@@ -1,8 +1,0 @@
-ARG NAME
-FROM aqqu_learner_$NAME
-EXPOSE 8090
-
-COPY . /app/
-RUN python3 setup.py build_ext --inplace
-ENTRYPOINT ["python3",  "-m", "translator_server"]
-CMD ["WQSP_Ranker"]
