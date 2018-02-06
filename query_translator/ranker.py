@@ -1188,8 +1188,12 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
         correct_cands_index = set()
         candidates = [x.query_candidate for x in query.eval_candidates]
         for i, _ in enumerate(candidates):
-            if i + 1 == oracle_position or query.eval_candidates[i].evaluation_result.f1 >= correct_threshold:
+            eval_result = query.eval_candidates[i].evaluation_result
+            if i + 1 == oracle_position or \
+                    eval_result.f1 >= correct_threshold or \
+                    eval_result.parse_match:
                 correct_cands_index.add(i)
+
         if correct_cands_index:
             n_candidates = len(candidates)
             sample_size = n_candidates // 2
@@ -1264,7 +1268,9 @@ def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
     :param train_queries:
     :return:
     """
-    candidates = [x.query_candidate for q in train_queries for x in q.eval_candidates]
+    candidates = [x.query_candidate
+                  for q in train_queries
+                  for x in q.eval_candidates]
     features = f_extract(candidates)
     logger.info("Extracting features from candidates.")
     labels = []
@@ -1272,14 +1278,17 @@ def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
         oracle_position = query.oracle_position
         candidates = [x.query_candidate for x in query.eval_candidates]
         for i, candidate in enumerate(candidates):
-            if i + 1 == oracle_position or query.eval_candidates[i].evaluation_result.f1 >= score_threshold:
+            eval_result = query.eval_candidates[i].evaluation_result
+            if i + 1 == oracle_position or \
+                    eval_result.f1 >= score_threshold or \
+                    eval_result.parse_match:
                 labels.append(1)
             else:
                 labels.append(0)
     return labels, features
 
 
-def construct_ngram_examples(queries, f_extractor):
+def construct_ngram_examples(queries, f_extractor, correct_threshold=.9):
     """Construct training examples from candidates.
 
     Construct a list of examples from the given evaluated queries.
@@ -1298,14 +1307,16 @@ def construct_ngram_examples(queries, f_extractor):
         negative_relations = set()
         for i, candidate in enumerate(candidates):
             relation = " ".join(candidate.get_relation_names())
-            if query.eval_candidates[i].evaluation_result.f1 == 1.0 \
-                    or i + 1 == oracle_position:
+            eval_result = query.eval_candidates[i].evaluation_result
+            if eval_result.f1 == correct_threshold or \
+                    i + 1 == oracle_position or \
+                    eval_result.parse_match:
                 positive_relations.add(relation)
         for i, candidate in enumerate(candidates):
             relation = " ".join(candidate.get_relation_names())
             candidate_features = f_extractor.extract_features(candidate)
             if relation in positive_relations and \
-                            relation not in seen_positive_relations:
+                    relation not in seen_positive_relations:
                 seen_positive_relations.add(relation)
                 labels.append(1)
                 features.append(candidate_features)
