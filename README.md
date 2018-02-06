@@ -24,35 +24,34 @@ All data required for learning can be found under
 
 ## Train with the provided script
 
-    ./build_and_run.sh learner <user_provided_name> <port>
+    ./build_and_run.sh learner <user_provided_name> <ranker e.g. WQSP_Ranker> <port>
 
 ## Run with the provided script
 
-    ./build_and_run.sh backend <user_provided_name> <port>
+    ./build_and_run.sh backend <user_provided_name> <ranker e.g. WQSP_Ranker> <port>
 
 ## Disabling GPU
 To disable GPU use run above commands with the environment variable `NO_GPU=1`
 
 ## Commands to run training in nvidia-docker manually
     NAME=nameit
-    nvidia-docker build -t tf_aqqu_learner --build-arg TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3 \
+    nvidia-docker build -t tf_aqqu --build-arg TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3 \
        -f Dockerfile.learner .
     nvidia-docker run --rm -it --name tf_aqqu_learner_inst 
        --build-arg TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3
        -v $(pwd)/data/:/app/data \
        -v $(pwd)/input/:/app/input \
        -v $(pwd)/models/:/app/models \
-       aqqu_learner_$NAME
+       tf_aqqu
 
 ## Commands to run the backend in nvidia-docker manually
 
     NAME=nameit
-    nvidia-docker build -t tf_aqqu_backend --build-arg LEARNER_BASE=$NAME -f Dockerfile.backend .
     nvidia-docker run --rm -it --name tf_aqqu_backend_inst \ 
        -v $(pwd)/data/:/app/data \
        -v $(pwd)/input/:/app/input \
        -v $(pwd)/models/:/app/models \
-       aqqu_backend_$NAME
+       tf_aqqu translator_server WQSP_Ranker
 
 
 
