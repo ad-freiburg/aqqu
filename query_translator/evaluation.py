@@ -12,6 +12,7 @@ import time
 from collections import namedtuple
 
 from dateutil import parser as dateparser
+import urllib3
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +219,7 @@ class CandidateEvaluationResult:
         return d
 
 
-def evaluate_translator(translator, queries, n_queries=9999,
+def evaluate_translator(translator, queries, n_queries=None,
                         ignore_howmany=False, ignore_invalid=False,
                         n_top=1000, output_result=True):
     """Evaluate the translator on the provided queries.
@@ -237,7 +238,7 @@ def evaluate_translator(translator, queries, n_queries=9999,
     translated_queries = []
     n_translated_queries = 0
     start_time = time.time()
-    if len(queries) > n_queries:
+    if n_queries and len(queries) > n_queries:
         # Set the seed.
         random.seed(20)
         evaluation_queries = random.sample(queries, n_queries)
@@ -255,9 +256,17 @@ def evaluate_translator(translator, queries, n_queries=9999,
                 continue
         logger.info("Translating query (id=%s) %s of %s for evaluation.",
                     q.id, n_translated_queries + 1, len(evaluation_queries))
-        _, candidates = translator.translate_and_execute_query(
-            q.utterance,
-            n_top=n_top)
+        try:
+            _, candidates = translator.translate_and_execute_query(
+                q.utterance,
+                n_top=n_top)
+        except urllib3.exceptions.MaxRetryError:
+            # In some instances virtuoso just really really doesn't want to
+            # give results. Completely screwing the training sucks though.  So
+            # just ignore that entire query. This doesn't affect the real
+            # evaluation since this is now in a separate system
+            logger.warn("Failed to translate query, skipping")
+            continue
         for candidate in candidates:
             query_result_rows = candidate.query_result
 

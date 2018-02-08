@@ -195,18 +195,23 @@ def train(scorer_name, cached):
     try:
         scorer_obj = scorer_globals.scorers_dict[scorer_name]
     except KeyError:
-        logger.error("Unknown scorer: %s" % scorer_name)
+        logger.error("Unknown scorer: %s", scorer_name)
         exit(1)
-    train_dataset = scorer_obj.train_dataset
-    train_queries = get_evaluated_queries(train_dataset,
-                                          cached,
-                                          scorer_obj.get_parameters(),
-                                          n_top=2000)
-    logger.info("Loaded %s queries for training." % len(train_queries))
-    logger.info("Training model.")
-    scorer_obj.learn_model(train_queries)
-    scorer_obj.store_model()
+    train_datasets = scorer_obj.train_datasets
+    train_queries_all = []
+    for train_dataset in train_datasets:
+        train_queries = get_evaluated_queries(train_dataset,
+                                              cached,
+                                              scorer_obj.get_parameters(),
+                                              n_top=2000)
+        logger.info("Loaded %s queries for training on %s",
+                    len(train_queries), train_dataset)
+        train_queries_all.extend(train_queries)
+
+    logger.info("Training model on %s queries", len(train_queries_all))
+    scorer_obj.learn_model(train_queries_all)
     scorer_obj.print_model()
+    scorer_obj.store_model()
     logger.info("Done training.")
 
 

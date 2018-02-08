@@ -179,12 +179,12 @@ class Ranker:
         return ranked_candidates
 
 
-class MLModel(object):
+class MLModel:
     """Superclass for machine learning based scorer."""
 
-    def __init__(self, name, train_dataset):
+    def __init__(self, name, train_datasets):
         self.name = name
-        self.train_dataset = train_dataset
+        self.train_datasets = train_datasets
 
     def get_model_filename(self):
         """Return the model file name."""
@@ -204,9 +204,9 @@ class MLModel(object):
             param_suffix = self.get_parameters().get_suffix()
         else:
             param_suffix = ""
-        if self.train_dataset is not None:
+        if self.train_datasets:
             model_filename = "%s_%s%s" % (self.name,
-                                          self.train_dataset,
+                                          '_'.join(self.train_datasets),
                                           param_suffix)
         else:
             model_filename = "%s%s" % (self.name,
@@ -232,13 +232,13 @@ class AqquModel(MLModel, Ranker):
         pass
 
     def __init__(self, name,
-                 train_dataset,
+                 train_datasets,
                  top_ngram_percentile=5,
                  rel_regularization_C=None,
                  learn_deep_rel_model=True,
                  learn_ngram_rel_model=True,
                  **kwargs):
-        MLModel.__init__(self, name, train_dataset)
+        MLModel.__init__(self, name, train_datasets)
         Ranker.__init__(self, name, **kwargs)
         # Note: The model is lazily loaded when score is called.
         self.model = None
@@ -574,7 +574,7 @@ class CandidatePruner(MLModel):
                  dict_vec):
         name += self.get_pruner_suffix()
         MLModel.__init__(self, name, None)
-        # Note: The model is lazily when needed.
+        # Note: The model is lazily created when needed.
         self.model = None
         self.label_encoder = None
         self.dict_vec = dict_vec
