@@ -419,13 +419,14 @@ def evaluate_single_candidate(candidate, eval_query):
     # the ground truth as human readable entity names so fallback to
     # that
     gold_targets_list = eval_query.targets_mids if eval_query.targets_mids \
-       else eval_query.targets_names
+        else eval_query.targets_names
 
     gold_targets_sets = [parse_to_set(targets)
                          for targets in gold_targets_list]
 
-    prediction_set = parse_to_set(candidate.prediction if candidate.prediction \
-        else candidate.prediction_names)
+    prediction_set = parse_to_set(candidate.prediction
+                                  if eval_query.targets_mids
+                                  else candidate.prediction_names)
 
     logger.debug('prediction_set: %r', prediction_set)
 
