@@ -25,12 +25,13 @@ class DeepCNNAqquRelScorer():
     UNK = '---UNK---'
     PAD = '---PAD---'
 
-    def __init__(self, logdir, embeddings_file=None):
+    def __init__(self, logdir, embeddings_file=None, use_type_names=True):
         self.logdir = logdir
         self.n_rels = 3
         self.n_parts_per_rel = 3
         self.n_rel_parts = self.n_rels * self.n_parts_per_rel
         self.embeddings_file = embeddings_file
+        self.use_type_names = use_type_names
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
         self.filter_sizes = (1, 2, 3, 4)
@@ -57,7 +58,7 @@ class DeepCNNAqquRelScorer():
         self.train_op = None
 
     @staticmethod
-    def init_from_config():
+    def init_from_config(use_type_names=True):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -68,7 +69,7 @@ class DeepCNNAqquRelScorer():
                                              'word-embeddings')
         logdir = config_options.get('DeepRelScorer',
                                     'logdir')
-        return DeepCNNAqquRelScorer(logdir, embeddings_file)
+        return DeepCNNAqquRelScorer(logdir, embeddings_file, use_type_names)
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -164,6 +165,10 @@ class DeepCNNAqquRelScorer():
         return labels[indices], word_features[indices], rel_features[indices]
 
     def create_train_examples(self, train_queries, correct_threshold=.5):
+        """
+        Creates examples for training the deep relation scorer independent
+        of any other scoring infrastructure
+        """
         # TODO turn this into a generator and pull it out of the class
         # that will allow training on very large question, relation corpora
         total_num_candidates = len([x.query_candidate
@@ -179,21 +184,27 @@ class DeepCNNAqquRelScorer():
             neg_examples = []
             has_pos_candidate = False
             for i, candidate in enumerate(candidates):
-                f1 = query.eval_candidates[i].evaluation_result.f1
-                if f1 >= correct_threshold:
-                    positive_examples.append((
-                        feature_extraction.get_query_text_tokens(candidate),
-                        candidate.get_relation_names()))
+                f1score = query.eval_candidates[i].evaluation_result.f1
+                example = (
+                    feature_extraction.get_query_text_tokens(
+                        candidate,
+                        self.use_type_names),
+                    candidate.get_relation_names()
+                    )
+                if f1score >= correct_threshold:
+                    positive_examples.append(example)
                     has_pos_candidate = True
                 else:
-                    neg_examples.append((
-                        feature_extraction.get_query_text_tokens(candidate),
-                        candidate.get_relation_names()))
+                    neg_examples.append(example)
             if has_pos_candidate:
                 negative_examples.extend(neg_examples)
         return positive_examples, negative_examples
 
     def create_test_examples(self, test_queries):
+        """
+        Creates examples for testing the deep relation scorer independent
+        of any other scoring infrastructure
+        """
         logger.info("Creating test examples.")
         candidate_qids = []
         candidate_f1 = []
@@ -205,7 +216,8 @@ class DeepCNNAqquRelScorer():
                     query.eval_candidates[i].evaluation_result.f1)
                 candidate_qids.append(query.id)
                 all_candidates.append((
-                    feature_extraction.get_query_text_tokens(candidate),
+                    feature_extraction.get_query_text_tokens(
+                        candidate, self.use_type_names),
                     candidate.get_relation_names()
                     ))
         logger.info(
@@ -306,22 +318,26 @@ class DeepCNNAqquRelScorer():
                     if not extend_model:
                         self.sess.run(tf.global_variables_initializer())
                     else:
-                        self.sess.run(tf.initialize_variables([self.global_step]))
+                        self.sess.run(tf.variables_initializer(
+                            [self.global_step]))
 
                     tf.set_random_seed(42)
 
-                    def run_dev_batches(dev_features, dev_qids, dev_f1, dev_train,
-                                        batch_size=200):
+                    def run_dev_batches(dev_features, dev_qids, dev_f1,
+                                        dev_train, batch_size=200):
                         n_batch = 0
                         x, x_rel = dev_features
                         num_rows = x.shape[0]
                         probs = []
                         total_loss = 0.0
                         while n_batch * batch_size < num_rows:
-                            x_b = x[n_batch * batch_size:(n_batch + 1) * batch_size, :]
-                            x_rel_b = x_rel[n_batch * batch_size:(n_batch + 1) * batch_size, :]
+                            x_b = x[n_batch * batch_size:
+                                    (n_batch + 1) * batch_size, :]
+                            x_rel_b = x_rel[n_batch * batch_size:
+                                            (n_batch + 1) * batch_size, :]
                             labels = [1 for _ in range(x_b.shape[0])]
-                            input_y = np.array(labels, dtype=float).reshape((len(labels), 1))
+                            input_y = np.array(labels, dtype=float).reshape(
+                                (len(labels), 1))
                             feed_dict = {
                                 self.Wembed: self.embeddings,
                                 self.input_y: input_y,
@@ -336,14 +352,16 @@ class DeepCNNAqquRelScorer():
                             n_batch += 1
                             probs += [p[i, 0] for i in range(p.shape[0])]
 
-                        avg_f1, oracle_avg_f1 = self.evaluate_dev(dev_qids, dev_f1, probs)
+                        avg_f1, oracle_avg_f1 = self.evaluate_dev(
+                            dev_qids, dev_f1, probs)
                         dev_scores.append(avg_f1)
-                        #logger.info("Dev loss: %.2f" % total_loss)
-                        logger.info("%s avg_f1: %.2f oracle_avg_f1: %.2f" % (dev_train,
-                        100 * avg_f1, 100 * oracle_avg_f1))
+                        logger.info("%s avg_f1: %.2f oracle_avg_f1: %.2f",
+                                    dev_train,
+                                    100 * avg_f1, 100 * oracle_avg_f1)
                         return avg_f1, oracle_avg_f1
 
-                    def train_step(batch, epoch, n_batch, batch_size, train_size):
+                    def train_step(batch, epoch, n_batch,
+                                   batch_size, train_size):
                         """
                         A single training step
                         """
@@ -356,12 +374,16 @@ class DeepCNNAqquRelScorer():
                             self.dropout_keep_prob: 0.9
                         }
                         _, summary, step, loss, probs = self.sess.run(
-                            [self.train_op, self.summary, self.global_step, self.loss, self.probs],
+                            [self.train_op, self.summary,
+                             self.global_step, self.loss, self.probs],
                             feed_dict)
                         time_str = datetime.datetime.now().isoformat()
-                        self.writer.add_summary(summary, epoch*train_size+n_batch*batch_size)
+                        self.writer.add_summary(summary,
+                                                epoch*train_size +
+                                                n_batch*batch_size)
                         if n_batch % 200 == 0:
-                            print("{}: step {}, epoch {}, loss {}".format(time_str, n_batch, epoch, loss))
+                            logger.info("%s: step %r, epoch %r, loss %r",
+                                        time_str, n_batch, epoch, loss)
                         return loss
 
                     batch_size = 50
@@ -369,26 +391,35 @@ class DeepCNNAqquRelScorer():
                         # Need to shuffle the batches in each epoch.
                         logger.info("Starting epoch %d", epoch)
 
-                        n_labels, n_wf, n_rf = self.random_sample(len(train_pos_labels), train_neg_labels, train_neg_word_features, train_neg_rel_features)
+                        n_labels, n_wf, n_rf = self.random_sample(
+                            len(train_pos_labels), train_neg_labels,
+                            train_neg_word_features, train_neg_rel_features)
                         train_labels = np.vstack([n_labels, train_pos_labels])
-                        train_word_features = np.vstack([n_wf, train_pos_word_features])
-                        train_rel_featuers = np.vstack([n_rf, train_pos_rel_features])
+                        train_word_features = np.vstack(
+                            [n_wf, train_pos_word_features])
+                        train_rel_featuers = np.vstack(
+                            [n_rf, train_pos_rel_features])
                         train_size = 2*len(train_pos_labels)
 
-                        for batch_num, batch in self.batch_iter(batch_size,
-                                                                True,
-                                                                train_labels,
-                                                                train_word_features,
-                                                                train_rel_featuers):
-                            train_step(batch, epoch, batch_num, batch_size, train_size)
+                        for batch_num, batch in self.batch_iter(
+                                batch_size,
+                                True,
+                                train_labels,
+                                train_word_features,
+                                train_rel_featuers):
+                            train_step(
+                                batch, epoch, batch_num,
+                                batch_size, train_size)
                         if epoch % 5 == 0 and dev_examples:
-                            avg_f1, oracle_avg_f1 = run_dev_batches(
-                                dev_features, dev_qids, dev_f1s, dev_train="Dev")
+                            avg_f1, _ = run_dev_batches(
+                                dev_features, dev_qids,
+                                dev_f1s, dev_train="Dev")
                             tf.summary.scalar('avg_f1', 100*avg_f1)
                     if dev_scores:
                         logger.info("Dev avg_f1 history:")
-                        logger.info(" ".join(["%d:%f" % (i + 1, f)
-                                              for i, f in enumerate(dev_scores)]))
+                        logger.info(" ".join(
+                            ["%d:%f" % (i + 1, f)
+                             for i, f in enumerate(dev_scores)]))
 
     def batch_iter(self, batch_size, shuffle, *data):
         """
@@ -424,16 +455,16 @@ class DeepCNNAqquRelScorer():
             text_tokens, relations = example
             text_sequence = []
             # Transform to IDs.
-            for t in text_tokens:
-                if t in self.vocab:
-                    text_sequence.append(self.vocab[t])
+            for tok in text_tokens:
+                if tok in self.vocab:
+                    text_sequence.append(self.vocab[tok])
                 else:
-                    oov_words.add(t)
+                    oov_words.add(tok)
                     text_sequence.append(self.UNK_ID)
 
             if len(text_sequence) > self.max_query_len:
                 logger.debug("Max length exceeded: %s. Truncating",
-                            text_sequence)
+                             text_sequence)
                 text_sequence = text_sequence[:self.max_query_len]
 
             word_num = self.pad
@@ -549,9 +580,13 @@ class DeepCNNAqquRelScorer():
 
 
     def score(self, candidate):
+        """
+        Computes a score in [0, 1] for the candidate
+        """
         from .ranker import RankScore
         words, rel_features = self.create_batch_features([(
-            feature_extraction.get_query_text_tokens(candidate),
+            feature_extraction.get_query_text_tokens(
+                candidate, self.use_type_names),
             candidate.get_relation_names()
             )])
         feed_dict = {
@@ -584,7 +619,8 @@ class DeepCNNAqquRelScorer():
             candidates = \
                 score_candidates[batch * batch_size:(batch + 1) * batch_size]
             candidate_relations = [(
-                feature_extraction.get_query_text_tokens(candidate),
+                feature_extraction.get_query_text_tokens(
+                    candidate, self.use_type_names),
                 candidate.get_relation_names()
                 ) for candidate in candidates]
             if not candidates:

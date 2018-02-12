@@ -237,6 +237,7 @@ class AqquModel(MLModel, Ranker):
                  rel_regularization_C=None,
                  learn_deep_rel_model=True,
                  learn_ngram_rel_model=True,
+                 use_type_names=True,
                  **kwargs):
         MLModel.__init__(self, name, train_datasets)
         Ranker.__init__(self, name, **kwargs)
@@ -249,13 +250,14 @@ class AqquModel(MLModel, Ranker):
         self.cmp_cache = dict()
         self.relation_scorer = None
         self.deep_relation_scorer = None
-        self.learn_deep_rel_model = learn_deep_rel_model
-        self.learn_ngram_rel_model = learn_ngram_rel_model
         self.pruner = None
         self.scaler = None
         self.kwargs = kwargs
         self.top_ngram_percentile = top_ngram_percentile
         self.rel_regularization_C = rel_regularization_C
+        self.learn_deep_rel_model = learn_deep_rel_model
+        self.learn_ngram_rel_model = learn_ngram_rel_model
+        self.use_type_names = use_type_names
 
 
     def load_model(self):
@@ -267,14 +269,15 @@ class AqquModel(MLModel, Ranker):
             self.model = model
             self.scaler = scaler
             if self.learn_ngram_rel_model:
-                relation_scorer = RelationNgramScorer(self.get_model_name(),
-                                                      self.rel_regularization_C)
+                relation_scorer = RelationNgramScorer(
+                    self.get_model_name(),
+                    self.rel_regularization_C)
                 relation_scorer.load_model()
                 self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
                 self.deep_relation_scorer = \
-                    DeepCNNAqquRelScorer.init_from_config()
-                # TODO make paths configurable for submodels
+                    DeepCNNAqquRelScorer.init_from_config(self.use_type_names)
+
                 model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
                 self.deep_relation_scorer.load_model(
                     model_dir_tf, self.get_model_name())

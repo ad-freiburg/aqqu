@@ -42,23 +42,26 @@ def get_ngrams(tokens, n=2):
     return grams
 
 
-def get_ngram_features(candidate):
+def get_ngram_features(candidate, use_type_names=True):
     """Get ngram features from the query of the candidate.
 
     :type candidate: QueryCandidate
     :param candidate:
+    :param use_type_names - whether to use [entity] or [classname] as entity
+                            replacement
     :return:
     """
     query_text_tokens = [x.lower()
                          for x in
-                         get_query_text_tokens(candidate)]
+                         get_query_text_tokens(candidate,
+                                               use_type_names)]
     # First get bi-grams.
     ngrams = get_ngrams(query_text_tokens, n=2)
     # Then get uni-grams.
     return chain(ngrams, get_ngrams(query_text_tokens, n=1))
 
 
-def get_query_text_tokens(candidate):
+def get_query_text_tokens(candidate, use_type_names=True):
     """
     Return the query text for the candidate.
     :param candidate:
@@ -66,27 +69,31 @@ def get_query_text_tokens(candidate):
     """
     # The set of all tokens for which an entity was identified.
     entity_tokens = dict()
-    for em in candidate.matched_entities:
-        for t in em.tokens:
-            entity_tokens[t] = em
+    for mention in candidate.matched_entities:
+        for tok in mention.tokens:
+            entity_tokens[tok] = mention
     query_text_tokens = ['<start>']
-    # Replace entity tokens with "ENTITY"
-    for t in candidate.query.tokens:
+    # Replace entity tokens with "[<entity_class>]" or "[entity]" if
+    # use_type_names==False
+    for tok in candidate.query.tokens:
         # ignore punctuation
-        if t.pos_ == 'PUNCT':
+        if tok.pos_ == 'PUNCT':
             continue
-        if t in entity_tokens:
+        if tok in entity_tokens:
+            entity = entity_tokens[tok]
+            if use_type_names:
+                placeholder = '['+entity.category.lower().replace(' ', '_')+']'
+            else:
+                placeholder = '[entity]'
             # Don't replace if the previous token is an entity token.
             # This conflates multiple tokens for the same entity
             # but also multiple entities
-            entity = entity_tokens[t]
-            placeholder = '['+entity.category.lower().replace(' ', '_')+']'
             if query_text_tokens and query_text_tokens[-1] == placeholder:
                 # only need one per mention
                 continue
             query_text_tokens.append(placeholder)
         else:
-            query_text_tokens.append(t.orth_.lower())
+            query_text_tokens.append(tok.orth_.lower())
     return query_text_tokens
 
 def pattern_complexity(candidate):
@@ -260,10 +267,12 @@ def simple_features(candidate):
     return features
 
 
-def ngram_features(candidate, ngram_dict):
+def ngram_features(candidate, ngram_dict, use_type_names=True):
     """Extract ngram features from the single candidate.
 
     :param candidate:
+    :param use_type_names - whether to use [entity] or [classname] as entity
+                            replacement
     :return:
     """
     ngram_features = dict()
@@ -274,7 +283,7 @@ def ngram_features(candidate, ngram_dict):
 
     relations = sorted(candidate.get_relation_names())
     all_rels = '_'.join(relations)
-    n_grams = get_ngram_features(candidate)
+    n_grams = get_ngram_features(candidate, use_type_names)
     for ng in n_grams:
         # Ignore ngrams that only consist of stopfwords.
         if set(ng).issubset(N_GRAM_STOPWORDS):
