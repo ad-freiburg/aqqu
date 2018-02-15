@@ -20,7 +20,7 @@ Jinja2==2.9.6
 joblib==0.11
 Markdown==2.6.8
 MarkupSafe==1.0
-murmurhash==0.26.4
+murmurhash==0.28.0
 numpy==1.13.1
 pathlib==1.0.1
 plac==0.9.6
@@ -33,9 +33,9 @@ scikit-learn==0.19.0
 scipy==0.19.1
 six==1.10.0
 smart-open==1.5.3
-spacy==1.8.2
+spacy==2.0.7
 termcolor==1.1.0
-thinc==6.5.2
+thinc==6.10.2
 toolz==0.8.2
 tqdm==4.14.0
 ujson==1.35
