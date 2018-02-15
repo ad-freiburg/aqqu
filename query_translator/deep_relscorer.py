@@ -97,7 +97,7 @@ class DeepCNNAqquRelScorer():
         vectors[UNK_ID] = np.random.uniform(-0.05, 0.05,
                                             vector_size)
         ENTITY_ID = 2
-        vocab["<entity>"] = ENTITY_ID
+        vocab["[entity]"] = ENTITY_ID
         vectors[ENTITY_ID] = np.random.uniform(-0.05, 0.05,
                                                vector_size)
         STRTS_ID = 3
