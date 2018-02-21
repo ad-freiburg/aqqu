@@ -40,7 +40,8 @@ if [ "$1" == "learner" ]; then
 		"aqqu_$2" query_translator.learner train $3
 elif [ "$1" == "backend" ]; then
 	echo "Backend"
-	$DOCKER_CMD run --rm -d -p 0.0.0.0:$PORT:8090 --name "aqqu_$1_$2_inst" \
+	$DOCKER_CMD run --restart unless-stopped -d -p 0.0.0.0:$PORT:8090 \
+		--name "aqqu_$1_$2_inst" \
 		-v $INPUT_VOLUME  \
 		-v $WORKDATA_VOLUME \
 		-v $MODELS_VOLUME \
