@@ -10,14 +10,8 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 
 """
 import logging
-import config_helper
-from query_translator.ranker import MLModel
-import scorer_globals
-from query_translator.translator import QueryTranslator
-from .evaluation import EvaluationQuery, load_eval_queries, \
-    evaluate_translator, evaluate
 import os
-from . import ranker
+import sys
 import pickle
 import functools
 import random
@@ -25,8 +19,16 @@ from joblib import Parallel, delayed
 import gc
 import multiprocessing as mp
 from collections import defaultdict
-from . import translator
 from sklearn.model_selection import KFold
+
+import config_helper
+from query_translator.ranker import MLModel
+import scorer_globals
+from query_translator.translator import QueryTranslator
+from . import ranker
+from . import translator
+from .evaluation import EvaluationQuery, load_eval_queries, \
+    evaluate_translator, evaluate
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s '
                            ': %(module)s : %(message)s',
@@ -144,8 +146,11 @@ def cache_evaluated_queries(dataset, queries, parameters):
                                                             parameters)
     # Only write if cache-file doesn't exist already.
     if not os.path.exists(cached_filename):
-        logger.info("Caching queries in %s." % cached_filename)
-        pickle.dump(queries, open(cached_filename, 'wb'))
+        try:
+            logger.info("Caching queries in %s." % cached_filename)
+            pickle.dump(queries, open(cached_filename, 'wb'))
+        except:
+            logger.error("Error during query dump", sys.exc_info()[0])
 
 
 def get_evaluated_queries(dataset, cached, parameters, n_top=2000):

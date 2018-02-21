@@ -6,12 +6,10 @@ Copyright 2015, University of Freiburg.
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import logging
-from collections import defaultdict
 import re
 import copy
 import time
-from .entity_index_rocksdb import EntityIndex
-from .util import normalize_entity_name, remove_number_suffix,\
+from entity_linker.util import normalize_entity_name,\
     remove_prefixes_from_name, remove_suffixes_from_name
 import config_helper
 

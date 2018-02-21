@@ -14,9 +14,9 @@ import sparql_backend.loader
 import config_helper
 from answer_type.answer_type_identifier import AnswerTypeIdentifier
 from entity_linker.entity_index_rocksdb import EntityIndex
-from .pattern_matcher import QueryCandidateExtender,\
+from query_translator.pattern_matcher import QueryCandidateExtender,\
         QueryPatternMatcher, get_content_tokens
-from . import ranker
+from query_translator import ranker
 
 logger = logging.getLogger(__name__)
 

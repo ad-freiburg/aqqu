@@ -9,7 +9,12 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 from itertools import tee
 
 
-def edit_distance(s1, s2, compare_lower=True):
+def edit_distance(s1, s2):
+    """
+    Computes the edit distance between s1 and s2 ignoring casing
+    >>> edit_distance('this is a house', 'This is not a house')
+    4
+    """
     s1 = s1.lower()
     s2 = s2.lower()
     if len(s1) < len(s2):
@@ -33,12 +38,23 @@ def edit_distance(s1, s2, compare_lower=True):
 
 
 def pairwise(iterable):
+    """
+    Pairs each element in iterable with the next one
+    >>> list(pairwise(['a', 'b', 'c']))
+    [('a', 'b'), ('b', 'c')]
+    """
     a, b = tee(iterable)
     next(b, None)
     return zip(a, b)
 
 
 def triplewise(iterable):
+    """
+    Ménage à trois for each element in iterable with the next one and the one
+    after that
+    >>> list(triplewise(['a', 'b', 'c', 'd']))
+    [('a', 'b', 'c'), ('b', 'c', 'd')]
+    """
     a, b, c = tee(iterable, 3)
     next(b, None)
     next(c, None)
@@ -47,4 +63,5 @@ def triplewise(iterable):
 
 
 if __name__ == '__main__':
-    print(edit_distance('this is a house', 'this is not a house'))
+    import doctest
+    doctest.testmod()

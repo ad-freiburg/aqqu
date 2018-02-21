@@ -20,8 +20,8 @@ from typing import List
 import datetime
 import config_helper
 import rocksdb
-from .util import normalize_entity_name
-from . import entity_linker
+from entity_linker.util import normalize_entity_name
+from entity_linker.entity_linker import KBEntity
 
 LOG = logging.getLogger(__name__)
 
@@ -216,7 +216,7 @@ class EntityIndex:
                            entity_index_prefix, entity_types_map,
                            entity_category_map)
 
-    def get_entity_for_mid(self, mid: str) -> 'entity_linker.KBEntity':
+    def get_entity_for_mid(self, mid: str) -> 'KBEntity':
         """Returns the entity object for the MID or None if the MID is unknown.
 
         :param mid:
@@ -286,38 +286,40 @@ class EntityIndex:
         return result
 
     @staticmethod
-    def _bytes_to_entity(line: bytes) -> 'entity_linker.KBEntity':
-        """Instantiate entity from string representation.
+    def _bytes_to_entity(line: bytes) -> 'KBEntity':
+        """
+        Instantiate entity from string representation.
 
-        :param line:
-        :return:
+        >>> e = EntityIndex._bytes_to_entity(b'm.0abc1\\tfoo name\\t7\\tfooly\\tfoo\\n')
+        >>> e.name
+        'foo name'
+        >>> e.id
+        'm.0abc1'
+        >>> e.score
+        7
+        >>> e.aliases
+        ['fooly', 'foo']
         """
         cols = line.strip().decode('utf-8').split('\t')
         mid = cols[0]
         name = cols[1]
         score = int(cols[2])
         aliases = cols[3:]
-        return entity_linker.KBEntity(name, mid, score, aliases)
+        return KBEntity(name, mid, score, aliases)
 
     @staticmethod
     def _bytes_to_types(line: bytes) -> List[str]:
         """
         Read a list of types from a string. Not that the first column
         currently is the mid
+
+        >>> EntityIndex._bytes_to_types(b'type_a type_b type_c\\n')
+        ['type_a', 'type_b', 'type_c']
         """
         types = [t.decode('utf-8') for t in line.strip().split(b' ')]
         return types
 
 
-def main():
-    logging.basicConfig(
-        format='%(asctime)s : %(levelname)s : %(module)s : %(message)s',
-        level=logging.INFO)
-    index = EntityIndex('data/entity-list_cai',
-                        'data/entity-surface-map_cai',
-                        'iprefix')
-    print(index.get_entities_for_surface("albert einstein"))
-
-
 if __name__ == '__main__':
-    main()
+    import doctest
+    doctest.testmod()

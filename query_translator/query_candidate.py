@@ -10,7 +10,6 @@ Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
 import logging
 import sys
-from .util import *
 import copy
 import config_helper
 import freebase

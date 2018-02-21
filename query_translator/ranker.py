@@ -12,33 +12,25 @@ import os
 import copy
 import logging
 import itertools
-from . import translator
-from .deep_relscorer import DeepCNNAqquRelScorer
 import random
-import config_helper
 import numpy as np
-from random import Random
+import config_helper
 from sklearn import utils
 from sklearn import metrics
-from sklearn.feature_selection import SelectKBest, chi2, SelectPercentile
+from sklearn.feature_selection import chi2, SelectPercentile
 from sklearn.externals import joblib
 from sklearn.metrics import classification_report
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, \
-    AdaBoostRegressor, RandomForestRegressor, ExtraTreesClassifier
-from sklearn import pipeline
-from sklearn.linear_model import SGDClassifier, SGDRegressor, \
-    LogisticRegressionCV, LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegressionCV, LogisticRegression
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.preprocessing import StandardScaler, LabelEncoder, \
-    Normalizer, MinMaxScaler
-from .evaluation import EvaluationQuery, EvaluationCandidate
-from . import feature_extraction as f_ext
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from entity_linker.entity_linker import EntityLinker
 from entity_linker.entity_linker_qlever import EntityLinkerQlever
 from entity_linker.entity_oracle import EntityOracle
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.pipeline import FeatureUnion
 from sklearn.model_selection import KFold, GridSearchCV
+from query_translator.deep_relscorer import DeepCNNAqquRelScorer
+from query_translator import feature_extraction as f_ext
+
 
 
 RANDOM_SHUFFLE = 0.3
@@ -238,6 +230,7 @@ class AqquModel(MLModel, Ranker):
                  learn_deep_rel_model=True,
                  learn_ngram_rel_model=True,
                  use_type_names=True,
+                 use_attention=True,
                  **kwargs):
         MLModel.__init__(self, name, train_datasets)
         Ranker.__init__(self, name, **kwargs)
@@ -258,6 +251,7 @@ class AqquModel(MLModel, Ranker):
         self.learn_deep_rel_model = learn_deep_rel_model
         self.learn_ngram_rel_model = learn_ngram_rel_model
         self.use_type_names = use_type_names
+        self.use_attention = use_attention
 
 
     def load_model(self):
@@ -276,7 +270,8 @@ class AqquModel(MLModel, Ranker):
                 self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
                 self.deep_relation_scorer = \
-                    DeepCNNAqquRelScorer.init_from_config(self.use_type_names)
+                    DeepCNNAqquRelScorer.init_from_config(
+                        self.use_type_names, self.use_attention)
 
                 model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
                 self.deep_relation_scorer.load_model(
@@ -302,7 +297,8 @@ class AqquModel(MLModel, Ranker):
         return rel_model
 
     def learn_deep_rel_score_model(self, queries, test_queries):
-        rel_model = DeepCNNAqquRelScorer.init_from_config()
+        rel_model = DeepCNNAqquRelScorer.init_from_config(
+            self.use_type_names, self.use_attention)
         extend_deep_model = config_helper.config.get('Ranker',
                                                      'extend-deep-model',
                                                      fallback=None)
@@ -861,7 +857,6 @@ class SimpleScoreRanker(Ranker):
         Ranker.__init__(self, name, **kwargs)
 
     def score(self, query_candidate):
-        result_size = query_candidate.get_result_count()
         em_token_score = 0.0
         for em in query_candidate.matched_entities:
             em_score = em.entity.surface_score
@@ -1368,5 +1363,5 @@ def shuffle_candidates(candidates, key):
     :return:
     """
     stable_candidates = sort_query_candidates(candidates, key)
-    Random(RANDOM_SHUFFLE).shuffle(stable_candidates)
+    random.Random(RANDOM_SHUFFLE).shuffle(stable_candidates)
     return stable_candidates

@@ -3,17 +3,16 @@ Copyright 2015, University of Freiburg.
 
 Elmar Haussmann <haussmann@cs.uni-freiburg.de>
 """
-from itertools import chain
-from . import query_candidate as qc
-import logging
-from entity_linker.mediator_index_fast import MediatorIndexFast
-from entity_linker.entity_linker import Value, DateValue
 import time
-from . import data
-from answer_type.answer_type_identifier import AnswerType
-from .alignment import WordembeddingSynonyms, WordDerivations
-import config_helper
 import math
+from itertools import chain
+import logging
+from query_translator import data
+from query_translator import query_candidate as qc
+from query_translator.alignment import WordembeddingSynonyms, WordDerivations
+from entity_linker.mediator_index_fast import MediatorIndexFast
+from entity_linker.entity_linker import Value
+import config_helper
 import sparql_backend.loader
 
 logger = logging.getLogger(__name__)

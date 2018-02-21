@@ -7,7 +7,7 @@ from gensim import models
 from gensim import matutils
 from numpy import dot
 import logging
-from . import data
+from query_translator import data
 
 logger = logging.getLogger(__name__)
 MIN_WORD_SIMILARITY = 0.4
