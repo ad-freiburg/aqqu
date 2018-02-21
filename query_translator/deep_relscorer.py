@@ -12,7 +12,7 @@ import tensorflow as tf
 from gensim.models import Word2Vec
 from sklearn import utils
 
-from . import feature_extraction
+from query_translator import feature_extraction
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +25,16 @@ class DeepCNNAqquRelScorer():
     UNK = '---UNK---'
     PAD = '---PAD---'
 
-    def __init__(self, logdir, embeddings_file=None, use_type_names=True):
+    def __init__(self, logdir, embeddings_file=None,
+                 use_type_names=True, use_attention=True):
         self.logdir = logdir
         self.n_rels = 3
         self.n_parts_per_rel = 3
         self.n_rel_parts = self.n_rels * self.n_parts_per_rel
         self.embeddings_file = embeddings_file
+        # flags
         self.use_type_names = use_type_names
+        self.use_attention = use_attention
         # This is the maximum number of tokens in a query we consider.
         self.max_query_len = 20
         self.filter_sizes = (1, 2, 3, 4)
@@ -58,7 +61,7 @@ class DeepCNNAqquRelScorer():
         self.train_op = None
 
     @staticmethod
-    def init_from_config(use_type_names=True):
+    def init_from_config(use_type_names=True, use_attention=True):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -69,7 +72,8 @@ class DeepCNNAqquRelScorer():
                                              'word-embeddings')
         logdir = config_options.get('DeepRelScorer',
                                     'logdir')
-        return DeepCNNAqquRelScorer(logdir, embeddings_file, use_type_names)
+        return DeepCNNAqquRelScorer(logdir, embeddings_file,
+                                    use_type_names, use_attention)
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -682,55 +686,63 @@ class DeepCNNAqquRelScorer():
                 name='Wembed')
 
         with tf.device('/cpu:0'), tf.name_scope("embedding"):
-            embedded_input_r = tf.nn.embedding_lookup(self.Wembed, self.input_r)
-            embedded_input_s = tf.nn.embedding_lookup(self.Wembed, self.input_s)
+            embedded_input_r = tf.nn.embedding_lookup(
+                self.Wembed, self.input_r)
+            embedded_input_s = tf.nn.embedding_lookup(
+                self.Wembed, self.input_s)
 
-        embedded_input_s_attended = None
-        embedded_input_r_attended = None
-        with tf.name_scope('input-attention'):
-            a_input_norm_r = tf.nn.l2_normalize(embedded_input_r, 1)
-            a_input_norm_s = tf.nn.l2_normalize(embedded_input_s, 1)
-            Attn_match = tf.matmul(a_input_norm_r, a_input_norm_s,
-                    transpose_b=True,
-                    name='Attn_match')
+        if not self.use_attention:
+            embedded_input_r_final = tf.expand_dims(embedded_input_r, -1)
+            embedded_input_s_final = tf.expand_dims(embedded_input_s, -1)
+            filter_depth = 1
+        else:
+            filter_depth = 2
+            with tf.name_scope('input-attention'):
+                a_input_norm_r = tf.nn.l2_normalize(embedded_input_r, 1)
+                a_input_norm_s = tf.nn.l2_normalize(embedded_input_s, 1)
+                Attn_match = tf.matmul(a_input_norm_r, a_input_norm_s,
+                                       transpose_b=True,
+                                       name='Attn_match')
 
-            W_attn_r = tf.Variable(
-                tf.truncated_normal([2*self.pad+self.relation_len,
-                                     embedding_size],
-                                    stddev=0.1,
-                                    seed=386),
-                name="W_attn_r")
+                W_attn_r = tf.Variable(
+                    tf.truncated_normal([2*self.pad+self.relation_len,
+                                         embedding_size],
+                                        mean=0.0,
+                                        stddev=0.1,
+                                        seed=386),
+                    name="W_attn_r")
 
-            W_attn_s = tf.Variable(
-                tf.truncated_normal([2*self.pad+self.sentence_len,
-                                     embedding_size],
-                                    stddev=0.1,
-                                    seed=386),
-                name="W_attn_s")
+                W_attn_s = tf.Variable(
+                    tf.truncated_normal([2*self.pad+self.sentence_len,
+                                         embedding_size],
+                                        mean=0.0,
+                                        stddev=0.1,
+                                        seed=386),
+                    name="W_attn_s")
 
-            # ;-( https://stackoverflow.com/questions/38235555
-            with tf.name_scope('matmul_r'):
-                Attn_match_transpose_flattened = tf.reshape(
-                    tf.transpose(Attn_match),
-                    [-1, 2*self.pad+self.relation_len]) 
-                Attn_r = tf.matmul(Attn_match_transpose_flattened, W_attn_r,
-                                   name='Attn_r')
-                Attn_r = tf.reshape(Attn_r, [-1, 2*self.pad+self.relation_len,
-                                             embedding_size])
-            with tf.name_scope('matmul_s'):
-                Attn_match_flattened = tf.reshape(
-                    Attn_match,
-                    [-1, 2*self.pad+self.sentence_len]) 
+                # ;-( https://stackoverflow.com/questions/38235555
+                with tf.name_scope('matmul_r'):
+                    Attn_match_transpose_flattened = tf.reshape(
+                        tf.transpose(Attn_match),
+                        [-1, 2*self.pad+self.relation_len])
+                    Attn_r = tf.matmul(Attn_match_transpose_flattened, W_attn_r,
+                                       name='Attn_r')
+                    Attn_r = tf.reshape(Attn_r, [-1, 2*self.pad+self.relation_len,
+                                                 embedding_size])
+                with tf.name_scope('matmul_s'):
+                    Attn_match_flattened = tf.reshape(
+                        Attn_match,
+                        [-1, 2*self.pad+self.sentence_len])
 
-                Attn_s = tf.matmul(Attn_match_flattened, W_attn_s,
-                                   name='Attn_s')
-                Attn_s = tf.reshape(Attn_s, [-1, 2*self.pad+self.sentence_len,
-                                             embedding_size])
+                    Attn_s = tf.matmul(Attn_match_flattened, W_attn_s,
+                                       name='Attn_s')
+                    Attn_s = tf.reshape(Attn_s, [-1, 2*self.pad+self.sentence_len,
+                                                 embedding_size])
 
-            embedded_input_r_attended = tf.stack([Attn_r, embedded_input_r],
-                                                 axis=3)
-            embedded_input_s_attended = tf.stack([Attn_s, embedded_input_s],
-                                                 axis=3)
+                embedded_input_r_final = tf.stack([Attn_r, embedded_input_r],
+                                                     axis=3)
+                embedded_input_s_final = tf.stack([Attn_s, embedded_input_s],
+                                                     axis=3)
 
 
 
@@ -739,14 +751,14 @@ class DeepCNNAqquRelScorer():
         for filter_size in filter_sizes:
             with tf.name_scope("conv-maxpool-q-%s" % filter_size):
                 # Convolution Layer
-                filter_shape = [filter_size, embedding_size, 2, num_filters]
+                filter_shape = [filter_size, embedding_size, filter_depth, num_filters]
                 W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
                                                     seed=123),
                                 name="W")
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    embedded_input_s_attended,
+                    embedded_input_s_final,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
@@ -773,14 +785,14 @@ class DeepCNNAqquRelScorer():
         for filter_size in filter_sizes:
             with tf.name_scope("conv-maxpool-r-%s" % filter_size):
                 # Convolution Layer
-                filter_shape = [filter_size, embedding_size, 2, num_filters]
+                filter_shape = [filter_size, embedding_size, filter_depth, num_filters]
                 W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
                                                     seed=123),
                                 name="W")
                 b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
-                    embedded_input_r_attended,
+                    embedded_input_r_final,
                     W,
                     strides=[1, 1, 1, 1],
                     padding="VALID",
