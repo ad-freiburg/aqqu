@@ -1,0 +1,16 @@
+project: aqqu
+train:
+  framework: tensorflow
+  image: gcr.io/tensorflow/tensorflow:latest-gpu-py3
+  install: 
+    - apt-get update
+    - apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
+    - pip install -r requirements.txt
+    - python -m spacy download en
+  resources:
+    cpus: 1
+    mem: 16384
+    gpus: 1
+  run:
+    - python setup.py build_ext --inplace
+    - python -m query_translator.learner --config conf_riseml.cfg train WQSP_Ranker_tiny

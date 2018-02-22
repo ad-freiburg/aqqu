@@ -22,12 +22,10 @@ from collections import defaultdict
 from sklearn.model_selection import KFold
 
 import config_helper
-from query_translator.ranker import MLModel
-import scorer_globals
 from query_translator.translator import QueryTranslator
-from . import ranker
-from . import translator
-from .evaluation import EvaluationQuery, load_eval_queries, \
+from query_translator import ranker
+import scorer_globals
+from query_translator.evaluation import EvaluationQuery, load_eval_queries, \
     evaluate_translator, evaluate
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s '
@@ -35,8 +33,6 @@ logging.basicConfig(format='%(asctime)s : %(levelname)s '
                     level=logging.INFO)
 
 logger = logging.getLogger(__name__)
-cache_directory = "data/learning_cache/"
-
 
 def rank_candidates(query, ranker):
     """Rerank candidates of single query.
@@ -111,7 +107,8 @@ def get_cache_name_for_dataset_and_params(dataset,
         logger.error("Unknown dataset: %s" % dataset)
         exit(1)
     filename = dataset_file.split('/')[-1]
-    filename += params_suffix
+    filename += params_suffix 
+    cache_directory = config_helper.config.get('model-directory')
     cached_filename = cache_directory + filename + ".cached"
     return cached_filename
 
@@ -231,7 +228,7 @@ def test(scorer_name, test_dataset, cached, avg_runs=1):
     """
     scorer_obj = scorer_globals.scorers_dict[scorer_name]
     # Not all rankers are MLModels
-    if isinstance(scorer_obj, MLModel):
+    if isinstance(scorer_obj, ranker.MLModel):
         scorer_obj.load_model()
     queries = get_evaluated_queries(test_dataset,
                                     cached,
