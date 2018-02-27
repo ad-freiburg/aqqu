@@ -24,11 +24,15 @@ All data required for learning can be found under
 
 ## Train with the provided script
 
-    ./build_and_run.sh learner <user_provided_name> <ranker e.g. WQSP_Ranker> <port>
+    ./build_and_run.sh learner -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> -p <port> <additional args>
 
 ## Run with the provided script
 
-    ./build_and_run.sh backend <user_provided_name> <ranker e.g. WQSP_Ranker> <port>
+    ./build_and_run.sh backend -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> -p <port> <addtional args>
+
+## Overriding parameters
+To override certain ranker parameters you can use `--override` with a JSON object as additional argument for example
+`--override '{"top_ngram_percentile": 15}'`
 
 ## Disabling GPU
 To disable GPU use run above commands with the environment variable `NO_GPU=1`

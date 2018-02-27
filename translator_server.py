@@ -228,6 +228,8 @@ def main() -> None:
     parser.add_argument("ranker_name",
                         default="WQ_Ranker",
                         help="The ranker to use.")
+    parser.add_argument('--override', default='{}',
+                        help='Override parameters of the ranker with JSON map')
     parser.add_argument("--config",
                         default="config.cfg",
                         help="The configuration file to use.")
@@ -239,10 +241,14 @@ def main() -> None:
         LOG.error("%s is not a valid ranker", args.ranker_name)
         LOG.error("Valid rankers are: %s ", " ".join(
             list(scorer_globals.scorers_dict.keys())))
+        sys.exit(1)
     LOG.info("Using ranker %s", args.ranker_name)
-    ranker = scorer_globals.scorers_dict[args.ranker_name]
+    override = json.loads(args.override)
+    if override != {}:
+        logger.info('Overrides: %s', json.dumps(override))
+    ranker = scorer_globals.scorers_dict[args.ranker_name].instance(override)
     translator = QueryTranslator.init_from_config()
-    translator.set_scorer(ranker)
+    translator.set_ranker(ranker)
 
     # using a closure prevents us from having to make translator global
     @APP.route('/', methods=['GET'])

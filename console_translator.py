@@ -34,9 +34,9 @@ def main():
         logger.error("%s is not a valid ranker" % args.ranker_name)
         logger.error("Valid rankers are: %s " % (" ".join(list(scorer_globals.scorers_dict.keys()))))
     logger.info("Using ranker %s" % args.ranker_name)
-    ranker = scorer_globals.scorers_dict[args.ranker_name]
+    ranker = scorer_globals.scorers_dict[args.ranker_name].instance()
     translator = QueryTranslator.init_from_config()
-    translator.set_scorer(ranker)
+    translator.set_ranker(ranker)
     while True:
         sys.stdout.write("enter question> ")
         sys.stdout.flush()

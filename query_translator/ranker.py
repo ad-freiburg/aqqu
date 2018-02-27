@@ -447,7 +447,7 @@ class AqquModel(MLModel, Ranker):
 
     def rank_query_candidates(self, query_candidates, key=lambda x: x,
                               store_features=False):
-        """Rank query candidates by scoring and then sorting them.
+        """Rank query candidates using the learned comparision function
 
         :param query_candidates:
         :return:
@@ -472,8 +472,8 @@ class AqquModel(MLModel, Ranker):
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
-        query_candidates, features = self.prune_candidates(query_candidates,
-                                                           features)
+        query_candidates, features = self.prune_query_candidates(query_candidates,
+                                                           features, key)
         logger.info("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
         start = time.time()
@@ -481,15 +481,16 @@ class AqquModel(MLModel, Ranker):
         if len(query_candidates) < 2:
             return query_candidates
         ranked_candidates = self.rank_candidates(query_candidates,
-                                                     features)
+                                                 features)
         duration = (time.time() - start) * 1000
         logger.debug("Ranked candidates in %s ms" % (duration))
         return ranked_candidates
 
-    def prune_candidates(self, query_candidates, features):
+    def prune_query_candidates(self, query_candidates, features, key=lambda x: x):
         remaining = []
         if len(query_candidates) > 0:
-            remaining = self.pruner.prune_candidates(query_candidates, features)
+            remaining = self.pruner.prune_query_candidates(query_candidates,
+                                                     features, key)
         return remaining
 
     def learn_submodel_features(self, train_queries, dict_vec, n_folds=6,
@@ -666,7 +667,7 @@ class CandidatePruner(MLModel):
                      self.scaler], self.get_model_filename())
         logger.info("Done.")
 
-    def prune_candidates(self, query_candidates, features):
+    def prune_query_candidates(self, query_candidates, features, key=lambda x: x):
         remaining = []
         remaining_idxs = []
         X = self.scaler.transform(features)
@@ -675,7 +676,7 @@ class CandidatePruner(MLModel):
         for cand_idx, (cand, predict) in enumerate(zip(query_candidates, p)):
             # TODO the pruner should learn to always prune empty
             # answers but currently it doesn't so check that separately
-            if predict == 1 and cand.get_result_count() > 0:
+            if predict == 1 and key(cand).get_result_count() > 0:
                 remaining.append(cand)
                 remaining_idxs.append(cand_idx)
 

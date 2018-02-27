@@ -71,10 +71,10 @@ class QueryTranslator(object):
                                entity_linker, nlp, scorer, entity_index,
                                answer_type_identifier)
 
-    def set_scorer(self, scorer):
+    def set_ranker(self, scorer):
         """Sets the parameters of the translator.
 
-        :type scorer: ranker.Ranker
+        :type ranker: ranker.Ranker
         :return:
         """
         self.scorer = scorer
@@ -86,7 +86,7 @@ class QueryTranslator(object):
 
         self.query_extender.set_parameters(params)
 
-    def get_scorer(self):
+    def get_ranker(self):
         """Returns the current parameters of the translator.
         """
         return self.scorer

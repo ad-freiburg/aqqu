@@ -11,6 +11,22 @@ train:
     cpus: 1
     mem: 16384
     gpus: 1
+  parameters:
+    rel-c:
+      - 1e-5
+      - 1e-6
+      - 1e-7
+    top-ngram-percentile:
+      - 5
+      - 10
+      - 15
   run:
     - python setup.py build_ext --inplace
-    - python -m query_translator.learner --config conf_riseml.cfg train WQSP_Ranker_tiny
+    - >-
+         python -m query_translator.learner --config conf_riseml.cfg 
+           cv WQSP_Ranker wqsptrain --override 
+           '{
+             "rel_regularization_C" : {{rel-c}}, 
+             "top_ngram_percentile": {{top-ngram-percentile}}
+            }'
+

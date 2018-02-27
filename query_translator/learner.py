@@ -15,6 +15,7 @@ import sys
 import pickle
 import functools
 import random
+import json
 from joblib import Parallel, delayed
 import gc
 import multiprocessing as mp
@@ -62,7 +63,7 @@ def evaluate_scorer_parallel(test_queries, scorer_obj,
     """
     re_rank = functools.partial(rank_candidates, ranker=scorer_obj)
     pool = mp.Pool(processes=num_processes)
-    logger.info("Parallelly rescoring candidates.")
+    logger.info("Parallelly rescoring candidates. %r", type(test_queries[0]))
     queries = pool.map(re_rank, test_queries,
                        len(test_queries) // num_processes)
     pool.close()
@@ -169,9 +170,9 @@ def get_evaluated_queries(dataset, cached, parameters, n_top=2000):
         # Note: we use the default scorer here, but with parameters
         # of the selected scorer.
         translator = QueryTranslator.init_from_config()
-        candidate_scorer = ranker.LiteralRanker('DefaultScorer')
-        candidate_scorer.parameters = parameters
-        translator.set_scorer(candidate_scorer)
+        candidate_ranker = ranker.LiteralRanker('DefaultScorer')
+        candidate_ranker.parameters = parameters
+        translator.set_ranker(candidate_ranker)
         queries = load_eval_queries(dataset)
         # We evaluate the queries here, so that in subsequent runs, we already
         # know which candidate is correct etc. and do not have to perform the
@@ -186,7 +187,7 @@ def get_evaluated_queries(dataset, cached, parameters, n_top=2000):
     return queries
 
 
-def train(scorer_name, cached):
+def train(scorer_name, override, cached):
     """Train the scorer with provided name.
 
     :param scorer_name:
@@ -195,7 +196,10 @@ def train(scorer_name, cached):
     :return:
     """
     try:
-        scorer_obj = scorer_globals.scorers_dict[scorer_name]
+        if override != {}:
+            logger.info('Overrides: %s', json.dumps(override))
+        scorer_obj = scorer_globals.scorers_dict[scorer_name].instance(
+            override)
     except KeyError:
         logger.error("Unknown scorer: %s", scorer_name)
         exit(1)
@@ -217,7 +221,7 @@ def train(scorer_name, cached):
     logger.info("Done training.")
 
 
-def test(scorer_name, test_dataset, cached, avg_runs=1):
+def test(scorer_name, override, test_dataset, cached, avg_runs=1):
     """Evaluate the scorer on the given test dataset.
 
     :param scorer_name:
@@ -226,7 +230,14 @@ def test(scorer_name, test_dataset, cached, avg_runs=1):
     :param cached:
     :return:
     """
-    scorer_obj = scorer_globals.scorers_dict[scorer_name]
+    try:
+        if override != {}:
+            logger.info('Overrides: %s', json.dumps(override))
+        scorer_obj = scorer_globals.scorers_dict[scorer_name].instance(
+            override)
+    except KeyError:
+        logger.error("Unknown scorer: %s", scorer_name)
+        exit(1)
     # Not all rankers are MLModels
     if isinstance(scorer_obj, ranker.MLModel):
         scorer_obj.load_model()
@@ -251,7 +262,7 @@ def test(scorer_name, test_dataset, cached, avg_runs=1):
         logger.info("%s: %.4f" % (k, result[k]))
 
 
-def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
+def cv(scorer_name, override, dataset, cached, n_folds=4, avg_runs=1):
     """Report the average results across different folds.
 
     :param scorer_name:
@@ -260,7 +271,14 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
     :param cached:
     :return:
     """
-    scorer_obj = scorer_globals.scorers_dict[scorer_name]
+    try:
+        if override != {}:
+            logger.info('Overrides: %s', json.dumps(override))
+        scorer_obj = scorer_globals.scorers_dict[scorer_name].instance(
+            override)
+    except KeyError:
+        logger.error("Unknown scorer: %s", scorer_name)
+        exit(1)
     # Split the queries into n_folds
 
     queries = get_evaluated_queries(dataset,
@@ -284,9 +302,8 @@ def cv(scorer_name, dataset, cached, n_folds=6, avg_runs=1):
             train_fold = [queries[i] for i in train_indices]
             scorer_obj.learn_model(train_fold)
             num_fold += 1
-            res, test_queries = evaluate_scorer_parallel(test_fold,
-                                                         scorer_obj,
-                                                         num_processes=2)
+            res, test_queries = evaluate_scorer(test_fold,
+                                                scorer_obj)
             logger.info(res)
             for k, v in res._asdict().items():
                 result[k] += v
@@ -310,13 +327,19 @@ def main():
                         default='config.cfg',
                         help='The configuration file to use.')
     subparsers = parser.add_subparsers(help='command help')
+
     train_parser = subparsers.add_parser('train', help='Train a scorer.')
     train_parser.add_argument('scorer_name',
                               help='The scorer to train.')
+    train_parser.add_argument('--override', default='{}',
+                              help='Override parameters of the scorer with JSON map')
     train_parser.set_defaults(which='train')
+
     test_parser = subparsers.add_parser('test', help='Test a scorer.')
     test_parser.add_argument('scorer_name',
                              help='The scorer to test.')
+    test_parser.add_argument('--override', default='{}',
+                              help='Override parameters of the scorer with JSON map')
     test_parser.add_argument('test_dataset',
                              help='The dataset on which to test the scorer.')
     test_parser.add_argument('--avg_runs',
@@ -324,9 +347,12 @@ def main():
                              default=1,
                              help='Over how many runs to average.')
     test_parser.set_defaults(which='test')
+
     cv_parser = subparsers.add_parser('cv', help='Cross-validate a scorer.')
     cv_parser.add_argument('scorer_name',
                            help='The scorer to test.')
+    cv_parser.add_argument('--override', default='{}',
+                              help='Override parameters of the scorer with JSON map')
     cv_parser.add_argument('dataset',
                            help='The dataset on which to compute cv scores.')
     cv_parser.add_argument('--n_folds',
@@ -346,12 +372,15 @@ def main():
     random.seed(999)
     use_cache = args.cached
     if args.which == 'train':
-        train(args.scorer_name, use_cache)
+        train(args.scorer_name,
+              json.loads(args.override), use_cache)
     elif args.which == 'test':
-        test(args.scorer_name, args.test_dataset, use_cache,
+        test(args.scorer_name,
+             json.loads(args.override), args.test_dataset, use_cache,
              avg_runs=args.avg_runs)
     elif args.which == 'cv':
-        cv(args.scorer_name, args.dataset, use_cache, n_folds=args.n_folds,
+        cv(args.scorer_name,
+           json.loads(args.override), args.dataset, use_cache, n_folds=args.n_folds,
            avg_runs=args.avg_runs)
 
 
