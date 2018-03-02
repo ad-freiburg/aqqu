@@ -7,7 +7,9 @@ Niklas Schnelle <schnelle@cs.uni-freiburg.de>
 
 """
 import logging
-from typing import List, Union, Iterable, Dict, Any, Set
+from typing import List, Union, Iterable, Dict, Any
+import json
+import sys
 import config_helper
 import scorer_globals
 import flask
@@ -245,12 +247,13 @@ def main() -> None:
     LOG.info("Using ranker %s", args.ranker_name)
     override = json.loads(args.override)
     if override != {}:
-        logger.info('Overrides: %s', json.dumps(override))
-    ranker = scorer_globals.scorers_dict[args.ranker_name].instance(override)
+        LOG.info('overrides: %s', json.dumps(override))
+    ranker_conf = scorer_globals.scorers_dict[args.ranker_name]
+    ranker = ranker_conf.instance(override)
     translator = QueryTranslator.init_from_config()
     translator.set_ranker(ranker)
 
-    # using a closure prevents us from having to make translator global
+    # using closures prevents us from having to make translator global
     @APP.route('/', methods=['GET'])
     def translate():  # pylint: disable=unused-variable
         """
@@ -264,6 +267,18 @@ def main() -> None:
         LOG.info("#candidates: %s", len(candidates))
         return flask.jsonify(map_candidates(
             raw_query, parsed_query, candidates))
+
+    @APP.route('/config', methods=['GET'])
+    def get_config():
+        """
+        REST entry point providing information about the current configuration
+        """
+        result = {
+            'ranker_name': ranker_conf.name,
+            'override': ranker_conf.override(),
+            'config': ranker_conf.config()
+            }
+        return flask.jsonify(result)
 
     APP.run(use_reloader=False, host='0.0.0.0', threaded=False,
             port=args.port, debug=False)

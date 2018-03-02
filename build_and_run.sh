@@ -10,7 +10,7 @@ else
 fi
 
 function help {
-	echo "Usage: $0 learner|backend|debug [--port PORT] [--name name] [--ranker ranker] [ARGS..]"
+	echo "Usage: $0 train|cv|backend|debug [--port PORT] [--name name] [--ranker ranker] [ARGS..]"
 	exit 1
 }
 
@@ -52,7 +52,7 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-if [ $# -lt 2 ] || [ "$1" != "backend" ] && [ "$1" != "learner" ] && [ "$1" != "debug" ]; then
+if [ $# -lt 2 ] || [ "$1" != "backend" ] && [ "$1" != "train" ] && [ "$1" != "debug" ] && [ "$1" != "cv" ]; then
 	help
 fi
 
@@ -60,7 +60,7 @@ fi
 INPUT_VOLUME="$(pwd)/$INPUT_DIR:/app/input"
 WORKDATA_VOLUME="$(pwd)/$WORKDATA_DIR:/app/data"
 MODELS_VOLUME="aqqu_learner_${NAME}_models_vol:/app/models"
-if [ "$1" == "learner" ]; then
+if [ "$1" == "train" ] || [ "$1" == "cv" ]; then
 	echo "Learner"
 	echo "-----------------------------------------------------------------"
 	echo Executing $DOCKER_CMD build
@@ -72,7 +72,7 @@ if [ "$1" == "learner" ]; then
 		-v $INPUT_VOLUME \
 		-v $WORKDATA_VOLUME \
 		-v $MODELS_VOLUME \
-		"aqqu_${NAME}" query_translator.learner train "${RANKER}" "${@:2}"
+		"aqqu_${NAME}" query_translator.learner "$1" "${RANKER}" "${@:2}"
 elif [ "$1" == "backend" ]; then
 	echo "Backend"
 	$DOCKER_CMD run --restart unless-stopped --init -d -p 0.0.0.0:${PORT}:8090 \

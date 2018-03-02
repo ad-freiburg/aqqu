@@ -26,7 +26,8 @@ class DeepCNNAqquRelScorer():
     PAD = '---PAD---'
 
     def __init__(self, logdir, embeddings_file=None,
-                 use_type_names=True, use_attention=True):
+                 use_type_names=True, use_attention=True,
+                 num_filters=128, num_hidden_nodes=200):
         self.logdir = logdir
         self.n_rels = 3
         self.n_parts_per_rel = 3
@@ -36,9 +37,11 @@ class DeepCNNAqquRelScorer():
         self.use_type_names = use_type_names
         self.use_attention = use_attention
         # This is the maximum number of tokens in a query we consider.
-        self.max_query_len = 20
         self.filter_sizes = (1, 2, 3, 4)
-        self.pad = 0 #max(self.filter_sizes) - 1
+        self.num_filters = num_filters
+        self.num_hidden_nodes = num_hidden_nodes
+        self.pad = 0  # max(self.filter_sizes) - 1
+        self.max_query_len = 20
         self.sentence_len = self.max_query_len
         # 3 1-word domains, 3 2-word sub domains
         # and 3 3-word relation names plus 2 paddings
@@ -59,9 +62,11 @@ class DeepCNNAqquRelScorer():
         self.optimizer = None
         self.global_step = None
         self.train_op = None
+        self.saver = None
 
     @staticmethod
-    def init_from_config(use_type_names=True, use_attention=True):
+    def init_from_config(use_type_names=True, use_attention=True,
+                         num_filters=128, num_hidden_nodes=200):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -73,7 +78,8 @@ class DeepCNNAqquRelScorer():
         logdir = config_options.get('DeepRelScorer',
                                     'logdir')
         return DeepCNNAqquRelScorer(logdir, embeddings_file,
-                                    use_type_names, use_attention)
+                                    use_type_names, use_attention,
+                                    num_filters, num_hidden_nodes)
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -263,10 +269,10 @@ class DeepCNNAqquRelScorer():
 
         with self.g.as_default():
             tf.set_random_seed(42)
-            self.build_deep_model(filter_sizes=self.filter_sizes)
+            self.build_deep_model()
 
             gpu_options = tf.GPUOptions(
-                per_process_gpu_memory_fraction=0.9)
+                allow_growth=True)
             session_conf = tf.ConfigProto(
                 allow_soft_placement=True,
                 log_device_placement=False,
@@ -574,7 +580,7 @@ class DeepCNNAqquRelScorer():
                 os.makedirs(log_name)
             self.writer = tf.summary.FileWriter(log_name)
             with self.g.as_default():
-                self.build_deep_model(filter_sizes=self.filter_sizes)
+                self.build_deep_model()
                 self.saver = tf.train.Saver(save_relative_paths=True)
                 session_conf = tf.ConfigProto(
                     allow_soft_placement=True)
@@ -652,10 +658,7 @@ class DeepCNNAqquRelScorer():
         assert len(result) == len(score_candidates)
         return result
 
-    def build_deep_model(self,
-                         filter_sizes=(2, 3, 4), num_filters=128,
-                         n_hidden_nodes_1=200,
-                         num_classes=1):
+    def build_deep_model(self):
         logger.info("sentence_len: %s", self.sentence_len)
         embedding_size = self.embeddings.shape[1]
         logger.info("embedding_shape: %r", self.embeddings.shape)
@@ -667,7 +670,7 @@ class DeepCNNAqquRelScorer():
         self.input_r = tf.placeholder(tf.int32,
                                       [None, 2*self.pad+self.relation_len],
                                       name="input_r")
-        self.input_y = tf.placeholder(tf.float32, [None, num_classes],
+        self.input_y = tf.placeholder(tf.float32, [None, 1],
                                       name="input_y")
         self.dropout_keep_prob = tf.placeholder(tf.float32,
                                                 name="dropout_keep_prob")
@@ -748,14 +751,15 @@ class DeepCNNAqquRelScorer():
 
         # Convolution layers for query text, one conv-maxpool per filter size
         pooled_outputs = []
-        for filter_size in filter_sizes:
+        for filter_size in self.filter_sizes:
             with tf.name_scope("conv-maxpool-q-%s" % filter_size):
                 # Convolution Layer
-                filter_shape = [filter_size, embedding_size, filter_depth, num_filters]
+                filter_shape = [filter_size, embedding_size,
+                                filter_depth, self.num_filters]
                 W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
                                                     seed=123),
                                 name="W")
-                b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
+                b = tf.Variable(tf.constant(0.1, shape=[self.num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
                     embedded_input_s_final,
@@ -776,20 +780,20 @@ class DeepCNNAqquRelScorer():
                 pooled_outputs.append(pooled)
 
         # Combine all the pooled features
-        num_filters_total = num_filters * len(filter_sizes)
+        num_filters_total = self.num_filters * len(self.filter_sizes)
         q_h_pool = tf.concat(pooled_outputs, 3)
         q_h_pool_flat = tf.reshape(q_h_pool, [-1, num_filters_total])
 
         # Convolution layers for relations, one conv-maxpool per filter size
         pooled_outputs = []
-        for filter_size in filter_sizes:
+        for filter_size in self.filter_sizes:
             with tf.name_scope("conv-maxpool-r-%s" % filter_size):
                 # Convolution Layer
-                filter_shape = [filter_size, embedding_size, filter_depth, num_filters]
+                filter_shape = [filter_size, embedding_size, filter_depth, self.num_filters]
                 W = tf.Variable(tf.truncated_normal(filter_shape, stddev=0.1,
                                                     seed=123),
                                 name="W")
-                b = tf.Variable(tf.constant(0.1, shape=[num_filters]),
+                b = tf.Variable(tf.constant(0.1, shape=[self.num_filters]),
                                 name="b")
                 conv = tf.nn.conv2d(
                     embedded_input_r_final,
@@ -810,7 +814,6 @@ class DeepCNNAqquRelScorer():
                 pooled_outputs.append(pooled)
 
         # Combine all the pooled features
-        num_filters_total = num_filters * len(filter_sizes)
         r_h_pool = tf.concat(pooled_outputs, 3)
         r_h_pool_flat = tf.reshape(r_h_pool, [-1, num_filters_total])
 
@@ -830,11 +833,11 @@ class DeepCNNAqquRelScorer():
         a_q = None
         with tf.name_scope("dense_q"):
             W_q = tf.Variable(tf.truncated_normal([pooled_width,
-                                                   n_hidden_nodes_1],
+                                                   self.num_hidden_nodes],
                                                   stddev=0.1,
                                                   seed=234),
                                                   name="W_q")
-            b_q = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
+            b_q = tf.Variable(tf.constant(0.1, shape=[self.num_hidden_nodes]),
                               name="b_q")
             h_q = tf.nn.xw_plus_b(h_drop, W_q, b_q,
                                   name="h_q")
@@ -844,11 +847,11 @@ class DeepCNNAqquRelScorer():
         a_r = None
         with tf.name_scope("dense_r"):
             W_r = tf.Variable(tf.truncated_normal([pooled_width,
-                                                   n_hidden_nodes_1],
+                                                   self.num_hidden_nodes],
                                                   stddev=0.1,
                                                   seed=234),
                               name="W_r")
-            b_r = tf.Variable(tf.constant(0.1, shape=[n_hidden_nodes_1]),
+            b_r = tf.Variable(tf.constant(0.1, shape=[self.num_hidden_nodes]),
                               name="b_r")
             h_r = tf.nn.xw_plus_b(r_drop, W_r, b_r,
                                   name="h_r")

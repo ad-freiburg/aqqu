@@ -24,15 +24,28 @@ class Conf:
         self.name = name
         self.clzz = clzz
         self._kwargs = kwargs
+        self._override = {}
         self._inst = None
 
+    def config(self):
+        """
+        Returns the configuration options as a map
+        """
+        return self._kwargs.copy()
+
+    def override(self):
+        """
+        Returns only those configuration options that were in the last override
+        """
+        return self._override.copy()
 
     def instance(self, override={}):
         """
         Gets an instance of a scorer with this configuration, if one was aleardy created
         a cached one is used
         """
-        newkwargs = self._kwargs.copy()
+        self._override = override
+        newkwargs = self.config()
         newkwargs.update(override)
         if newkwargs != self._kwargs or not self._inst:
             self._kwargs = newkwargs
@@ -148,22 +161,21 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
 
                Conf(ranker.AqquModel, 'WQSP_Ranker',
                     train_datasets=["wqsptrain"],
-                    top_ngram_percentile=5,
+                    top_ngram_percentile=10,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQSP_Ranker_no_types',
                     train_datasets=["wqsptrain"],
-                    top_ngram_percentile=5,
+                    top_ngram_percentile=10,
                     rel_regularization_C=1e-5,
                     use_type_names=False),
                Conf(ranker.AqquModel, 'WQSP_Ranker_no_attention',
                     train_datasets=["wqsptrain"],
-                    top_ngram_percentile=5,
+                    top_ngram_percentile=10,
                     rel_regularization_C=1e-5,
                     use_type_names=True,
                     use_attention=False),
                Conf(ranker.AqquModel, 'WQSP_Ranker_no_ngram',
                     train_datasets=["wqsptrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
                     learn_deep_rel_model=True,
                     learn_ngram_rel_model=False),
@@ -174,12 +186,12 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQSP_Ranker_tiny',
                     train_datasets=["wqsptrain_tiny"],
-                    top_ngram_percentile=5,
+                    top_ngram_percentile=10,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQSP_Ranker_EQL_tiny',
                     train_datasets=["wqsptrain_tiny"],
                     entity_linker_class=EntityLinkerQlever,
-                    top_ngram_percentile=5,
+                    top_ngram_percentile=10,
                     rel_regularization_C=1e-5),
 
                Conf(ranker.AqquModel, 'SQ_WQSP_Ranker_tiny',

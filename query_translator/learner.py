@@ -221,6 +221,28 @@ def train(scorer_name, override, cached):
     logger.info("Done training.")
 
 
+def write_result_info(result, avg_runs, scorer_conf, suffix):
+    """
+    Writes information about the result on the logger and into a
+    result info JSON file
+    """
+    result['runs'] = avg_runs
+
+    logger.info('Results from %s runs', avg_runs)
+    for key, value in result.items():
+        logger.info('%s = %r', key, value)
+
+    result_dir = config_helper.config.get('Learner', 'result-info-dir')
+    with open(result_dir+scorer_conf.name+suffix+'_result.json',
+              'w', encoding='utf8') as result_file:
+        result_info = {
+            'name': scorer_conf.name,
+            'config': scorer_conf.config(),
+            'override': scorer_conf.override(),
+            'result': result}
+        json.dump(result_info, result_file, sort_keys=True, indent=1)
+
+
 def test(scorer_name, override, test_dataset, cached, avg_runs=1):
     """Evaluate the scorer on the given test dataset.
 
@@ -233,7 +255,8 @@ def test(scorer_name, override, test_dataset, cached, avg_runs=1):
     try:
         if override != {}:
             logger.info('Overrides: %s', json.dumps(override))
-        scorer_obj = scorer_globals.scorers_dict[scorer_name].instance(
+        scorer_conf = scorer_globals.scorers_dict[scorer_name]
+        scorer_obj = scorer_conf.instance(
             override)
     except KeyError:
         logger.error("Unknown scorer: %s", scorer_name)
@@ -257,47 +280,38 @@ def test(scorer_name, override, test_dataset, cached, avg_runs=1):
         gc.collect()
     for k, v in result.items():
         result[k] = float(result[k]) / avg_runs
-    logger.info("Average results over %s runs: " % avg_runs)
-    for k in sorted(result.keys()):
-        logger.info("%s: %.4f" % (k, result[k]))
+    write_result_info(result, avg_runs, scorer_conf, '_test')
 
 
-def cv(scorer_name, override, dataset, cached, n_folds=4, avg_runs=1):
+def cv(scorer_name, override, dataset, cached, n_folds=3, avg_runs=1):
     """Report the average results across different folds.
-
-    :param scorer_name:
-    :param dataset:
-    :param config:
-    :param cached:
-    :return:
     """
     try:
         if override != {}:
-            logger.info('Overrides: %s', json.dumps(override))
-        scorer_obj = scorer_globals.scorers_dict[scorer_name].instance(
-            override)
+            logger.info('overrides: %s', json.dumps(override))
+        scorer_conf = scorer_globals.scorers_dict[scorer_name]
+        scorer_obj = scorer_conf.instance(override)
     except KeyError:
         logger.error("Unknown scorer: %s", scorer_name)
         exit(1)
-    # Split the queries into n_folds
-
     queries = get_evaluated_queries(dataset,
                                     cached,
                                     scorer_obj.get_parameters())
     fold_size = len(queries) // n_folds
-    logger.info("Splitting into %s folds with %s queries each." % (n_folds,
-                                                                   fold_size))
+    logger.info("Splitting into %s folds with %s queries each.",
+                n_folds, fold_size)
+    # Split the queries into n_folds
     kf = KFold(n_splits=n_folds, shuffle=True,
                random_state=999)
     result = defaultdict(int)
     n_runs = 1
     for _ in range(avg_runs):
-        logger.info("Run %s of %s" % (n_runs, avg_runs))
+        logger.info("Run %s of %s", n_runs, avg_runs)
         n_runs += 1
         num_fold = 1
         for train_indices, test_indices in kf.split(queries):
             gc.collect()
-            logger.info("Evaluating fold %s/%s" % (num_fold, n_folds))
+            logger.info("Evaluating fold %s/%s", num_fold, n_folds)
             test_fold = [queries[i] for i in test_indices]
             train_fold = [queries[i] for i in train_indices]
             scorer_obj.learn_model(train_fold)
@@ -305,14 +319,12 @@ def cv(scorer_name, override, dataset, cached, n_folds=4, avg_runs=1):
             res, test_queries = evaluate_scorer(test_fold,
                                                 scorer_obj)
             logger.info(res)
-            for k, v in res._asdict().items():
-                result[k] += v
+            for key, value in res._asdict().items():
+                result[key] += value
             gc.collect()
-    for k, v in result.items():
-        result[k] = float(result[k]) / (n_folds * avg_runs)
-    logger.info("Average results over %s runs: " % avg_runs)
-    for k in sorted(result.keys()):
-        logger.info("%s: %.4f" % (k, result[k]))
+    for key, value in result.items():
+        result[key] = float(value) / (n_folds * avg_runs)
+    write_result_info(result, avg_runs, scorer_conf, '_cv')
 
 
 def main():

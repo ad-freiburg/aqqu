@@ -24,11 +24,15 @@ All data required for learning can be found under
 
 ## Train with the provided script
 
-    ./build_and_run.sh learner -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> -p <port> <additional args>
+    ./build_and_run.sh train -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> <additional args>
 
 ## Run with the provided script
 
     ./build_and_run.sh backend -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> -p <port> <addtional args>
+
+## Run Cross Validation with the provided script
+
+    ./build_and_run.sh cv -n <user_provided_name> -r <ranker> <dataset name>
 
 ## Overriding parameters
 To override certain ranker parameters you can use `--override` with a JSON object as additional argument for example
