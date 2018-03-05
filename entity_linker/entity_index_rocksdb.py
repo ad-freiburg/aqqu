@@ -95,19 +95,34 @@ class EntityIndex:
         options.create_if_missing = True
         options.merge_operator = ConcatenationMerger(b'\t')
         entity_db = rocksdb.DB(entity_db_path,
-                               options)
+                               options, read_only=True)
+        write_enabled = False
         if not entity_db.get(CONTROL_PREFIX+b'entity_vocab_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
             self._build_entity_vocabulary(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'entity_types_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
             self._build_entity_types(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'entity_categories_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
             self._build_entity_categories(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'surfaces_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
             self._build_surface_index(entity_db)
-        # Now we can reopen in read-only mode so as to allow
-        # multiple instances to share the same DB
-        del entity_db
-        entity_db = rocksdb.DB(entity_db_path, options, read_only=True)
+
+        if write_enabled:
+            # Now we can reopen in read-only mode so as to allow
+            # multiple instances to share the same DB
+            del entity_db
+            entity_db = rocksdb.DB(entity_db_path, options, read_only=True)
         return entity_db
 
     def _build_surface_index(self, entity_db):
