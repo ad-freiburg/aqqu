@@ -85,7 +85,7 @@ def evaluate_scorer(test_queries, scorer_obj):
     """
     total_queries = len(test_queries)
     for i, query in enumerate(test_queries):
-        logger.info("Evaluating query %d/%d." % (i + 1, total_queries))
+        logger.info("Evaluating query %d/%d.", i + 1, total_queries)
         query.eval_candidates = scorer_obj.rank_query_candidates(
             query.eval_candidates,
             key=lambda x: x.query_candidate)
@@ -266,20 +266,21 @@ def test(scorer_name, override, test_dataset, cached, avg_runs=1):
         scorer_obj.load_model()
     queries = get_evaluated_queries(test_dataset,
                                     cached,
-                                    scorer_obj.get_parameters())
+                                    scorer_obj.get_parameters(),
+                                    n_top=2000)
     result = defaultdict(int)
     n_runs = 1
     for _ in range(avg_runs):
         logger.info("Run %s of %s" % (n_runs, avg_runs))
         n_runs += 1
-        res, test_queries = evaluate_scorer(queries,
+        res, _ = evaluate_scorer(queries,
                                             scorer_obj)
         logger.info(res)
-        for k, v in res._asdict().items():
-            result[k] += v
+        for key, value in res._asdict().items():
+            result[key] += value
         gc.collect()
-    for k, v in result.items():
-        result[k] = float(result[k]) / avg_runs
+    for key, value in result.items():
+        result[key] = float(result[key]) / avg_runs
     write_result_info(result, avg_runs, scorer_conf, '_test')
 
 
@@ -296,7 +297,8 @@ def cv(scorer_name, override, dataset, cached, n_folds=3, avg_runs=1):
         exit(1)
     queries = get_evaluated_queries(dataset,
                                     cached,
-                                    scorer_obj.get_parameters())
+                                    scorer_obj.get_parameters(),
+                                    n_top=2000)
     fold_size = len(queries) // n_folds
     logger.info("Splitting into %s folds with %s queries each.",
                 n_folds, fold_size)
@@ -316,8 +318,8 @@ def cv(scorer_name, override, dataset, cached, n_folds=3, avg_runs=1):
             train_fold = [queries[i] for i in train_indices]
             scorer_obj.learn_model(train_fold)
             num_fold += 1
-            res, test_queries = evaluate_scorer(test_fold,
-                                                scorer_obj)
+            res, _ = evaluate_scorer(test_fold,
+                                     scorer_obj)
             logger.info(res)
             for key, value in res._asdict().items():
                 result[key] += value
