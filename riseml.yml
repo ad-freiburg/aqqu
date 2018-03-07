@@ -1,23 +1,22 @@
 project: aqqu
 train:
   framework: tensorflow
-  image: gcr.io/tensorflow/tensorflow:latest-gpu-py3
+  image: gcr.io/tensorflow/tensorflow:1.5.0-gpu-py3
   install: 
     - apt-get update
     - apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
     - pip install -r requirements.txt
     - python -m spacy download en
   resources:
-    cpus: 1
-    mem: 16384
+    cpus: 4
+    mem: 40000
     gpus: 1
   parameters:
     num_filters:
-      - 32
-      - 64
-      - 128
-      - 256
-  concurrency: 2
+      - 80
+      - 96
+      - 112
+  concurrency: 1
   run:
     - python setup.py build_ext --inplace
     - >-
