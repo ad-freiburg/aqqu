@@ -10,7 +10,7 @@ else
 fi
 
 function help {
-	echo "Usage: $0 train|cv|backend|debug [--port PORT] [--name name] [--ranker ranker] [ARGS..]"
+	echo "Usage: $0 train|cv|backend|debug [--port PORT] [--name name] [--no-cache] [--ranker ranker] [ARGS..]"
 	exit 1
 }
 
@@ -19,6 +19,7 @@ WORKDATA_DIR="./data"
 PORT=8090
 RANKER="WQSP_Ranker"
 NAME="wqsp_default"
+CACHE=""
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
@@ -27,26 +28,30 @@ do
 
 	case $key in
 			-p|--port)
-			PORT="$2"
-			shift # shift argument
-			shift # shift value
+				PORT="$2"
+				shift # shift argument
+				shift # shift value
 			;;
 			-h|--help)
-			help # exits
+				help # exits
+			;;
+			-nc|--no-cache)
+				CACHE="--pull --no-cache"
+				shift # only have an argument
 			;;
 			-n|--name)
-			NAME="$2"
-			shift # shift argument
-			shift # shift value
+				NAME="$2"
+				shift # shift argument
+				shift # shift value
 			;;
 			-r|--ranker)
-			RANKER="$2"
-			shift # shift argument
-			shift # shift value
+				RANKER="$2"
+				shift # shift argument
+				shift # shift value
 			;;
 			*)    # unknown option
-			POSITIONAL+=("$1") # save it in an array for later
-			shift # shift argument
+				POSITIONAL+=("$1") # save it in an array for later
+				shift # shift argument
 			;;
 	esac
 done
@@ -64,7 +69,7 @@ if [ "$1" == "train" ] || [ "$1" == "cv" ]; then
 	echo "Learner"
 	echo "-----------------------------------------------------------------"
 	echo Executing $DOCKER_CMD build
-	$DOCKER_CMD build -t "aqqu_${NAME}" \
+	$DOCKER_CMD build ${CACHE} -t "aqqu_${NAME}" \
 		--build-arg TENSORFLOW=$TENSORFLOW \
 		-f "Dockerfile.base" .
 	echo "-----------------------------------------------------------------"
@@ -84,7 +89,7 @@ elif [ "$1" == "backend" ]; then
 else
 	echo "Debug"
 	echo Executing $DOCKER_CMD build
-	$DOCKER_CMD build -t "aqqu_debug_${NAME}" \
+	$DOCKER_CMD build ${CACHE} -t "aqqu_debug_${NAME}" \
 		--build-arg TENSORFLOW=$TENSORFLOW \
 		-f "Dockerfile.base" .
 	$DOCKER_CMD run --rm -it -p 0.0.0.0:$PORT:8090 --init --name "aqqu_$1_${NAME}_inst" \
