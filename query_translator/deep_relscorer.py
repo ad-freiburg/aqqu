@@ -321,115 +321,114 @@ class DeepCNNAqquRelScorer():
 
         dev_scores = []
         with self.g.as_default():
-            with self.g.device("/gpu:0"):
-                with self.sess.as_default():
-                    tf.set_random_seed(42)
+            with self.sess.as_default():
+                tf.set_random_seed(42)
 
-                    if not extend_model:
-                        self.sess.run(tf.global_variables_initializer())
-                    else:
-                        self.sess.run(tf.variables_initializer(
-                            [self.global_step]))
+                if not extend_model:
+                    self.sess.run(tf.global_variables_initializer())
+                else:
+                    self.sess.run(tf.variables_initializer(
+                        [self.global_step]))
 
-                    tf.set_random_seed(42)
+                tf.set_random_seed(42)
 
-                    def run_dev_batches(dev_features, dev_qids, dev_f1,
-                                        dev_train, batch_size=200):
-                        n_batch = 0
-                        x, x_rel = dev_features
-                        num_rows = x.shape[0]
-                        probs = []
-                        total_loss = 0.0
-                        while n_batch * batch_size < num_rows:
-                            x_b = x[n_batch * batch_size:
-                                    (n_batch + 1) * batch_size, :]
-                            x_rel_b = x_rel[n_batch * batch_size:
-                                            (n_batch + 1) * batch_size, :]
-                            labels = [1 for _ in range(x_b.shape[0])]
-                            input_y = np.array(labels, dtype=float).reshape(
-                                (len(labels), 1))
-                            feed_dict = {
-                                self.Wembed: self.embeddings,
-                                self.input_y: input_y,
-                                self.input_s: x_b,
-                                self.input_r: x_rel_b,
-                                self.dropout_keep_prob: 1.0
-                            }
-                            summary, loss, p = self.sess.run(
-                                [self.summary, self.loss, self.probs],
-                                feed_dict)
-                            total_loss += loss
-                            n_batch += 1
-                            probs += [p[i, 0] for i in range(p.shape[0])]
-
-                        avg_f1, oracle_avg_f1 = self.evaluate_dev(
-                            dev_qids, dev_f1, probs)
-                        dev_scores.append(avg_f1)
-                        logger.info("%s avg_f1: %.2f oracle_avg_f1: %.2f",
-                                    dev_train,
-                                    100 * avg_f1, 100 * oracle_avg_f1)
-                        return avg_f1, oracle_avg_f1
-
-                    def train_step(batch, epoch, n_batch,
-                                   batch_size, train_size):
-                        """
-                        A single training step
-                        """
-                        y_batch, x_batch, x_rel_batch = batch
+                def run_dev_batches(dev_features, dev_qids, dev_f1,
+                                    dev_train, batch_size=200):
+                    n_batch = 0
+                    x, x_rel = dev_features
+                    num_rows = x.shape[0]
+                    probs = []
+                    total_loss = 0.0
+                    while n_batch * batch_size < num_rows:
+                        x_b = x[n_batch * batch_size:
+                                (n_batch + 1) * batch_size, :]
+                        x_rel_b = x_rel[n_batch * batch_size:
+                                        (n_batch + 1) * batch_size, :]
+                        labels = [1 for _ in range(x_b.shape[0])]
+                        input_y = np.array(labels, dtype=float).reshape(
+                            (len(labels), 1))
                         feed_dict = {
                             self.Wembed: self.embeddings,
-                            self.input_y: y_batch,
-                            self.input_s: x_batch,
-                            self.input_r: x_rel_batch,
-                            self.dropout_keep_prob: 0.9
+                            self.input_y: input_y,
+                            self.input_s: x_b,
+                            self.input_r: x_rel_b,
+                            self.dropout_keep_prob: 1.0
                         }
-                        _, summary, step, loss, probs = self.sess.run(
-                            [self.train_op, self.summary,
-                             self.global_step, self.loss, self.probs],
+                        summary, loss, p = self.sess.run(
+                            [self.summary, self.loss, self.probs],
                             feed_dict)
-                        time_str = datetime.datetime.now().isoformat()
-                        self.writer.add_summary(summary,
-                                                epoch*train_size +
-                                                n_batch*batch_size)
-                        if n_batch % 200 == 0:
-                            logger.info("%s: step %r, epoch %r, loss %r",
-                                        time_str, n_batch, epoch, loss)
-                        return loss
+                        total_loss += loss
+                        n_batch += 1
+                        probs += [p[i, 0] for i in range(p.shape[0])]
 
-                    batch_size = 50
-                    for epoch in range(num_epochs):
-                        # Need to shuffle the batches in each epoch.
-                        logger.info("Starting epoch %d", epoch)
+                    avg_f1, oracle_avg_f1 = self.evaluate_dev(
+                        dev_qids, dev_f1, probs)
+                    dev_scores.append(avg_f1)
+                    logger.info("%s avg_f1: %.2f oracle_avg_f1: %.2f",
+                                dev_train,
+                                100 * avg_f1, 100 * oracle_avg_f1)
+                    return avg_f1, oracle_avg_f1
 
-                        n_labels, n_wf, n_rf = self.random_sample(
-                            len(train_pos_labels), train_neg_labels,
-                            train_neg_word_features, train_neg_rel_features)
-                        train_labels = np.vstack([n_labels, train_pos_labels])
-                        train_word_features = np.vstack(
-                            [n_wf, train_pos_word_features])
-                        train_rel_featuers = np.vstack(
-                            [n_rf, train_pos_rel_features])
-                        train_size = 2*len(train_pos_labels)
+                def train_step(batch, epoch, n_batch,
+                               batch_size, train_size):
+                    """
+                    A single training step
+                    """
+                    y_batch, x_batch, x_rel_batch = batch
+                    feed_dict = {
+                        self.Wembed: self.embeddings,
+                        self.input_y: y_batch,
+                        self.input_s: x_batch,
+                        self.input_r: x_rel_batch,
+                        self.dropout_keep_prob: 0.9
+                    }
+                    _, summary, step, loss, probs = self.sess.run(
+                        [self.train_op, self.summary,
+                         self.global_step, self.loss, self.probs],
+                        feed_dict)
+                    time_str = datetime.datetime.now().isoformat()
+                    if n_batch % 200 == 0:
+                        logger.info("%s: step %r, epoch %r, loss %r",
+                                    time_str, n_batch, epoch, loss)
+                        #self.writer.add_summary(summary,
+                        #                        epoch*train_size +
+                        #                        n_batch*batch_size)
+                    return loss
 
-                        for batch_num, batch in self.batch_iter(
-                                batch_size,
-                                True,
-                                train_labels,
-                                train_word_features,
-                                train_rel_featuers):
-                            train_step(
-                                batch, epoch, batch_num,
-                                batch_size, train_size)
-                        if epoch % 5 == 0 and dev_examples:
-                            avg_f1, _ = run_dev_batches(
-                                dev_features, dev_qids,
-                                dev_f1s, dev_train="Dev")
-                            tf.summary.scalar('avg_f1', 100*avg_f1)
-                    if dev_scores:
-                        logger.info("Dev avg_f1 history:")
-                        logger.info(" ".join(
-                            ["%d:%f" % (i + 1, f)
-                             for i, f in enumerate(dev_scores)]))
+                batch_size = 50
+                for epoch in range(num_epochs):
+                    # Need to shuffle the batches in each epoch.
+                    logger.info("Starting epoch %d", epoch)
+
+                    n_labels, n_wf, n_rf = self.random_sample(
+                        len(train_pos_labels), train_neg_labels,
+                        train_neg_word_features, train_neg_rel_features)
+                    train_labels = np.vstack([n_labels, train_pos_labels])
+                    train_word_features = np.vstack(
+                        [n_wf, train_pos_word_features])
+                    train_rel_featuers = np.vstack(
+                        [n_rf, train_pos_rel_features])
+                    train_size = 2*len(train_pos_labels)
+
+                    for batch_num, batch in self.batch_iter(
+                            batch_size,
+                            True,
+                            train_labels,
+                            train_word_features,
+                            train_rel_featuers):
+                        train_step(
+                            batch, epoch, batch_num,
+                            batch_size, train_size)
+                    if epoch % 5 == 0 and dev_examples:
+                        avg_f1, _ = run_dev_batches(
+                            dev_features, dev_qids,
+                            dev_f1s, dev_train="Dev")
+                        tf.summary.scalar('avg_f1', 100*avg_f1)
+                if dev_scores:
+                    logger.info("Dev avg_f1 history:")
+                    logger.info(" ".join(
+                        ["%d:%f" % (i + 1, f)
+                         for i, f in enumerate(dev_scores)]))
 
     def batch_iter(self, batch_size, shuffle, *data):
         """
@@ -606,15 +605,14 @@ class DeepCNNAqquRelScorer():
             self.dropout_keep_prob: 1.0
         }
         with self.g.as_default():
-            with self.g.device("/gpu:0"):
-                with self.sess.as_default():
-                    result = self.sess.run(
-                        [self.probs],
-                        feed_dict)
-                    probs = result[0]
-                    # probs is a matrix: n x c (for n examples and c
-                    # classes)
-                    return RankScore(round(probs[0][0], 4))
+            with self.sess.as_default():
+                result = self.sess.run(
+                    [self.probs],
+                    feed_dict)
+                probs = result[0]
+                # probs is a matrix: n x c (for n examples and c
+                # classes)
+                return RankScore(round(probs[0][0], 4))
 
     def score_multiple(self, score_candidates, batch_size=100):
         """
@@ -644,16 +642,15 @@ class DeepCNNAqquRelScorer():
                 self.dropout_keep_prob: 1.0
             }
             with self.g.as_default():
-                with self.g.device("/gpu:0"):
-                    with self.sess.as_default():
-                        res = self.sess.run(
-                            [self.probs],
-                            feed_dict)
-                        probs = res[0]
-                        # probs is a matrix: n x c (for n examples and c
-                        # classes)
-                        for i in range(probs.shape[0]):
-                            result.append(RankScore(round(probs[i][0], 4)))
+                with self.sess.as_default():
+                    res = self.sess.run(
+                        [self.probs],
+                        feed_dict)
+                    probs = res[0]
+                    # probs is a matrix: n x c (for n examples and c
+                    # classes)
+                    for i in range(probs.shape[0]):
+                        result.append(RankScore(round(probs[i][0], 4)))
             batch += 1
         assert len(result) == len(score_candidates)
         return result
@@ -862,7 +859,7 @@ class DeepCNNAqquRelScorer():
             a_q = tf.nn.l2_normalize(a_q, 1, name='normalize_q')
             a_r = tf.nn.l2_normalize(a_r, 1, name='normalize_r')
             scores = tf.multiply(a_q, a_r)
-            scores = tf.reduce_sum(scores, 1, keep_dims=True)
+            scores = tf.reduce_sum(scores, 1, keepdims=True)
             self.probs = scores
             similar_losses = tf.multiply(self.input_y, tf.square(1 - scores))/2
             mrgn = 0.1  # don't penalize if score is already small
