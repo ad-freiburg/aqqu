@@ -57,7 +57,7 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-if [ $# -lt 2 ] || [ "$1" != "backend" ] && [ "$1" != "train" ] && [ "$1" != "debug" ] && [ "$1" != "cv" ]; then
+if [ "$1" != "backend" ] && [ "$1" != "train" ] && [ "$1" != "debug" ] && [ "$1" != "cv" ]; then
 	help
 fi
 
