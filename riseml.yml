@@ -13,16 +13,21 @@ train:
     gpus: 1
   parameters:
     num_filters:
-      - 80
-      - 96
-      - 112
+      - 64
+    num_hidden_nodes:
+      - 150
+      - 175
+      - 225
+      - 250
   concurrency: 1
   run:
     - python setup.py build_ext --inplace
     - >-
+         stdbuf -o 0
          python -m query_translator.learner --config conf_riseml.cfg 
-           cv WQSP_Ranker wqsptrain --override 
-           '{
-             "num_filters" : {{num_filters}}
-            }'
+          cv WQSP_Ranker wqsptrain --override
+          '{
+            "num_filters" : {{num_filters}}
+           }'
+         2>&1 | tee /output/log.txt
 
