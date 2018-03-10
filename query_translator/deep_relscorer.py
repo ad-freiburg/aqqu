@@ -14,6 +14,9 @@ from sklearn import utils
 
 from query_translator import feature_extraction
 
+DEFAULT_NUM_FILTERS=64
+DEFAULT_NUM_HIDDEN_NODES=200
+
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
@@ -27,7 +30,8 @@ class DeepCNNAqquRelScorer():
 
     def __init__(self, logdir, embeddings_file=None,
                  use_type_names=True, use_attention=True,
-                 num_filters=128, num_hidden_nodes=200):
+                 num_filters=DEFAULT_NUM_FILTERS,
+                 num_hidden_nodes=DEFAULT_NUM_HIDDEN_NODES):
         self.logdir = logdir
         self.n_rels = 3
         self.n_parts_per_rel = 3
@@ -66,7 +70,8 @@ class DeepCNNAqquRelScorer():
 
     @staticmethod
     def init_from_config(use_type_names=True, use_attention=True,
-                         num_filters=128, num_hidden_nodes=200):
+                         num_filters=DEFAULT_NUM_FILTERS,
+                         num_hidden_nodes=DEFAULT_NUM_HIDDEN_NODES):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -269,7 +274,6 @@ class DeepCNNAqquRelScorer():
 
         with self.g.as_default():
             tf.set_random_seed(42)
-            self.build_deep_model()
 
             gpu_options = tf.GPUOptions(
                 allow_growth=True)
@@ -279,7 +283,9 @@ class DeepCNNAqquRelScorer():
                 device_count={'GPU': 1},
                 gpu_options=gpu_options)
             self.sess = tf.Session(config=session_conf)
-            self.saver = tf.train.Saver(save_relative_paths=True)
+            with self.sess.as_default():
+                self.build_deep_model()
+                self.saver = tf.train.Saver(save_relative_paths=True)
 
         self.writer.add_graph(self.g)
 
@@ -579,12 +585,14 @@ class DeepCNNAqquRelScorer():
                 os.makedirs(log_name)
             self.writer = tf.summary.FileWriter(log_name)
             with self.g.as_default():
-                self.build_deep_model()
-                self.saver = tf.train.Saver(save_relative_paths=True)
                 session_conf = tf.ConfigProto(
                     allow_soft_placement=True)
                 self.sess = tf.Session(config=session_conf)
-                self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+
+                with self.sess.as_default():
+                    self.build_deep_model()
+                    self.saver = tf.train.Saver(save_relative_paths=True)
+                    self.saver.restore(self.sess, ckpt.model_checkpoint_path)
             self.writer.add_graph(self.g)
 
 
@@ -675,7 +683,8 @@ class DeepCNNAqquRelScorer():
         embedded_input_r = None
         embedded_input_s = None
         with tf.device('/cpu:0'), tf.name_scope("load_embeddings"):
-            # to handle embeddings > 2 GB we need to use a placeholder
+            # to handle embeddings > 2 GB we need to use a placeholder and
+            # feed them on every session.run()
             # see https://stackoverflow.com/q/46712934
             #self.Wembed = tf.Variable(
             #    embeddings,
