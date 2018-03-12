@@ -1,0 +1,12 @@
+data/*
+models/*
+output/*
+input/*
+venv/*
+build/*
+log/*
+eval_logs/*
+results/*
+virtuoso_log.txt
+virtuoso-db/*
+.git/*

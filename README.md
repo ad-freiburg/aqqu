@@ -15,15 +15,51 @@ Setup is easy if all pre-requisites are met.
 * RAM: 40 GB for training the large WebQuestions models
 * Disk: about 40 GB for all pre-requisite data
 
-## Commands to run training in nvidia-docker
+## Get the Dataset
 
-    nvidia-docker build -t tf_aqqu_learner -f Dockerfile.learner .
-    nvidia-docker run --rm -it --name tf_aqqu_learner_inst -v $(pwd)/data/:/app/data tf_aqqu_learner
+All data required for learning can be found under
+`/nfs/datastets/aqqu_input_data`, all other data is generated automatically.
 
-## Commands to run the backend in nvidia-docker
+    cp -r /nfs/datasets/aqqu_input_data/* input/
 
-    nvidia-docker build -t tf_aqqu_backend -f Dockerfile.backend .
-    nvidia-docker run --rm -it --name tf_aqqu_backend_inst -v $(pwd)/data/:/app/data tf_aqqu_backend
+## Train with the provided script
+
+    ./build_and_run.sh train -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> <additional args>
+
+## Run with the provided script
+
+    ./build_and_run.sh backend -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> -p <port> <addtional args>
+
+## Run Cross Validation with the provided script
+
+    ./build_and_run.sh cv -n <user_provided_name> -r <ranker> <dataset name>
+
+## Overriding parameters
+To override certain ranker parameters you can use `--override` with a JSON object as additional argument for example
+`--override '{"top_ngram_percentile": 15}'`
+
+## Disabling GPU
+To disable GPU use run above commands with the environment variable `NO_GPU=1`
+
+## Commands to run training in nvidia-docker manually
+    NAME=nameit
+    nvidia-docker build -t tf_aqqu --build-arg TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3 \
+       -f Dockerfile.learner .
+    nvidia-docker run --rm -it --name tf_aqqu_learner_inst 
+       --build-arg TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3
+       -v $(pwd)/data/:/app/data \
+       -v $(pwd)/input/:/app/input \
+       -v $(pwd)/models/:/app/models \
+       tf_aqqu
+
+## Commands to run the backend in nvidia-docker manually
+
+    NAME=nameit
+    nvidia-docker run --rm -it --name tf_aqqu_backend_inst \ 
+       -v $(pwd)/data/:/app/data \
+       -v $(pwd)/input/:/app/input \
+       -v $(pwd)/models/:/app/models \
+       tf_aqqu translator_server WQSP_Ranker
 
 
 

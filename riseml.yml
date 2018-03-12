@@ -1,0 +1,34 @@
+project: aqqu
+train:
+  framework: tensorflow
+  image: gcr.io/tensorflow/tensorflow:1.5.0-gpu-py3
+  install: 
+    - apt-get update
+    - apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
+    - pip install -r requirements.txt
+    - python -m spacy download en
+  resources:
+    cpus: 4
+    mem: 40000
+    gpus: 1
+  parameters:
+    num_filters:
+      - 64
+    num_hidden_nodes:
+      - 150
+      - 175
+      - 225
+      - 250
+  concurrency: 1
+  run:
+    - python setup.py build_ext --inplace
+    - >-
+         stdbuf -oL
+         python -m query_translator.learner --config conf_riseml.cfg 
+          cv WQSP_Ranker wqsptrain --override
+          '{
+            "num_filters" : {{num_filters}},
+            "num_hidden_nodes" : {{num_hidden_nodes}}
+           }'
+         2>&1 | tee /output/log.txt
+

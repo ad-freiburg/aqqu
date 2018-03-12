@@ -20,13 +20,14 @@ from typing import List
 import datetime
 import config_helper
 import rocksdb
-from .util import normalize_entity_name
-from . import entity_linker
+from entity_linker.util import normalize_entity_name
+from entity_linker.entity_linker import KBEntity
 
 LOG = logging.getLogger(__name__)
 
 CONTROL_PREFIX = b'ctl:'
 ETYPES_PREFIX = b'ets:'
+ECATEGORY_PREFIX = b'cat:'
 ENTITY_PREFIX = b'ent:'
 SURFACE_PREFIX = b'srf:'
 
@@ -63,7 +64,7 @@ def timestamp():
     return datetime.datetime.utcnow().isoformat().encode('utf-8')
 
 
-class EntityIndex(object):
+class EntityIndex:
     """
     A memory based index for finding entities by their surface form,
     their name and their types ordered by relevance.
@@ -73,10 +74,12 @@ class EntityIndex(object):
                  entity_list_file,
                  surface_map_file,
                  entity_index_prefix,
-                 entity_types_map_file):
+                 entity_types_map_file,
+                 entity_category_map_file):
         self.entity_list_file = entity_list_file
         self.surface_map_file = surface_map_file
         self.entity_types_map_file = entity_types_map_file
+        self.entity_category_map_file = entity_category_map_file
         self.entity_db = self._get_entity_db(entity_index_prefix)
         LOG.info("Done initializing surface index.")
 
@@ -92,17 +95,34 @@ class EntityIndex(object):
         options.create_if_missing = True
         options.merge_operator = ConcatenationMerger(b'\t')
         entity_db = rocksdb.DB(entity_db_path,
-                               options)
+                               options, read_only=True)
+        write_enabled = False
         if not entity_db.get(CONTROL_PREFIX+b'entity_vocab_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
             self._build_entity_vocabulary(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'entity_types_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
             self._build_entity_types(entity_db)
+        if not entity_db.get(CONTROL_PREFIX+b'entity_categories_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
+            self._build_entity_categories(entity_db)
         if not entity_db.get(CONTROL_PREFIX+b'surfaces_loaded'):
+            if not write_enabled:
+                entity_db = rocksdb.DB(entity_db_path, options)
+                write_enabled = True
             self._build_surface_index(entity_db)
-        # Now we can reopen in read-only mode so as to allow
-        # multiple instances to share the same DB
-        del entity_db
-        entity_db = rocksdb.DB(entity_db_path, options, read_only=True)
+
+        if write_enabled:
+            # Now we can reopen in read-only mode so as to allow
+            # multiple instances to share the same DB
+            del entity_db
+            entity_db = rocksdb.DB(entity_db_path, options, read_only=True)
         return entity_db
 
     def _build_surface_index(self, entity_db):
@@ -130,7 +150,7 @@ class EntityIndex(object):
 
     def _build_entity_types(self, entity_db):
         """
-        Create mapping from MID to offset/ID.
+        Create mapping from MID to entity type.
         """
         LOG.info("Building entity -> types db")
 
@@ -146,6 +166,30 @@ class EntityIndex(object):
                 entity_db.put(ETYPES_PREFIX+mid, cols[1])
         entity_db.put(CONTROL_PREFIX+b'entity_types_loaded', timestamp())
         LOG.info("Loaded %s entity -> types mappings", num_lines)
+
+    def _build_entity_categories(self, entity_db):
+        """
+        Create mapping from MID to FreebaseEasy categories
+        """
+        LOG.info("Building entity -> category db")
+
+        # Remember the offset for each type list
+        num_lines = 0
+        with open(self.entity_category_map_file, 'rb') as in_file:
+            for line in in_file:
+                num_lines += 1
+                if num_lines % 1000000 == 0:
+                    LOG.info('Read %s lines', num_lines)
+                cols = line.strip().split(b'\t')
+                mid = cols[0]
+                if len(cols) < 2:
+                    LOG.info('Missing category for: %s', mid)
+                    category = b'Unknown'
+                else:
+                    category = cols[1]
+                entity_db.put(ECATEGORY_PREFIX+mid, category)
+        entity_db.put(CONTROL_PREFIX+b'entity_categories_loaded', timestamp())
+        LOG.info("Loaded %s entity -> category mappings", num_lines)
 
     def _build_entity_vocabulary(self, entity_db):
         """
@@ -181,10 +225,13 @@ class EntityIndex(object):
                                                  'entity-index-prefix')
         entity_types_map = config_options.get('EntityIndex',
                                               'entity-types-map')
+        entity_category_map = config_options.get('EntityIndex',
+                                                 'entity-category-map')
         return EntityIndex(entity_list_file, entity_surface_map,
-                           entity_index_prefix, entity_types_map)
+                           entity_index_prefix, entity_types_map,
+                           entity_category_map)
 
-    def get_entity_for_mid(self, mid: str) -> 'entity_linker.KBEntity':
+    def get_entity_for_mid(self, mid: str) -> 'KBEntity':
         """Returns the entity object for the MID or None if the MID is unknown.
 
         :param mid:
@@ -215,6 +262,18 @@ class EntityIndex(object):
         # Note: list[:None] == list[:]
         return types[:max_len]
 
+    def get_category_for_mid(self, mid):
+        """
+        Returns the FreebaseEasy category for the entity with the given mid
+        """
+        mid = mid.encode('utf-8')
+        category_raw = self.entity_db.get(ECATEGORY_PREFIX+mid)
+        if not category_raw:
+            LOG.debug("No category known for mid: '%s'.", mid)
+            return 'Unknown'
+
+        return category_raw.decode('utf-8')
+
     def get_entities_for_surface(self, surface):
         """Return all entities for the surface form.
 
@@ -227,49 +286,55 @@ class EntityIndex(object):
         if not line:
             return []
         cols = line.split(b'\t')
+
+        mids_dedup = set()
         result = []
         for i in range(0, len(cols), 2):
             surface_score = float(cols[i])
-            mid_str = cols[i+1].decode('utf-8')
-            entity = self.get_entity_for_mid(mid_str)
+            mid = cols[i+1].decode('utf-8')
+            if mid in mids_dedup:
+                continue
+            mids_dedup.add(mid)
+            entity = self.get_entity_for_mid(mid)
             if entity:
                 result.append((entity, surface_score))
         return result
 
     @staticmethod
-    def _bytes_to_entity(line: bytes) -> 'entity_linker.KBEntity':
-        """Instantiate entity from string representation.
+    def _bytes_to_entity(line: bytes) -> 'KBEntity':
+        """
+        Instantiate entity from string representation.
 
-        :param line:
-        :return:
+        >>> e = EntityIndex._bytes_to_entity(b'm.0abc1\\tfoo name\\t7\\tfooly\\tfoo\\n')
+        >>> e.name
+        'foo name'
+        >>> e.id
+        'm.0abc1'
+        >>> e.score
+        7
+        >>> e.aliases
+        ['fooly', 'foo']
         """
         cols = line.strip().decode('utf-8').split('\t')
         mid = cols[0]
         name = cols[1]
         score = int(cols[2])
         aliases = cols[3:]
-        return entity_linker.KBEntity(name, mid, score, aliases)
+        return KBEntity(name, mid, score, aliases)
 
     @staticmethod
     def _bytes_to_types(line: bytes) -> List[str]:
         """
         Read a list of types from a string. Not that the first column
         currently is the mid
+
+        >>> EntityIndex._bytes_to_types(b'type_a type_b type_c\\n')
+        ['type_a', 'type_b', 'type_c']
         """
         types = [t.decode('utf-8') for t in line.strip().split(b' ')]
         return types
 
 
-
-def main():
-    logging.basicConfig(
-        format='%(asctime)s : %(levelname)s : %(module)s : %(message)s',
-        level=logging.INFO)
-    index = EntityIndex('data/entity-list_cai',
-                        'data/entity-surface-map_cai',
-                        'iprefix')
-    print(index.get_entities_for_surface("albert einstein"))
-
-
 if __name__ == '__main__':
-    main()
+    import doctest
+    doctest.testmod()

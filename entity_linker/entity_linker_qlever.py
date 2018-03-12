@@ -79,11 +79,19 @@ class EntityLinkerQlever(EntityLinker):
         entities = []
         for row in results:
             kbe = KBEntity(row[1], row[0], int(row[2]), [])
+            types = self.entity_index.get_types_for_mid(kbe.id,
+                                                        self.max_types)
+            category = self.entity_index.get_category_for_mid(kbe.id)
             identified = IdentifiedEntity([],
-                                          kbe.name, kbe, kbe.score, 1,
-                                          False, text_query=True)
+                                          kbe.name, kbe,
+                                          types=types,
+                                          category=category,
+                                          score=kbe.score, 
+                                          surface_score=1,
+                                          perfect_match=False,
+                                          text_query=True)
             entities.append(identified)
-        return entities
+        return sorted(entities, key=lambda ie: ie.score, reverse=True)
 
     @staticmethod
     def load_stopwords(stopwordsfile):
@@ -103,7 +111,7 @@ class EntityLinkerQlever(EntityLinker):
         :param tokens: A list of string tokens.
         :return: A list of IdentifiedEntity
         '''
-        entities = super().identify_entities_in_tokens(
+        entities, _ = super().identify_entities_in_tokens(
             tokens, min_surface_score)
 
         text_entities = self.text_entity_query(tokens, self.max_text_entities)
@@ -115,6 +123,6 @@ class EntityLinkerQlever(EntityLinker):
                 entity.surface_score *= 10
                 entity.text_match = True
 
-        return entities
+        return entities, text_entities
 
 

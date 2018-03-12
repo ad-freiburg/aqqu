@@ -85,6 +85,7 @@ class Backend(object):
         # Backend capabilities
         self.supports_count = False
         self.supports_optional = False
+        self.supports_text = True
         self.lang_in_relations = lang_in_relations
         self.query_log = open('qlever_log.txt', 'wt', encoding='UTF-8')
 

@@ -1,0 +1,47 @@
+version: "2"
+services:
+  virtuoso:
+    image: niklas88/virtuoso-freebase
+    restart: unless-stopped
+    expose:
+      - "8999"
+    volumes:
+      - ./virtuoso-db:/data
+
+  varnish:
+    image: niklas88/varnish-virtuoso
+    restart: unless-stopped
+    depends_on:
+      - virtuoso
+    tmpfs:
+      - /tmp
+    ports:
+      - "9000:9000"
+
+  learner:
+    image: aqqu-compose
+    depends_on:
+      - varnish
+    build:
+      context: .
+      dockerfile: Dockerfile.base
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./input:/app/input
+    command: ["query_translator.learner", "train", "WQSP_Ranker_tiny"]
+
+  backend:
+    image: aqqu-compose
+    depends_on:
+      - varnish
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+      - ./input:/app/input
+    command: ["translator_server", "WQSP_Ranker_tiny"]
+
+

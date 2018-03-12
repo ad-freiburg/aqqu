@@ -11,7 +11,13 @@ from collections import defaultdict
 import math
 import logging
 from itertools import chain
-from entity_linker.entity_linker import KBEntity
+from freebase import get_mid_from_qualified_string
+
+
+logger = logging.getLogger(__name__)
+
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
+                    level=logging.INFO)
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +31,7 @@ N_GRAM_STOPWORDS = {'be', 'do', '?', 'the', 'of', 'is', 'are', 'in', 'was',
                     'and', 'an', 'as'}
 
 
-def get_n_grams(tokens, n=2):
+def get_ngrams(tokens, n=2):
     """Return n-grams for the given text tokens.
 
     n-grams are "_"-concatenated tokens.
@@ -36,21 +42,26 @@ def get_n_grams(tokens, n=2):
     return grams
 
 
-def get_n_grams_features(candidate):
+def get_ngram_features(candidate, use_type_names=True):
     """Get ngram features from the query of the candidate.
 
     :type candidate: QueryCandidate
     :param candidate:
+    :param use_type_names - whether to use [entity] or [classname] as entity
+                            replacement
     :return:
     """
-    query_text_tokens = [x.lower() for x in get_query_text_tokens(candidate)]
+    query_text_tokens = [x.lower()
+                         for x in
+                         get_query_text_tokens(candidate,
+                                               use_type_names)]
     # First get bi-grams.
-    n_grams = get_n_grams(query_text_tokens, n=2)
+    ngrams = get_ngrams(query_text_tokens, n=2)
     # Then get uni-grams.
-    return chain(n_grams, get_n_grams(query_text_tokens, n=1))
+    return chain(ngrams, get_ngrams(query_text_tokens, n=1))
 
 
-def get_query_text_tokens(candidate, include_mid=False):
+def get_query_text_tokens(candidate, use_type_names=True):
     """
     Return the query text for the candidate.
     :param candidate:
@@ -58,32 +69,31 @@ def get_query_text_tokens(candidate, include_mid=False):
     """
     # The set of all tokens for which an entity was identified.
     entity_tokens = dict()
-    for em in candidate.matched_entities:
-        for t in em.entity.tokens:
-            entity_tokens[t] = em
+    for mention in candidate.matched_entities:
+        for tok in mention.tokens:
+            entity_tokens[tok] = mention
     query_text_tokens = ['<start>']
-    # Replace entity tokens with "ENTITY"
-    for t in candidate.query.tokens:
+    # Replace entity tokens with "[<entity_class>]" or "[entity]" if
+    # use_type_names==False
+    for tok in candidate.query.tokens:
         # ignore punctuation
-        if t.pos_ == 'PUNCT':
+        if tok.pos_ == 'PUNCT':
             continue
-        if t in entity_tokens:
-            if include_mid and isinstance(entity_tokens[t].entity.entity, KBEntity):
-                mid = entity_tokens[t].entity.entity.id
-                # Don't repeat the same mid.
-                if len(query_text_tokens) > 0 and query_text_tokens[-1] == mid:
-                    continue
-                query_text_tokens.append(mid)
+        if tok in entity_tokens:
+            entity = entity_tokens[tok]
+            if use_type_names:
+                placeholder = '['+entity.category.lower().replace(' ', '_')+']'
             else:
-                # Don't replace if the previous token is an entity token.
-                # This conflates multiple tokens for the same entity
-                # but also multiple entities
-                if len(query_text_tokens) > 0 and query_text_tokens[-1] == '<entity>':
-                    continue
-                else:
-                    query_text_tokens.append('<entity>')
+                placeholder = '[entity]'
+            # Don't replace if the previous token is an entity token.
+            # This conflates multiple tokens for the same entity
+            # but also multiple entities
+            if query_text_tokens and query_text_tokens[-1] == placeholder:
+                # only need one per mention
+                continue
+            query_text_tokens.append(placeholder)
         else:
-            query_text_tokens.append(t.orth_.lower())
+            query_text_tokens.append(tok.orth_.lower())
     return query_text_tokens
 
 def pattern_complexity(candidate):
@@ -107,8 +117,6 @@ def simple_features(candidate):
     n_text_and_question_entities = 0
     # The sum of surface_score * mention_length over all entity mentions.
     em_token_score = 0.0
-    # A flag whether the candidate contains a mediator.
-    is_mediator = 0.0
     # The number of relations that are matched literally at least once.
     n_literal_relations = 0
     # The number of relations that are matched by word at least once.
@@ -121,8 +129,6 @@ def simple_features(candidate):
     literal_entities_length = 0
     # The length of tokens that match literally in a relation.
     literal_relation_tokens_length = 0
-    # The number of tokens that match via weak synoynms in a relation.
-    n_weak_relation_tokens = 0
     # The length of tokens that match via derivation in a relation.
     derivation_relation_tokens_length = 0
     # The sum of all weak match scores.
@@ -140,18 +146,18 @@ def simple_features(candidate):
     for em in candidate.matched_entities:
         # A threshold above which we consider the match a literal match.
         threshold = 0.8
-        n_entity_tokens += len(em.entity.tokens)
-        if em.entity.perfect_match or em.entity.surface_score > threshold:
+        n_entity_tokens += len(em.tokens)
+        if em.perfect_match or em.surface_score > threshold:
             n_literal_entities += 1
-            literal_entities_length += len(em.entity.tokens.text)
-        if em.entity.text_match:
+            literal_entities_length += len(em.tokens.text)
+        if em.text_match:
             n_text_and_question_entities += 1
-        em_surface_scores.append(em.entity.surface_score)
-        em_score = em.entity.surface_score
-        em_score *= len(em.entity.tokens.text)
+        em_surface_scores.append(em.surface_score)
+        em_score = em.surface_score
+        em_score *= len(em.tokens.text)
         em_token_score += em_score
-        if em.entity.score > 0:
-            em_pop_scores.append(math.log(em.entity.score))
+        if em.score > 0:
+            em_pop_scores.append(math.log(em.score))
         else:
             em_pop_scores.append(0)
     token_name_match_score = defaultdict(float)
@@ -205,6 +211,24 @@ def simple_features(candidate):
     relation_match = 1 if len(candidate.matched_relations) > 0 else 0
     result_size_0 = 1 if result_size == 0 else 0
     matches_answer_type = candidate.matches_answer_type
+
+    # Text query features are only used when a text query was run
+    # during entity identification. They require fetching the entire result
+    text_answer_ratio = 0.0
+    if candidate.query.text_entities:
+        # fetch the results, this is expensive but
+        # at least for those candidates that are not pruned
+        # we need to do it anyway and it's not done again
+        candidate.retrieve_result()
+        text_entity_map = {te.entity.id: te
+                           for te in candidate.query.text_entities}
+        for row in candidate.query_result:
+            result_mid = get_mid_from_qualified_string(row[0])
+            if result_mid in text_entity_map:
+                text_answer_ratio += 1.0
+        text_answer_ratio = text_answer_ratio / len(candidate.query_result) \
+            if candidate.query_result else 0.0
+
     features.update({
         # "General Features
         'pattern_complexity': pattern_complexity(candidate),
@@ -219,6 +243,7 @@ def simple_features(candidate):
         'n_literal_entities': n_literal_entities,
         'n_entity_matches': n_entity_matches,
         'n_text_and_question_entities': n_text_and_question_entities,
+        'text_answer_ratio': text_answer_ratio,
         'literal_entities_length': literal_entities_length,
         'avg_em_surface_score': avg_em_surface_score,
         'sum_em_surface_score': sum_em_surface_score,
@@ -242,10 +267,12 @@ def simple_features(candidate):
     return features
 
 
-def ngram_features(candidate, ngram_dict):
+def ngram_features(candidate, ngram_dict, use_type_names=True):
     """Extract ngram features from the single candidate.
 
     :param candidate:
+    :param use_type_names - whether to use [entity] or [classname] as entity
+                            replacement
     :return:
     """
     ngram_features = dict()
@@ -256,7 +283,7 @@ def ngram_features(candidate, ngram_dict):
 
     relations = sorted(candidate.get_relation_names())
     all_rels = '_'.join(relations)
-    n_grams = get_n_grams_features(candidate)
+    n_grams = get_ngram_features(candidate, use_type_names)
     for ng in n_grams:
         # Ignore ngrams that only consist of stopfwords.
         if set(ng).issubset(N_GRAM_STOPWORDS):
@@ -289,7 +316,8 @@ def extract_features(candidates,
     if deep_rel_score_model:
         deep_rel_scores = deep_rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):
-            f['deep_relation_score'] = float(deep_rel_scores[i].score)
+            deep_rel_score_raw = float(deep_rel_scores[i].score)
+            f['deep_relation_score'] = max(0.0, deep_rel_score_raw)
     if rel_score_model:
         rel_scores = rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):

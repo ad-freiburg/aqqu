@@ -12,34 +12,25 @@ import os
 import copy
 import logging
 import itertools
-from . import translator
-from .deep_relscorer import DeepCNNAqquRelScorer
 import random
-import config_helper
 import numpy as np
-from functools import partial
-from random import Random
+import config_helper
 from sklearn import utils
 from sklearn import metrics
-from sklearn.feature_selection import SelectKBest, chi2, SelectPercentile
+from sklearn.feature_selection import chi2, SelectPercentile
 from sklearn.externals import joblib
 from sklearn.metrics import classification_report
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, \
-    AdaBoostRegressor, RandomForestRegressor, ExtraTreesClassifier
-from sklearn import pipeline
-from sklearn.linear_model import SGDClassifier, SGDRegressor, \
-    LogisticRegressionCV, LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegressionCV, LogisticRegression
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.preprocessing import StandardScaler, LabelEncoder, \
-    Normalizer, MinMaxScaler
-from .evaluation import EvaluationQuery, EvaluationCandidate
-from . import feature_extraction as f_ext
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from entity_linker.entity_linker import EntityLinker
 from entity_linker.entity_linker_qlever import EntityLinkerQlever
 from entity_linker.entity_oracle import EntityOracle
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.pipeline import FeatureUnion
 from sklearn.model_selection import KFold, GridSearchCV
+from query_translator.deep_relscorer import DeepCNNAqquRelScorer
+from query_translator import feature_extraction as f_ext
+
 
 
 RANDOM_SHUFFLE = 0.3
@@ -68,7 +59,7 @@ def Compare2Key(key_func, cmp_func):
             return cmp_func(key_func(self.obj), key_func(other.obj)) != 0
     return K
 
-class RankScore(object):
+class RankScore:
     """A simple score for each candidate.
     """
 
@@ -78,7 +69,7 @@ class RankScore(object):
     def as_string(self):
         return "%s" % self.score
 
-class RankerParameters(object):
+class RankerParameters:
     """A class that holds parameters for the ranker."""
 
     def __init__(self):
@@ -117,7 +108,7 @@ class RankerParameters(object):
         return suffix
 
 
-class Ranker(object):
+class Ranker:
     """Superclass for rankers.
 
     The default is to compute a score for each candidate
@@ -128,7 +119,8 @@ class Ranker(object):
                  entity_linker_class=EntityLinker,
                  entity_oracle_file=None,
                  all_relations_match=True,
-                 all_types_match=True):
+                 all_types_match=True,
+                 **kwargs):  # ignored but used by child classes
         self.name = name
         self.parameters = RankerParameters()
         self.parameters.entity_linker_class = entity_linker_class
@@ -180,12 +172,12 @@ class Ranker(object):
         return ranked_candidates
 
 
-class MLModel(object):
+class MLModel:
     """Superclass for machine learning based scorer."""
 
-    def __init__(self, name, train_dataset):
+    def __init__(self, name, train_datasets):
         self.name = name
-        self.train_dataset = train_dataset
+        self.train_datasets = train_datasets
 
     def get_model_filename(self):
         """Return the model file name."""
@@ -198,6 +190,9 @@ class MLModel(object):
         model_base_dir = config_helper.config.get('Ranker', 'model-dir')
         return model_base_dir
 
+    def load_model(self):
+        """Loads an MLModel from the model file"""
+        pass
 
     def get_model_name(self):
         """Return the model name."""
@@ -205,9 +200,9 @@ class MLModel(object):
             param_suffix = self.get_parameters().get_suffix()
         else:
             param_suffix = ""
-        if self.train_dataset is not None:
+        if self.train_datasets:
             model_filename = "%s_%s%s" % (self.name,
-                                          self.train_dataset,
+                                          '_'.join(self.train_datasets),
                                           param_suffix)
         else:
             model_filename = "%s%s" % (self.name,
@@ -228,17 +223,26 @@ class AqquModel(MLModel, Ranker):
      It always compares two candidates and makes a classification decision
      using a random forest to decide which one should be ranked higher.
     """
+    default_config = {
+        'top_ngram_percentile': 5,
+        'rel_regularization_C': None,
+        'learn_deep_rel_model': True,
+        'learn_ngram_rel_model': True,
+        }
+
+    default_config.update(DeepCNNAqquRelScorer.default_config)
 
     def score(self, candidate):
         pass
 
     def __init__(self, name,
-                 train_dataset,
-                 top_ngram_percentile=5,
-                 rel_regularization_C=None,
-                 learn_deep_rel_model=True,
+                 train_datasets,
+                 top_ngram_percentile,
+                 rel_regularization_C,
+                 learn_deep_rel_model,
+                 learn_ngram_rel_model,
                  **kwargs):
-        MLModel.__init__(self, name, train_dataset)
+        MLModel.__init__(self, name, train_datasets)
         Ranker.__init__(self, name, **kwargs)
         # Note: The model is lazily loaded when score is called.
         self.model = None
@@ -249,13 +253,13 @@ class AqquModel(MLModel, Ranker):
         self.cmp_cache = dict()
         self.relation_scorer = None
         self.deep_relation_scorer = None
-        self.learn_deep_rel_model = learn_deep_rel_model
         self.pruner = None
         self.scaler = None
         self.kwargs = kwargs
         self.top_ngram_percentile = top_ngram_percentile
         self.rel_regularization_C = rel_regularization_C
-
+        self.learn_deep_rel_model = learn_deep_rel_model
+        self.learn_ngram_rel_model = learn_ngram_rel_model
 
     def load_model(self):
         model_file = self.get_model_filename()
@@ -265,14 +269,17 @@ class AqquModel(MLModel, Ranker):
                 = joblib.load(model_file)
             self.model = model
             self.scaler = scaler
-            relation_scorer = RelationNgramScorer(self.get_model_name(),
-                                                  self.rel_regularization_C)
-            relation_scorer.load_model()
-            self.relation_scorer = relation_scorer
+            if self.learn_ngram_rel_model:
+                relation_scorer = RelationNgramScorer(
+                    self.get_model_name(),
+                    self.rel_regularization_C)
+                relation_scorer.load_model()
+                self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
                 self.deep_relation_scorer = \
-                    DeepCNNAqquRelScorer.init_from_config()
-                # TODO make paths configurable for submodels
+                    DeepCNNAqquRelScorer.init_from_config(
+                        **self.kwargs)
+
                 model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
                 self.deep_relation_scorer.load_model(
                     model_dir_tf, self.get_model_name())
@@ -297,7 +304,8 @@ class AqquModel(MLModel, Ranker):
         return rel_model
 
     def learn_deep_rel_score_model(self, queries, test_queries):
-        rel_model = DeepCNNAqquRelScorer.init_from_config()
+        rel_model = DeepCNNAqquRelScorer.init_from_config(
+            **self.kwargs)
         extend_deep_model = config_helper.config.get('Ranker',
                                                      'extend-deep-model',
                                                      fallback=None)
@@ -312,7 +320,7 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
-        f_extract = partial(f_ext.extract_features)
+        f_extract = f_ext.extract_features
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate onc
         labels, features = construct_train_examples(train_queries,
@@ -331,10 +339,12 @@ class AqquModel(MLModel, Ranker):
         dict_vec, sub_features = self.learn_submodel_features(train_queries, dict_vec,
                                                               ngrams_dict=n_grams_dict)
         features = np.hstack([features, sub_features])
-        logger.info("Training final relation scorer.")
-        rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
-        self.relation_scorer = rel_model
+        if self.learn_ngram_rel_model:
+            logger.info("Training relation scorer.")
+            rel_model = self.learn_rel_score_model(train_queries, ngrams_dict=n_grams_dict)
+            self.relation_scorer = rel_model
         if self.learn_deep_rel_model:
+            logger.info("Training deep relation scorer.")
             deep_rel_model = self.learn_deep_rel_score_model(train_queries, None)
             self.deep_relation_scorer = deep_rel_model
         self.dict_vec = dict_vec
@@ -370,274 +380,14 @@ class AqquModel(MLModel, Ranker):
         self.pair_dict_vec = pair_dict_vec
         self.label_encoder = label_encoder
 
-    def learn_ranking_model_new_pair(self, queries, features, dict_vec,
-                                     dev_ratio=0.2):
-        random.seed(123)
-        np.random.seed(123)
-        pair_dict_vec, pair_features, pair_labels = construct_train_pair_examples(
-            queries,
-            features,
-            dict_vec)
-
-        logger.info("Training tree classifier for ranking.")
-        logger.info("#of labeled examples: %s" % len(pair_features))
-        logger.info("#labels non-zero: %s" % sum(pair_labels))
-        label_encoder = LabelEncoder()
-        pair_labels = label_encoder.fit_transform(pair_labels)
-        X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
-
-        indices = []
-        for q in queries:
-            start = sum([len(l) for l in indices])
-            indices.append(list(range(start,
-                                      start + len(q.eval_candidates))))
-        indices, queries = utils.shuffle(indices, queries)
-        num_train = int(len(queries) * (1 - dev_ratio))
-        logger.info("#train: %d" % num_train)
-        train_indices = np.array([i for l in indices[:num_train] for i in l])
-        dev_indices = np.array([i for l in indices[num_train:] for i in l])
-        _, pair_features_train, pair_labels_train = construct_train_pair_examples(
-            queries[:num_train],
-            features[train_indices],
-            dict_vec)
-        _, pair_features_test, pair_labels_test = construct_train_pair_examples(
-            queries[num_train:],
-            features[dev_indices],
-            dict_vec)
-        dtrain = xgb.DMatrix(pair_features_train, label=pair_labels_train)
-        ddev = xgb.DMatrix(pair_features_test, label=pair_labels_test)
-        metric = "error"
-
-        # Perform grid search for best parameters.
-        # F917 params:
-        # 'colsample_bytree': 0.7,
-        # 'eval_metric': 'ndcg@3',
-        # 'min_child_weight': 0.1,
-        # 'subsample': 1.0,
-        # 'eta': 0.3,
-        # 'objective': 'rank:pairwise',
-        # 'max_depth': 2,
-        # 'gamma': 0
-        # 'lambda': 1
-        #  num_rounds:91
-
-        # WQ params (ngram):
-        # 'colsample_bytree': 0.5 (0.7),
-        # 'eval_metric': 'ndcg@3',
-        # 'min_child_weight': 1.0 (2.0),
-        # 'subsample': 1.0 (0.7),
-        # 'eta': 0.1,
-        # 'objective': 'rank:pairwise',
-        # 'max_depth': 8,
-        # 'gamma': 1.0
-        #  num_rounds:239 (200)
-        param_grid = list(ParameterGrid({
-            "objective": ["binary:logistic"],
-            "eval_metric": [metric],
-            "eta": [0.3],
-            #"booster": ["gblinear"],
-            "num_parallel_tree": [200],
-            #"eta": [0.1, 0.3, 0.5, 0.8],
-            #"min_child_weight": [1.0, 2.0],
-            "gamma": [0.0],
-            #"gamma": [0.0, 0.5, 1.0],
-            "num_boost_round": [1],
-            "subsample": [0.5],
-            #"colsample_bytree": [1.0, 0.5],
-            "colsample_bytree": [0.7],
-            #"lambda": [1.0, 10.0, 100.0],
-            #"lambda": [0.0, 1.0, 10.0],
-            "max_depth": [6],
-            "silent": [1]}))
-        best_score = 0.0
-        best_params = None
-        num_rounds = 0
-        for i, params in enumerate(param_grid):
-            logger.info("Testing parameters %d/%d: %s" % (i + 1,
-                                                          len(param_grid),
-                                                          str(params)))
-            eval_results = {}
-            model = xgb.train(params, dtrain, params["num_boost_round"],
-                              evals=[(dtrain, "train"), (ddev, "dev")],
-                              evals_result=eval_results,
-                              #early_stopping_rounds=20,
-                              verbose_eval=True)
-            last_score = 1 - float(eval_results["dev"][metric][-1])
-            logger.info("%s: %s" % (metric, last_score))
-            #last_score = model.best_score
-            if last_score > best_score:
-                best_score = last_score
-                best_params = params
-                #num_rounds = model.best_iteration
-                num_rounds = params["num_boost_round"]
-                best_model = model
-        logger.info(
-            "Best score, %s, best parameters: %s, num_rounds:%d" % (best_score,
-                                                                    best_params,
-                                                                    num_rounds))
-        decision_tree = RandomForestClassifier(class_weight='balanced',
-                                               random_state=999,
-                                               n_jobs=6,
-                                               n_estimators=100)
-        #decision_tree.fit(pair_features_train, pair_labels_train)
-        #print(decision_tree.score(pair_features_test, pair_labels_test))
-        logger.info("Training final ranking model with best parameters.")
-        #decision_tree = xgb.XGBClassifier(objective=best_params["objective"],
-        #                                  learning_rate=best_params["eta"],
-        #                                  n_estimators=best_params["num_boost_round"],
-        #                                  max_depth=best_params["max_depth"],
-        #                                  reg_alpha=best_params["lambda"])
-        #decision_tree.fit(X, labels)
-        dalltrain = xgb.DMatrix(X, label=labels)
-        xgb_decision_tree = xgb.train(best_params, dalltrain, num_rounds)
-        #print(xgb.cv(best_params, dalltrain, num_rounds, 3))
-        logger.info("Done.")
-        self.model = xgb_decision_tree
-        fscores = self.model.get_fscore()
-        fimp = []
-        for name, score in fscores.items():
-            index = int(name[1:])
-            fimp.append((score, pair_dict_vec.feature_names_[index]))
-        print(sorted(fimp, reverse=True))
-        print(X[0])
-        self.pair_dict_vec = pair_dict_vec
-        self.label_encoder = label_encoder
-
-
-    def learn_ranking_model_new(self, queries, features, dict_vec,
-                                dev_ratio=0.2):
-        random.seed(123)
-        np.random.seed(123)
-        def f1_to_relevance(f1):
-            if f1 > 0.8:
-                return 2
-            elif f1 > 0.6:
-                return 1
-            elif f1 > 0.4:
-                return 0
-            elif f1 > 0.1:
-                return 0
-            else:
-                return 0
-
-        indices = []
-        relevance_scores = []
-        for q in queries:
-            start = sum([len(l) for l in indices])
-            indices.append(list(range(start,
-                                      start + len(q.eval_candidates))))
-            candidates = [x.query_candidate for x in q.eval_candidates]
-            for j, c in enumerate(candidates):
-                f1 = q.eval_candidates[j].evaluation_result.f1
-                relevance_scores.append(f1_to_relevance(f1))
-        relevance_scores = np.array(relevance_scores)
-        all_groups = [len(l) for l in indices]
-
-        indices, queries = utils.shuffle(indices, queries)
-        #re_features = features[np.array([i for l in indices for i in l])]
-        #re_relevance_scores = relevance_scores[np.array([i for l in indices for i in l])]
-        groups = [len(l) for l in indices]
-        num_train = int(len(queries) * (1 - dev_ratio))
-        train_indices = np.array([i for l in indices[:num_train] for i in l])
-        dev_indices = np.array([i for l in indices[num_train:] for i in l])
-        X_train = features[train_indices]
-        labels_train = relevance_scores[train_indices]
-        X_dev = features[dev_indices]
-        labels_dev = relevance_scores[dev_indices]
-        dtrain = xgb.DMatrix(X_train, label=labels_train)
-        dtrain.set_group(groups[:num_train])
-        ddev = xgb.DMatrix(X_dev, label=labels_dev)
-        ddev.set_group(groups[num_train:])
-        metric = "ndcg@1-"
-
-        logger.info("#train queries: %d" % sum(labels_train))
-        logger.info("#dev queries: %d" % sum(labels_dev))
-
-        # Perform grid search for best parameters.
-        #     "objective": ["rank:ndcg"],
-        #     "eval_metric": [metric],
-        #     "eta": [0.3],
-        #     "min_child_weight": [0.1],
-        #     "gamma": [0.5],
-        #     "num_boost_round": [100],
-        #     "subsample": [1.0],
-        #     "colsample_bytree": [1.0,],
-        #     "lambda": [10.0],
-        #     "max_depth": [8],
-
-        # WQ params (ngram):
-        # 'colsample_bytree': 0.5 (0.7),
-        # 'eval_metric': 'ndcg@3',
-        # 'min_child_weight': 1.0 (2.0),
-        # 'subsample': 1.0 (0.7),
-        # 'eta': 0.1,
-        # 'objective': 'rank:pairwise',
-        # 'max_depth': 8,
-        # 'gamma': 1.0
-        #  num_rounds:239 (200)
-        param_grid = list(grid_search.ParameterGrid({
-            "objective": ["rank:map"],
-            "eval_metric": [metric],
-            "eta": [0.1, 0.2, 0.3],
-            #"num_parallel_tree": [5],
-            #"eta": [0.1, 0.3, 0.5, 0.8],
-            "min_child_weight": [2.0],
-            #"gamma": [0.0, 0.5, 1.0],
-            "gamma": [1.0],
-            "num_boost_round": [200],
-            "subsample": [.75],
-            "colsample_bytree": [.75],
-            #"colsample_bytree": [0.7],
-            #"lambda": [1.0, 10.0, 100.0],
-            "lambda": [10.0],
-            "max_depth": [10],
-            "silent": [1]}))
-        best_score = 0.0
-        best_params = None
-        num_rounds = 400
-        for i, params in enumerate(param_grid):
-            logger.info("Testing parameters %d/%d: %s" % (i + 1,
-                                                          len(param_grid),
-                                                          str(params)))
-            eval_results = {}
-            model = xgb.train(params, dtrain, params["num_boost_round"],
-                              evals=[(dtrain, "train"), (ddev, "dev")],
-                              evals_result=eval_results,
-                              #early_stopping_rounds=20,
-                              verbose_eval=True)
-            last_score = eval_results["dev"][metric][-1]
-            logger.info("%s: %s" % (metric, last_score))
-            #last_score = model.best_score
-            if last_score > best_score:
-                best_score = last_score
-                best_params = params
-                #num_rounds = model.best_iteration + 20
-                num_rounds = params["num_boost_round"]
-        logger.info(
-            "Best score, %s, best parameters: %s, num_rounds:%d" % (best_score,
-                                                                    best_params,
-                                                                    num_rounds))
-        # Train final model.
-        dtrain_all = xgb.DMatrix(features, label=relevance_scores)
-        dtrain_all.set_group(all_groups)
-        xgb_decision_tree = xgb.train(best_params, dtrain_all, num_rounds,
-                                      evals=[(dtrain, "train"), (ddev, "dev")],
-                                      verbose_eval=True)
-        # decision_tree = clf.best_estimator_
-        #print(decision_tree.feature_importances_)
-        logger.info("Done.")
-        label_encoder = LabelEncoder()
-        self.label_encoder = label_encoder
-        self.model = xgb_decision_tree
-        self.pair_dict_vec = dict_vec
-
 
     def store_model(self):
         logger.info("Writing model to %s." % self.get_model_filename())
         joblib.dump([self.model, self.label_encoder,
                      self.dict_vec, self.pair_dict_vec, self.scaler],
                     self.get_model_filename())
-        self.relation_scorer.store_model()
+        if self.learn_ngram_rel_model:
+            self.relation_scorer.store_model()
         if self.learn_deep_rel_model:
             model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
             self.deep_relation_scorer.store_model(
@@ -701,16 +451,10 @@ class AqquModel(MLModel, Ranker):
         logger.info("Sort for %s took %s ms" % (len(pairs), duration))
         return [candidates[i] for i in sorted_i]
 
-    def rank_candidates_new(self, candidates, features):
-        dtest = xgb.DMatrix(features)
-        dtest.set_group([len(candidates)])
-        rk = zip(candidates, self.model.predict(dtest))# , ntree_limit=self.label_encoder))
-        s_rk = sorted(rk, key=lambda x: x[1], reverse=True)
-        return [x[0] for x in s_rk]
 
     def rank_query_candidates(self, query_candidates, key=lambda x: x,
                               store_features=False):
-        """Rank query candidates by scoring and then sorting them.
+        """Rank query candidates using the learned comparision function
 
         :param query_candidates:
         :return:
@@ -735,8 +479,8 @@ class AqquModel(MLModel, Ranker):
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
-        query_candidates, features = self.prune_candidates(query_candidates,
-                                                           features)
+        query_candidates, features = self.prune_query_candidates(query_candidates,
+                                                           features, key)
         logger.info("%s of %s candidates remain" % (len(query_candidates),
                                                     num_candidates))
         start = time.time()
@@ -744,15 +488,16 @@ class AqquModel(MLModel, Ranker):
         if len(query_candidates) < 2:
             return query_candidates
         ranked_candidates = self.rank_candidates(query_candidates,
-                                                     features)
+                                                 features)
         duration = (time.time() - start) * 1000
         logger.debug("Ranked candidates in %s ms" % (duration))
         return ranked_candidates
 
-    def prune_candidates(self, query_candidates, features):
+    def prune_query_candidates(self, query_candidates, features, key=lambda x: x):
         remaining = []
         if len(query_candidates) > 0:
-            remaining = self.pruner.prune_candidates(query_candidates, features)
+            remaining = self.pruner.prune_query_candidates(query_candidates,
+                                                     features, key)
         return remaining
 
     def learn_submodel_features(self, train_queries, dict_vec, n_folds=6,
@@ -788,15 +533,14 @@ class AqquModel(MLModel, Ranker):
                 num_fold, n_folds))
             test_fold = [train_queries[i] for i in test_idx]
             train_fold = [train_queries[i] for i in train_idx]
-            #write_dl_examples(train_fold,"train", num_fold)
-            #write_dl_examples(test_fold, "test", num_fold)
             test_candidates = [x.query_candidate for query in test_fold
                                for x in query.eval_candidates]
 
-
-            rel_model = self.learn_rel_score_model(train_fold,
-                                                   ngrams_dict=ngrams_dict)
-            rel_scores = rel_model.score_multiple(test_candidates)
+            rel_scores = []
+            if self.learn_ngram_rel_model:
+                rel_model = self.learn_rel_score_model(train_fold,
+                                                       ngrams_dict=ngrams_dict)
+                rel_scores = rel_model.score_multiple(test_candidates)
             deep_rel_scores = []
             if self.learn_deep_rel_model:
                 deep_rel_model = self.learn_deep_rel_score_model(train_fold,
@@ -805,7 +549,8 @@ class AqquModel(MLModel, Ranker):
             c_index = 0
             for i in test_idx:
                 for c in qc_indices[i]:
-                    features[c, 0] = rel_scores[c_index].score
+                    if self.learn_ngram_rel_model:
+                        features[c, 0] = rel_scores[c_index].score
                     if self.learn_deep_rel_model:
                         features[c, 1] = deep_rel_scores[c_index].score
                     c_index += 1
@@ -836,7 +581,7 @@ class CandidatePruner(MLModel):
                  dict_vec):
         name += self.get_pruner_suffix()
         MLModel.__init__(self, name, None)
-        # Note: The model is lazily when needed.
+        # Note: The model is lazily created when needed.
         self.model = None
         self.label_encoder = None
         self.dict_vec = dict_vec
@@ -873,8 +618,8 @@ class CandidatePruner(MLModel):
         pos_class_weight /= total_weight
         neg_class_weight /= total_weight
         # with old ranking 1.0 works best, followed by 1.2
-        # with mew ranking 1.5 works a lot better
-        pos_class_boost = 1.5
+        # with new ranking 1.5 works a lot better
+        pos_class_boost = 1.8
         label_encoder = LabelEncoder()
         logger.info(X[-1])
         labels = label_encoder.fit_transform(labels)
@@ -929,21 +674,22 @@ class CandidatePruner(MLModel):
                      self.scaler], self.get_model_filename())
         logger.info("Done.")
 
-    def prune_candidates(self, query_candidates, features):
+    def prune_query_candidates(self, query_candidates, features, key=lambda x: x):
         remaining = []
+        remaining_idxs = []
         X = self.scaler.transform(features)
         p = self.model.predict(X)
-        # c = self.prune_label_encoder.inverse_transform(p)
-        for candidate, predict in zip(query_candidates, p):
-            if predict == 1:
-                remaining.append(candidate)
-        # TODO: improve this code
+
+        for cand_idx, (cand, predict) in enumerate(zip(query_candidates, p)):
+            # TODO the pruner should learn to always prune empty
+            # answers but currently it doesn't so check that separately
+            if predict == 1 and key(cand).get_result_count() > 0:
+                remaining.append(cand)
+                remaining_idxs.append(cand_idx)
+
         new_features = np.zeros(shape=(len(remaining), features.shape[1]))
-        next = 0
-        for i, predict in enumerate(p):
-            if predict == 1:
-                new_features[next, :] = features[i, :]
-                next += 1
+        for new_idx, cand_idx in enumerate(remaining_idxs):
+                new_features[new_idx, :] = features[cand_idx, :]
         return remaining, new_features
 
 
@@ -1119,7 +865,6 @@ class SimpleScoreRanker(Ranker):
         Ranker.__init__(self, name, **kwargs)
 
     def score(self, query_candidate):
-        result_size = query_candidate.get_result_count()
         em_token_score = 0.0
         for em in query_candidate.matched_entities:
             em_score = em.entity.surface_score
@@ -1244,14 +989,14 @@ class LiteralRanker(Ranker):
             # "us supreme court" <-> "Supreme Court of the United States"
             # (prob = 0.983) "mozart" <-> "Wolfgang Amadeus Mozart"
             threshold = 0.8
-            if em.entity.perfect_match or em.entity.surface_score > threshold:
+            if em.perfect_match or em.surface_score > threshold:
                 literal_entities += 1
-                literal_length += len(em.entity.tokens)
-            em_score = em.entity.surface_score
-            em_score *= len(em.entity.tokens)
+                literal_length += len(em.tokens)
+            em_score = em.surface_score
+            em_score *= len(em.tokens)
             em_token_score += em_score
-            if em.entity.score > 0:
-                em_popularity += math.log(em.entity.score)
+            if em.score > 0:
+                em_popularity += math.log(em.score)
         matched_tokens = dict()
         for rm in query_candidate.matched_relations:
             rm_relation_length += len(rm.relation)
@@ -1449,8 +1194,12 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
         correct_cands_index = set()
         candidates = [x.query_candidate for x in query.eval_candidates]
         for i, _ in enumerate(candidates):
-            if i + 1 == oracle_position or query.eval_candidates[i].evaluation_result.f1 >= correct_threshold:
+            eval_result = query.eval_candidates[i].evaluation_result
+            if i + 1 == oracle_position or \
+                    eval_result.f1 >= correct_threshold or \
+                    eval_result.parse_match:
                 correct_cands_index.add(i)
+
         if correct_cands_index:
             n_candidates = len(candidates)
             sample_size = n_candidates // 2
@@ -1525,7 +1274,9 @@ def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
     :param train_queries:
     :return:
     """
-    candidates = [x.query_candidate for q in train_queries for x in q.eval_candidates]
+    candidates = [x.query_candidate
+                  for q in train_queries
+                  for x in q.eval_candidates]
     features = f_extract(candidates)
     logger.info("Extracting features from candidates.")
     labels = []
@@ -1533,50 +1284,17 @@ def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
         oracle_position = query.oracle_position
         candidates = [x.query_candidate for x in query.eval_candidates]
         for i, candidate in enumerate(candidates):
-            if i + 1 == oracle_position or query.eval_candidates[i].evaluation_result.f1 >= score_threshold:
+            eval_result = query.eval_candidates[i].evaluation_result
+            if i + 1 == oracle_position or \
+                    eval_result.f1 >= score_threshold or \
+                    eval_result.parse_match:
                 labels.append(1)
             else:
                 labels.append(0)
     return labels, features
 
 
-def write_dl_examples(queries, name, fold_num):
-    from feature_extraction import get_query_text_tokens
-    file_name = "dl_examples_%s_fold_%s.txt" % (name, str(fold_num))
-    logger.info("Writing examples to %s" % name)
-    rev_rels = data.read_reverse_relations("data/reverse-relations")
-    med_rels = data.read_mediator_relations("data/mediator-relations")
-    no_rev_rels = set()
-    with open(file_name, "w") as f:
-        for query in queries:
-            candidates = [x.query_candidate for x in query.eval_candidates]
-            for i, candidate in enumerate(candidates):
-                relations = candidate.get_relation_names()
-                correct_directions = []
-                for r in relations:
-                    if r in med_rels:
-                        if r in rev_rels:
-                            correct_directions.append(rev_rels[r])
-                        elif r not in no_rev_rels:
-                            logger.warn("%s has no reverse relation" % r)
-                            no_rev_rels.add(r)
-                            continue
-                        else:
-                            continue
-                    else:
-                        correct_directions.append(r)
-                if not correct_directions:
-                    continue
-                rel = "+".join(sorted(correct_directions))
-                f1 = query.eval_candidates[i].evaluation_result.f1
-                text = " ".join(get_query_text_tokens(candidate, include_mid=True))
-                f.write("%d\t%d\t%.2f\t%s\t%s\t%s\n" % (query.id, i,
-                                                        f1, query.utterance,
-                                                        text, rel))
-
-
-
-def construct_ngram_examples(queries, f_extractor):
+def construct_ngram_examples(queries, f_extractor, correct_threshold=.9):
     """Construct training examples from candidates.
 
     Construct a list of examples from the given evaluated queries.
@@ -1595,14 +1313,16 @@ def construct_ngram_examples(queries, f_extractor):
         negative_relations = set()
         for i, candidate in enumerate(candidates):
             relation = " ".join(candidate.get_relation_names())
-            if query.eval_candidates[i].evaluation_result.f1 == 1.0 \
-                    or i + 1 == oracle_position:
+            eval_result = query.eval_candidates[i].evaluation_result
+            if eval_result.f1 == correct_threshold or \
+                    i + 1 == oracle_position or \
+                    eval_result.parse_match:
                 positive_relations.add(relation)
         for i, candidate in enumerate(candidates):
             relation = " ".join(candidate.get_relation_names())
             candidate_features = f_extractor.extract_features(candidate)
             if relation in positive_relations and \
-                            relation not in seen_positive_relations:
+                    relation not in seen_positive_relations:
                 seen_positive_relations.add(relation)
                 labels.append(1)
                 features.append(candidate_features)
@@ -1651,5 +1371,5 @@ def shuffle_candidates(candidates, key):
     :return:
     """
     stable_candidates = sort_query_candidates(candidates, key)
-    Random(RANDOM_SHUFFLE).shuffle(stable_candidates)
+    random.Random(RANDOM_SHUFFLE).shuffle(stable_candidates)
     return stable_candidates

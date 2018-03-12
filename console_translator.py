@@ -34,21 +34,21 @@ def main():
         logger.error("%s is not a valid ranker" % args.ranker_name)
         logger.error("Valid rankers are: %s " % (" ".join(list(scorer_globals.scorers_dict.keys()))))
     logger.info("Using ranker %s" % args.ranker_name)
-    ranker = scorer_globals.scorers_dict[args.ranker_name]
+    ranker = scorer_globals.scorers_dict[args.ranker_name].instance()
     translator = QueryTranslator.init_from_config()
-    translator.set_scorer(ranker)
+    translator.set_ranker(ranker)
     while True:
         sys.stdout.write("enter question> ")
         sys.stdout.flush()
         query = sys.stdin.readline().strip()
         logger.info("Translating query: %s" % query)
-        _, results = translator.translate_and_execute_query(query)
+        _, candidates = translator.translate_and_execute_query(query)
         logger.info("Done translating query: %s" % query)
         logger.info("#candidates: %s" % len(results))
-        if len(results) > 0:
-            best_candidate = results[0].query_candidate
+        if len(candidates) > 0:
+            best_candidate = results[0]
             sparql_query = best_candidate.to_sparql_query()
-            result_rows = results[0].query_result_rows
+            result_rows = best_candidate.query_result
             result = []
             # Usually we get a name + mid.
             for r in result_rows:
