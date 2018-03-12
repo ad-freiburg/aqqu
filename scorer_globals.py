@@ -23,7 +23,11 @@ class Conf:
     def __init__(self, clzz, name, **kwargs):
         self.name = name
         self.clzz = clzz
-        self._kwargs = kwargs
+        if hasattr(self.clzz, 'default_config') and self.clzz.default_config:
+            self._config = self.clzz.default_config.copy()
+            self._config.update(kwargs)
+        else:
+            self._config = kwargs
         self._override = {}
         self._inst = None
 
@@ -31,7 +35,7 @@ class Conf:
         """
         Returns the configuration options as a map
         """
-        return self._kwargs.copy()
+        return self._config.copy()
 
     def override(self):
         """
@@ -45,13 +49,13 @@ class Conf:
         a cached one is used
         """
         self._override = override
-        newkwargs = self.config()
-        newkwargs.update(override)
-        if newkwargs != self._kwargs or not self._inst:
-            self._kwargs = newkwargs
+        newconfig = self.config()
+        newconfig.update(override)
+        if newconfig != self._config or not self._inst:
+            self._config = newconfig
             logger.info('Instantiating scorer: %s with parameters: %s',
-                        self.name, json.dumps(self._kwargs))
-            self._inst = self.clzz(self.name, **self._kwargs)
+                        self.name, json.dumps(self.config()))
+            self._inst = self.clzz(self.name, **self._config)
         return self._inst
 
 
@@ -74,7 +78,6 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
                     train_datasets=["free917train"],
                     top_ngram_percentile=10,
                     rel_regularization_C=1e-6,
-                    use_type_names=True,
                     use_attention=False),
                Conf(ranker.AqquModel, 'F917_Ranker_entity_oracle',
                     train_datasets=["free917train"],
@@ -85,106 +88,78 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
 
                Conf(ranker.AqquModel, 'F917_WQSP_Ranker',
                     train_datasets=["free917train", "wqsptrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQSP_F917_Ranker',
                     train_datasets=["wqsptrain", "free917train"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
 
                Conf(ranker.AqquModel, 'WQ_Ranker',
                     train_datasets=["webquestionstrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQ_Ranker_no_types',
                     train_datasets=["webquestionstrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
                     use_type_names=False),
                Conf(ranker.AqquModel, 'WQ_Ranker_no_attention',
                     train_datasets=["webquestionstrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
-                    use_type_names=True,
                     use_attention=False),
                Conf(ranker.AqquModel, 'WQ_Ranker_tiny',
                     train_datasets=["webquestionstrain_tiny"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQ_Ranker_no_deep',
                     train_datasets=["webquestionstrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
-                    learn_deep_rel_model=False,
-                    learn_ngram_rel_model=True),
+                    learn_deep_rel_model=False),
                Conf(ranker.AqquModel, 'WQ_Ranker_no_deep_1of2',
                     train_datasets=["webquestionstrain_1of2"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
-                    learn_deep_rel_model=False,
-                    learn_ngram_rel_model=True),
+                    learn_deep_rel_model=False),
                Conf(ranker.AqquModel, 'WQ_Ranker_no_deep_gridsearch',
                     train_datasets=["webquestionstrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=None,
-                    learn_deep_rel_model=False,
-                    learn_ngram_rel_model=True),
+                    learn_deep_rel_model=False),
                Conf(ranker.AqquModel, 'WQ_Ranker_1of2',
                     train_datasets=["webquestionstrain_1of2"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQ_Ranker_EQL',
                     train_datasets=["webquestionstrain"],
-                    entity_linker_class=EntityLinkerQlever,
-                    top_ngram_percentile=5,
-                    rel_regularization_C=1e-5),
+                    rel_regularization_C=1e-5,
+                    entity_linker_class=EntityLinkerQlever),
 
                Conf(ranker.AqquModel, 'SQ_Ranker',
                     train_datasets=["sqtrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'SQ_Ranker_no_types',
                     train_datasets=["sqtrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
                     use_type_names=False),
                Conf(ranker.AqquModel, 'SQ_Ranker_no_types',
                     train_datasets=["sqtrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
-                    use_type_names=True,
                     use_attention=False),
                Conf(ranker.AqquModel, 'SQ_Ranker_tiny',
                     train_datasets=["sqtrain_tiny"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
 
                Conf(ranker.AqquModel, 'WQSP_Ranker',
                     train_datasets=["wqsptrain"],
-                    top_ngram_percentile=5,
-                    rel_regularization_C=1e-5,
-                    num_filters=64,
-                    num_hidden_nodes=200),
+                    rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQSP_Ranker_no_types',
                     train_datasets=["wqsptrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
                     use_type_names=False),
                Conf(ranker.AqquModel, 'WQSP_Ranker_no_attention',
                     train_datasets=["wqsptrain"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
-                    use_type_names=True,
                     use_attention=False),
                Conf(ranker.AqquModel, 'WQSP_Ranker_no_ngram',
                     train_datasets=["wqsptrain"],
                     rel_regularization_C=1e-5,
-                    learn_deep_rel_model=True,
                     learn_ngram_rel_model=False),
                Conf(ranker.AqquModel, 'WQSP_Ranker_EQL',
                     train_datasets=["wqsptrain"],
                     entity_linker_class=EntityLinkerQlever,
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQSP_Ranker_tiny',
                     train_datasets=["wqsptrain_tiny"],
@@ -198,18 +173,14 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
 
                Conf(ranker.AqquModel, 'SQ_WQSP_Ranker_tiny',
                     train_datasets=["sqtrain_tiny", "wqsptrain_tiny"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'SQ_WQSP_Ranker_tiny_no_types',
                     train_datasets=["sqtrain_tiny", "wqsptrain_tiny"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
                     use_type_names=False),
                Conf(ranker.AqquModel, 'SQ_WQSP_Ranker_tiny_no_attention',
                     train_datasets=["sqtrain_tiny", "wqsptrain_tiny"],
-                    top_ngram_percentile=5,
                     rel_regularization_C=1e-5,
-                    use_type_names=True,
                     use_attention=False),
 
                Conf(ranker.SimpleScoreRanker, 'SimpleRanker'),

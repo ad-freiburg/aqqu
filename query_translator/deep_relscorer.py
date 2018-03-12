@@ -14,9 +14,6 @@ from sklearn import utils
 
 from query_translator import feature_extraction
 
-DEFAULT_NUM_FILTERS=64
-DEFAULT_NUM_HIDDEN_NODES=200
-
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',
@@ -25,25 +22,35 @@ gensim_model = None
 
 class DeepCNNAqquRelScorer():
 
+    default_config = {
+            'use_type_names': True,
+            'use_attention': True,
+            'num_filters': 64,
+            'num_hidden_nodes': 200,
+            'dropout_keep_prob': 0.9
+        }
+
     UNK = '---UNK---'
     PAD = '---PAD---'
 
-    def __init__(self, logdir, embeddings_file=None,
-                 use_type_names=True, use_attention=True,
-                 num_filters=DEFAULT_NUM_FILTERS,
-                 num_hidden_nodes=DEFAULT_NUM_HIDDEN_NODES):
+    def __init__(self, logdir, embeddings_file,
+                 use_type_names, use_attention,
+                 num_filters,
+                 num_hidden_nodes,
+                 dropout_keep_prob):
         self.logdir = logdir
         self.n_rels = 3
         self.n_parts_per_rel = 3
         self.n_rel_parts = self.n_rels * self.n_parts_per_rel
         self.embeddings_file = embeddings_file
-        # flags
+        # flags and parameters
         self.use_type_names = use_type_names
         self.use_attention = use_attention
-        # This is the maximum number of tokens in a query we consider.
-        self.filter_sizes = (1, 2, 3, 4)
         self.num_filters = num_filters
         self.num_hidden_nodes = num_hidden_nodes
+        self.dropout_keep_prob = dropout_keep_prob
+        # This is the maximum number of tokens in a query we consider.
+        self.filter_sizes = (1, 2, 3, 4)
         self.pad = 0  # max(self.filter_sizes) - 1
         self.max_query_len = 20
         self.sentence_len = self.max_query_len
@@ -60,7 +67,7 @@ class DeepCNNAqquRelScorer():
         self.input_s = None
         self.input_r = None
         self.input_y = None
-        self.dropout_keep_prob = None
+        self.dropout= None
         self.summary = None
 
         self.optimizer = None
@@ -69,9 +76,7 @@ class DeepCNNAqquRelScorer():
         self.saver = None
 
     @staticmethod
-    def init_from_config(use_type_names=True, use_attention=True,
-                         num_filters=DEFAULT_NUM_FILTERS,
-                         num_hidden_nodes=DEFAULT_NUM_HIDDEN_NODES):
+    def init_from_config(**kwargs):
         """
         Return an instance with options parsed by a config parser.
         :param config_options:
@@ -83,8 +88,7 @@ class DeepCNNAqquRelScorer():
         logdir = config_options.get('DeepRelScorer',
                                     'logdir')
         return DeepCNNAqquRelScorer(logdir, embeddings_file,
-                                    use_type_names, use_attention,
-                                    num_filters, num_hidden_nodes)
+                                    **kwargs)
 
     def extract_vectors(self, gensim_model_fname):
         """Extract vectors from gensim model and add UNK/PAD vectors.
@@ -336,8 +340,6 @@ class DeepCNNAqquRelScorer():
                     self.sess.run(tf.variables_initializer(
                         [self.global_step]))
 
-                tf.set_random_seed(42)
-
                 def run_dev_batches(dev_features, dev_qids, dev_f1,
                                     dev_train, batch_size=200):
                     n_batch = 0
@@ -358,7 +360,7 @@ class DeepCNNAqquRelScorer():
                             self.input_y: input_y,
                             self.input_s: x_b,
                             self.input_r: x_rel_b,
-                            self.dropout_keep_prob: 1.0
+                            self.dropout: 1.0
                         }
                         summary, loss, p = self.sess.run(
                             [self.summary, self.loss, self.probs],
@@ -386,7 +388,7 @@ class DeepCNNAqquRelScorer():
                         self.input_y: y_batch,
                         self.input_s: x_batch,
                         self.input_r: x_rel_batch,
-                        self.dropout_keep_prob: 0.9
+                        self.dropout: self.dropout_keep_prob
                     }
                     _, summary, step, loss, probs = self.sess.run(
                         [self.train_op, self.summary,
@@ -610,7 +612,7 @@ class DeepCNNAqquRelScorer():
             self.Wembed: self.embeddings,
             self.input_s: words,
             self.input_r: rel_features,
-            self.dropout_keep_prob: 1.0
+            self.dropout: 1.0
         }
         with self.g.as_default():
             with self.sess.as_default():
@@ -647,7 +649,7 @@ class DeepCNNAqquRelScorer():
                 self.Wembed: self.embeddings,
                 self.input_s: words,
                 self.input_r: rel_features,
-                self.dropout_keep_prob: 1.0
+                self.dropout: 1.0
             }
             with self.g.as_default():
                 with self.sess.as_default():
@@ -677,7 +679,7 @@ class DeepCNNAqquRelScorer():
                                       name="input_r")
         self.input_y = tf.placeholder(tf.float32, [None, 1],
                                       name="input_y")
-        self.dropout_keep_prob = tf.placeholder(tf.float32,
+        self.dropout= tf.placeholder(tf.float32,
                                                 name="dropout_keep_prob")
 
         embedded_input_r = None
@@ -825,11 +827,11 @@ class DeepCNNAqquRelScorer():
 
         # Add dropout
         h_drop = tf.nn.dropout(q_h_pool_flat,
-                               self.dropout_keep_prob,
+                               self.dropout,
                                name='dropout_q',
                                seed=1332)
         r_drop = tf.nn.dropout(r_h_pool_flat,
-                               self.dropout_keep_prob,
+                               self.dropout,
                                name='dropout_r',
                                seed=1332)
 

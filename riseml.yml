@@ -23,11 +23,12 @@ train:
   run:
     - python setup.py build_ext --inplace
     - >-
-         stdbuf -o 0
+         stdbuf -oL
          python -m query_translator.learner --config conf_riseml.cfg 
           cv WQSP_Ranker wqsptrain --override
           '{
-            "num_filters" : {{num_filters}}
+            "num_filters" : {{num_filters}},
+            "num_hidden_nodes" : {{num_hidden_nodes}}
            }'
          2>&1 | tee /output/log.txt
 

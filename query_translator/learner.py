@@ -20,6 +20,8 @@ from joblib import Parallel, delayed
 import gc
 import multiprocessing as mp
 from collections import defaultdict
+
+import numpy as np
 from sklearn.model_selection import KFold
 
 import config_helper
@@ -384,6 +386,7 @@ def main():
     config_helper.read_configuration(args.config)
     # Fix randomness.
     random.seed(999)
+    np.random.seed(991)
     use_cache = args.cached
     if args.which == 'train':
         train(args.scorer_name,

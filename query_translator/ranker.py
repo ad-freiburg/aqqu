@@ -119,7 +119,8 @@ class Ranker:
                  entity_linker_class=EntityLinker,
                  entity_oracle_file=None,
                  all_relations_match=True,
-                 all_types_match=True):
+                 all_types_match=True,
+                 **kwargs):  # ignored but used by child classes
         self.name = name
         self.parameters = RankerParameters()
         self.parameters.entity_linker_class = entity_linker_class
@@ -222,20 +223,24 @@ class AqquModel(MLModel, Ranker):
      It always compares two candidates and makes a classification decision
      using a random forest to decide which one should be ranked higher.
     """
+    default_config = {
+        'top_ngram_percentile': 5,
+        'rel_regularization_C': None,
+        'learn_deep_rel_model': True,
+        'learn_ngram_rel_model': True,
+        }
+
+    default_config.update(DeepCNNAqquRelScorer.default_config)
 
     def score(self, candidate):
         pass
 
     def __init__(self, name,
                  train_datasets,
-                 top_ngram_percentile=5,
-                 rel_regularization_C=None,
-                 learn_deep_rel_model=True,
-                 learn_ngram_rel_model=True,
-                 use_type_names=True,
-                 use_attention=True,
-                 num_filters=128,
-                 num_hidden_nodes=200,
+                 top_ngram_percentile,
+                 rel_regularization_C,
+                 learn_deep_rel_model,
+                 learn_ngram_rel_model,
                  **kwargs):
         MLModel.__init__(self, name, train_datasets)
         Ranker.__init__(self, name, **kwargs)
@@ -256,12 +261,6 @@ class AqquModel(MLModel, Ranker):
         self.learn_deep_rel_model = learn_deep_rel_model
         self.learn_ngram_rel_model = learn_ngram_rel_model
 
-        self.use_type_names = use_type_names
-        self.use_attention = use_attention
-        self.num_filters = num_filters
-        self.num_hidden_nodes = num_hidden_nodes
-
-
     def load_model(self):
         model_file = self.get_model_filename()
         try:
@@ -279,8 +278,7 @@ class AqquModel(MLModel, Ranker):
             if self.learn_deep_rel_model:
                 self.deep_relation_scorer = \
                     DeepCNNAqquRelScorer.init_from_config(
-                        self.use_type_names, self.use_attention,
-                        self.num_filters, self.num_hidden_nodes)
+                        **self.kwargs)
 
                 model_dir_tf = os.path.join(self.get_model_dir(), 'tf')
                 self.deep_relation_scorer.load_model(
@@ -307,8 +305,7 @@ class AqquModel(MLModel, Ranker):
 
     def learn_deep_rel_score_model(self, queries, test_queries):
         rel_model = DeepCNNAqquRelScorer.init_from_config(
-            self.use_type_names, self.use_attention,
-            self.num_filters, self.num_hidden_nodes)
+            **self.kwargs)
         extend_deep_model = config_helper.config.get('Ranker',
                                                      'extend-deep-model',
                                                      fallback=None)
