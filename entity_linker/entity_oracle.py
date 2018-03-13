@@ -83,4 +83,4 @@ class EntityOracle:
                             else:
                                 logger.warn("Oracle entity does not exist:"
                                             " %s." % mid)
-        return identified_entities
+        return identified_entities, []  # no text entities

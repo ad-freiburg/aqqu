@@ -54,7 +54,9 @@ class Conf:
         if newconfig != self._config or not self._inst:
             self._config = newconfig
             logger.info('Instantiating scorer: %s with parameters: %s',
-                        self.name, json.dumps(self.config()))
+                        self.name,
+                        json.dumps(self.config(),
+                                   default=lambda obj: obj.__name__))
             self._inst = self.clzz(self.name, **self._config)
         return self._inst
 
@@ -64,6 +66,11 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
                     train_datasets=["free917train"],
                     top_ngram_percentile=10,
                     rel_regularization_C=1e-6),
+               Conf(ranker.AqquModel, 'F917_Ranker_no_deep',
+                    train_datasets=["free917train"],
+                    top_ngram_percentile=10,
+                    rel_regularization_C=1e-6,
+                    learn_deep_rel_model=False),
                Conf(ranker.AqquModel, 'F917_EQL_Ranker',
                     train_datasets=["free917train"],
                     entity_linker_class=EntityLinkerQlever,
@@ -85,6 +92,13 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
                     entity_linker_class=EntityOracle,
                     top_ngram_percentile=10,
                     rel_regularization_C=1e-6),
+               Conf(ranker.AqquModel, 'F917_Ranker_no_deep_entity_oracle',
+                    train_datasets=["free917train"],
+                    entity_oracle_file=free917_entities,
+                    entity_linker_class=EntityOracle,
+                    top_ngram_percentile=10,
+                    rel_regularization_C=1e-6,
+                    learn_deep_rel_model=False),
 
                Conf(ranker.AqquModel, 'F917_WQSP_Ranker',
                     train_datasets=["free917train", "wqsptrain"],

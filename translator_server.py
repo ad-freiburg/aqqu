@@ -29,6 +29,15 @@ LOG = logging.getLogger(__name__)
 
 APP = flask.Flask(__name__)
 
+class ClassNameJSONEncoder(json.JSONEncoder):
+    """
+    Allows JSON serializing classes as their name
+    """
+    def default(self, obj):
+        return obj.__class__.__name__
+
+APP.json_encoder = ClassNameJSONEncoder
+
 
 def map_results_list(results: Iterable[List[Union[str, int]]]) -> List[dict]:
     """
