@@ -122,15 +122,15 @@ def simple_features(candidate):
     # The number of relations that are matched by word at least once.
     n_word_relations = 0
     # The number of relations that are matched by word weakly at least once.
-    n_word_weak_relations = 0
+    n_weak_relations = 0
     # The number of relations that are matched by derivative at least once.
     n_derivative_relations = 0
-    # The length of tokens that are part of a literal entity match.
-    literal_entities_length = 0
-    # The length of tokens that match literally in a relation.
-    literal_relation_tokens_length = 0
-    # The length of tokens that match via derivation in a relation.
-    derivation_relation_tokens_length = 0
+    # The number of tokens that are part of a literal entity match.
+    n_literal_entity_tokens = 0
+    # The numper of tokens that match literally in a relation.
+    n_literal_relation_tokens = 0
+    # The number of tokens that match via derivation in a relation.
+    n_derivation_relation_tokens = 0
     # The sum of all weak match scores.
     sum_weak_relation_tokens = 0
     # The sum of all weak match scores.
@@ -149,7 +149,7 @@ def simple_features(candidate):
         n_entity_tokens += len(em.tokens)
         if em.perfect_match or em.surface_score > threshold:
             n_literal_entities += 1
-            literal_entities_length += len(em.tokens.text)
+            n_literal_entity_tokens += len(em.tokens)
         if em.text_match:
             n_text_and_question_entities += 1
         em_surface_scores.append(em.surface_score)
@@ -168,7 +168,6 @@ def simple_features(candidate):
         if rm.name_match:
             for (t, _) in rm.name_match.token_names:
                 token_name_match_score[t] += 1.0
-                literal_relation_tokens_length += len(t.text)
             n_literal_relations += 1
         if rm.words_match:
             for (t, s) in rm.words_match.token_scores:
@@ -177,21 +176,27 @@ def simple_features(candidate):
         if rm.name_weak_match:
             for (t, _, s) in rm.name_weak_match.token_name_scores:
                 token_weak_match_score[t] += s
-            n_word_weak_relations += 1
+            n_weak_relations += 1
         if rm.derivation_match:
             for (t, _) in rm.derivation_match.token_names:
                 token_derivation_match_score[t] += 1.0
-                derivation_relation_tokens_length += len(t.text)
+                n_derivation_relation_tokens += 1
             n_derivative_relations += 1
         # cardinality is only set for the answer relation.
         if rm.cardinality != -1: # this is a tuple but gets initalized as -1
             # Number of facts in the relation (like in FreebaseEasy).
             cardinality = rm.cardinality[0]
 
+    n_literal_relation_tokens = len(token_name_match_score)
+    n_word_relation_tokens = len(token_word_match_score)
+    n_weak_relation_tokens = len(token_weak_match_score)
     sum_weak_relation_tokens = round(sum(token_weak_match_score.values()), 2)
-    sum_context_relation_tokens = round(sum(token_word_match_score.values()), 6)
-    avg_em_surface_score = round(sum(em_surface_scores) / len(em_surface_scores), 2)
-    sum_em_surface_score = round(sum(em_surface_scores), 2)
+    sum_context_relation_tokens = round(
+        sum(token_word_match_score.values()), 6)
+    avg_em_surface_score = round(
+        sum(em_surface_scores) / len(em_surface_scores), 2)
+    sum_em_surface_score = round(
+        sum(em_surface_scores), 2)
     avg_em_popularity = round(sum(em_pop_scores) / len(em_pop_scores), 2)
     sum_em_popularity = round(sum(em_pop_scores), 2)
     cardinality = int(math.log(cardinality)) if cardinality > 0 \
@@ -208,9 +213,13 @@ def simple_features(candidate):
     coverage = ((n_rel_tokens + n_entity_tokens) /
                 len(candidate.query.tokens))
     features = {}
-    relation_match = 1 if len(candidate.matched_relations) > 0 else 0
+    n_relations = len(candidate.get_relation_names())
+    n_unmatched_relations = n_relations - len(candidate.matched_relations)
+    #relation_match = 1 if candidate.matched_relations else 0
     result_size_0 = 1 if result_size == 0 else 0
-    matches_answer_type = candidate.matches_answer_type
+    result_size_1_to_20 = 1 if result_size > 0 and result_size < 20 else 0
+    result_size_gte_20 = 1 if result_size >= 20 else 0
+    matches_answer_type = round(candidate.matches_answer_type, 2)
 
     # Text query features are only used when a text query was run
     # during entity identification. They require fetching the entire result
@@ -235,16 +244,21 @@ def simple_features(candidate):
         'coverage': coverage,
         'matches_answer_type': matches_answer_type,
         'result_size_0': result_size_0,
-        'total_literal_length': (literal_entities_length
-                                 + literal_relation_tokens_length),
+        'result_size_1_to_20': result_size_1_to_20,
+        'result_size_gte_20': result_size_gte_20,
+        'n_total_literal_tokens': (n_literal_entity_tokens
+                                   + n_literal_relation_tokens),
     })
+    #features.update({
+    #    # text features
+    #    'n_text_and_question_entities': n_text_and_question_entities,
+    #    'text_answer_ratio': text_answer_ratio,
+    #})
     features.update({
         # "Entity Features"
         'n_literal_entities': n_literal_entities,
         'n_entity_matches': n_entity_matches,
-        'n_text_and_question_entities': n_text_and_question_entities,
-        'text_answer_ratio': text_answer_ratio,
-        'literal_entities_length': literal_entities_length,
+        'n_literal_entity_tokens': n_literal_entity_tokens,
         'avg_em_surface_score': avg_em_surface_score,
         'sum_em_surface_score': sum_em_surface_score,
         'avg_em_popularity': avg_em_popularity,
@@ -252,14 +266,16 @@ def simple_features(candidate):
     })
     features.update({
         # "Relation Features"
-        'n_relations': len(candidate.get_relation_names()),
-        'relation_match': relation_match,
+        'n_relations': n_relations,
+        #'n_unmatched_relations': n_unmatched_relations,
         'n_literal_relations': n_literal_relations,
-        'literal_relation_tokens_length': literal_relation_tokens_length,
-        'n_word_relations': n_word_relations,
-        'n_word_weak_relations': n_word_weak_relations,
-        'n_derivative_relations': n_derivative_relations,
-        'derivation_relation_tokens_length': derivation_relation_tokens_length,
+        'n_literal_relation_tokens': n_literal_relation_tokens,
+        #'n_word_relations': n_word_relations,
+        'n_word_relation_tokens': n_word_relation_tokens,
+        #'n_weak_relations': n_word_relations,
+        'n_weak_relation_tokens': n_weak_relation_tokens,
+        #'n_derivative_relations': n_derivative_relations,
+        'n_derivation_relation_tokens': n_derivation_relation_tokens,
         'sum_weak_relation_tokens': sum_weak_relation_tokens,
         'sum_context_relation_tokens': sum_context_relation_tokens,
         'cardinality': cardinality,

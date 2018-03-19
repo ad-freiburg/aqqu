@@ -198,9 +198,10 @@ class EntityLinker:
         # MD for: ben may library
         # PRP for: henry i
         # CD for: episode 1
+        # HYPH for "the amazing spider-man"
         # FW for: ?
         self.valid_entity_tag = re.compile(r'^(UH|\.|TO|PRP.?|#|FW|IN|VB.?|'
-                                           r'RB|CC|NNP.?|NN.?|JJ.?|CD|DT|MD|'
+                                           r'RB|CC|HYPH|NNP.?|NN.?|JJ.?|CD|DT|MD|'
                                            r'POS)+$')
         self.ignore_lemmas = {'be', 'of', 'the', 'and', 'or', 'a'}
         self.year_re = re.compile(r'[0-9]{4}')
@@ -264,7 +265,8 @@ class EntityLinker:
             return False
 
         # Entity mentions cannot start with an ignored lemma
-        if token_list[0].lemma_ in self.ignore_lemmas:
+        if token_list[0].lemma_ in self.ignore_lemmas and \
+                token_list[0].lemma_ != 'the':
             return False
 
         # For length 1 only allows nouns

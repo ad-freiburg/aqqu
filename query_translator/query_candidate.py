@@ -479,8 +479,7 @@ class QueryCandidate:
     def add_entity_match(self, entity_match):
         self.matched_entities.add(entity_match)
         self.matched_tokens.update(entity_match.tokens)
-        self.unmatched_tokens = self.unmatched_tokens - set(
-            entity_match.tokens)
+        self.unmatched_tokens = self.unmatched_tokens - set(entity_match.tokens)
 
     def __deepcopy__(self, memo):
         # Create a new empty query candidate

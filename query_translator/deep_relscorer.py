@@ -26,8 +26,8 @@ class DeepCNNAqquRelScorer():
             'use_type_names': True,
             'use_attention': True,
             'num_filters': 64,
-            'num_hidden_nodes': 200,
-            'dropout_keep_prob': 0.9
+            'num_hidden_nodes': 150,
+            'dropout_keep_prob': 0.75
         }
 
     UNK = '---UNK---'

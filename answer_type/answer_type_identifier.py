@@ -120,24 +120,36 @@ def gq_read(gq_path, entity_index):
             # skip it
             if len(em_answer.types) == 1 and em_answer.types[0] == 'UNK':
                 continue
-            # TODO handle entity categories
             answer_tokens = [DummyToken(tok)
                              for tok in em_answer.tokens]
+            types = entity_index.get_types_for_mid(em_answer.mid,
+                                                   3)
+            category = entity_index.get_category_for_mid(em_answer.mid)
             ie_answer = IdentifiedEntity(answer_tokens,
-                                         em_answer.name,
-                                         em_answer.mid, 0, 0,
-                                         True, entity_types=em_answer.types)
+                                         em_answer.name, em_answer,
+                                         types=types,
+                                         category=category,
+                                         score=0,
+                                         surface_score=0, 
+                                         perfect_match=True)
             query = DummyQuery()
             for position, raw_tok in enumerate(query_str.split(' ')):
                 if raw_tok.startswith('[') and raw_tok.endswith(']'):
                     em = EntityMention.fromString(raw_tok, entity_index,
                                                   position)
 
-                    query.tokens.extend([DummyToken(t) for t in em.tokens])
-                    ie = IdentifiedEntity(em.tokens,
-                                          em.name, em.mid, 0, 0,
-                                          True,
-                                          entity_types=em.types)
+                    tokens = [DummyToken(t) for t in em.tokens]
+                    query.tokens.extend(tokens)
+                    types = entity_index.get_types_for_mid(em_answer.mid,
+                                                           3)
+                    category = entity_index.get_category_for_mid(em_answer.mid)
+                    ie = IdentifiedEntity(tokens,
+                                          em.name, em,
+                                          types=types,
+                                          category=category,
+                                          score=0,
+                                          surface_score=0, 
+                                          perfect_match=True)
                     query.identified_entities.append(ie)
                 else:
                     query.tokens.append(DummyToken(raw_tok))
@@ -152,6 +164,7 @@ class AnswerTypeIdentifier:
     def __init__(self):
         self.clf = None
         self.vectorizer = None
+        self.date_patterns = ('in what year', 'what year', 'when', 'since when')
 
     @staticmethod
     def init_from_config():
@@ -176,20 +189,31 @@ class AnswerTypeIdentifier:
 
     def identify_target(self, query):
         query.target_type = AnswerType(AnswerType.CLASS)
-        # TODO(schnelle): currently the training set has no count questions
-        # when it has this hack should be removed
-        text = query.text
-        if text.startswith('in how many') or text.startswith('how many'):
-            query.target_type.target_classes = [('count', 0.9)]
+        # TODO(schnelle): currently we first look for manual heuristics and
+        # only when that fails try the learned model. The learned model really
+        # should get better than the heuristics. Since an entity can belong to
+        # multiple classes these don't need to sum to 1
+        text = query.text.lower()
+        if text.startswith('in how many') or \
+                text.startswith('how many'):
+            query.target_type.target_classes = [('count', 1.0)]
             query.is_count_query = True
+        elif text.startswith('where'):
+            query.target_type.target_classes = [
+                ('location', 0.7), ('event', 0.6), ('conference', 0.6)]
+        elif text.startswith('who'):
+            query.target_type.target_classes = [
+                ('person', 0.7), ('organization', 0.5),
+                ('employer', 0.4), ('character', 0.5)]
+        elif text.startswith(self.date_patterns):
+            query.target_type.target_classes = [('date', 0.99)]
         else:
             query_features = self.extract_features(query)
-            logger.info("Query AnswerType Features: {}".format(
-                repr(query_features)))
+            logger.info("Query AnswerType Features: %r", query_features)
             prediction = self.predict_best(self.vectorizer.transform(
                 query_features))
             query.target_type.target_classes = prediction
-        logger.info("predict: {}".format(repr(query.target_type.target_classes)))
+        logger.info("predict: %r", query.target_type.target_classes)
 
 
     def transform_answer(self, answer):

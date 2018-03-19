@@ -722,7 +722,7 @@ class QueryCandidateExtender:
         elif relation in self.relation_target_types:
             types = self.relation_target_types[relation]
             for t in types:
-                if target_class == t:
+                if target_class in t:
                     return True
         # Check if the class is in the expected_type of the relation.
         elif relation in self.relation_expected_types:
@@ -737,19 +737,21 @@ class QueryCandidateExtender:
         :return:
         """
         matches_answer_type = 0.0
-        for target_class, prob in query_candidate.query.target_type.target_classes:
+        for target_class, prob in \
+                query_candidate.query.target_type.target_classes:
             matches = False
-            if target_class == 'UNK':
-                matches = False
-            if target_class == 'date' and self.relation_has_date_target(relation):
+            if target_class == 'date' and \
+                    self.relation_has_date_target(relation):
                 matches = True
-            if target_class == 'count' and self.relation_points_to_count(relation):
+            elif target_class == 'count' and \
+                    self.relation_points_to_count(relation):
                 matches = True
             elif self.relation_answers_target_class(relation, target_class):
                 matches = True
 
             if matches:
-                logger.debug("%s matches target_class: %s", relation, target_class)
+                logger.debug("%s matches target_class: %s",
+                             relation, target_class)
                 matches_answer_type += prob
         return matches_answer_type
 

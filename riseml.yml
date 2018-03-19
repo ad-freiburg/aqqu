@@ -12,13 +12,11 @@ train:
     mem: 40000
     gpus: 1
   parameters:
-    num_filters:
-      - 64
-    num_hidden_nodes:
-      - 150
-      - 175
-      - 225
-      - 250
+    dropout_keep_prob:
+      - 0.5
+      - 0.75
+      - 0.875
+      - 0.99
   concurrency: 1
   run:
     - python setup.py build_ext --inplace
@@ -27,8 +25,7 @@ train:
          python -m query_translator.learner --config conf_riseml.cfg 
           cv WQSP_Ranker wqsptrain --override
           '{
-            "num_filters" : {{num_filters}},
-            "num_hidden_nodes" : {{num_hidden_nodes}}
+            "dropout_keep_prob" : {{dropout_keep_prob}}
            }'
          2>&1 | tee /output/log.txt
 
