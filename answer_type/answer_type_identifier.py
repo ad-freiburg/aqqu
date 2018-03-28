@@ -194,8 +194,10 @@ class AnswerTypeIdentifier:
         # should get better than the heuristics. Since an entity can belong to
         # multiple classes these don't need to sum to 1
         text = query.text.lower()
-        if text.startswith('in how many') or \
-                text.startswith('how many'):
+        if text.startswith('how many') or \
+                text.startswith('in how many') or \
+                text.startswith('on how many') or \
+                text.startswith('for how many'):
             query.target_type.target_classes = [('count', 1.0)]
             query.is_count_query = True
         elif text.startswith('where'):

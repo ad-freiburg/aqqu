@@ -6,7 +6,7 @@ train:
     - apt-get update
     - apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
     - pip install -r requirements.txt
-    - python -m spacy download en
+    - python -m spacy download en_core_web_lg
   resources:
     cpus: 4
     mem: 40000

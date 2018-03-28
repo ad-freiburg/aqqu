@@ -59,7 +59,7 @@ class QueryTranslator(object):
         backend_module_name = config_params.get("Backend", "backend")
         backend = sparql_backend.loader.get_backend(backend_module_name)
         query_extender = QueryCandidateExtender.init_from_config()
-        nlp = spacy.load('en')
+        nlp = spacy.load('en_core_web_lg')
         scorer = ranker.SimpleScoreRanker('DefaultScorer')
         entity_index = EntityIndex.init_from_config()
         entity_linker = scorer.parameters.\

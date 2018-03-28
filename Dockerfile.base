@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y python3-pip make libsnappy-dev zlib1g-d
 COPY requirements.txt /app/
 WORKDIR /app/
 RUN pip3 install -r requirements.txt
-RUN python3 -m spacy download en
+RUN python3 -m spacy download en_core_web_lg
 
 COPY . /app/
 RUN python3 setup.py build_ext --inplace

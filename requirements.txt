@@ -25,4 +25,4 @@ pytest==3.4.1
 mock==2.0.0
 msgpack-python==0.5.4
 msgpack-numpy==0.4.2
-spacy==2.0.7
+spacy==2.0.10

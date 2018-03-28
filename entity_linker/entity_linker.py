@@ -199,9 +199,10 @@ class EntityLinker:
         # PRP for: henry i
         # CD for: episode 1
         # HYPH for "the amazing spider-man"
+        # XX for abc (news)
         # FW for: ?
         self.valid_entity_tag = re.compile(r'^(UH|\.|TO|PRP.?|#|FW|IN|VB.?|'
-                                           r'RB|CC|HYPH|NNP.?|NN.?|JJ.?|CD|DT|MD|'
+                                           r'RB|CC|HYPH|XX|NNP.?|NN.?|JJ.?|CD|DT|MD|'
                                            r'POS)+$')
         self.ignore_lemmas = {'be', 'of', 'the', 'and', 'or', 'a'}
         self.year_re = re.compile(r'[0-9]{4}')

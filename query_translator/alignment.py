@@ -78,15 +78,15 @@ class WordDerivations(object):
             return True
         return False
 
-    def is_derivation(self, token_a, word_b):
+    def is_derivation(self, word_a, word_b):
         """Returns True if word_b can be derived from word_a.
 
         :param word_a:
         :param word_b:
         :return:
         """
-        word = self.get_word_suffix(token_a)
-        if word in self.word_derivations:
-            if word_b in self.word_derivations[word]:
+        suffixed_a = self.get_word_suffix(word_a)
+        if suffixed_a in self.word_derivations:
+            if word_b in self.word_derivations[suffixed_a]:
                 return True
         return False

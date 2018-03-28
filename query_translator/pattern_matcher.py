@@ -479,11 +479,14 @@ class QueryCandidateExtender:
         self.parameters = parameters
 
     def get_relation_lemma_name(self, relation):
+        """
+        Get the lematized version of the relations name if it exists, returning
+        the original relation name if it does not exist
+        """
         if relation in self.relation_lemmas:
             return self.relation_lemmas[relation]
-        else:
-            logger.info("No lemma version for relation %s." % relation)
-            return relation
+        logger.info("No lemma version for relation %s.", relation)
+        return relation
 
     def match_relation_with_tokens(self, relation, tokens, query):
         """
