@@ -496,9 +496,9 @@ class AqquModel(MLModel, Ranker):
     def prune_query_candidates(self, query_candidates, features, key=lambda x: x):
         remaining = []
         if len(query_candidates) > 0:
-            remaining = self.pruner.prune_query_candidates(query_candidates,
-                                                     features, key)
-        return remaining
+            remaining, new_features = self.pruner.prune_query_candidates(query_candidates,
+                                                                         features, key)
+        return remaining, new_features
 
     def learn_submodel_features(self, train_queries, dict_vec, n_folds=6,
                                 ngrams_dict=None):
