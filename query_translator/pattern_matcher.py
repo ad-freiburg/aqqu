@@ -886,7 +886,7 @@ class QueryCandidateExtender:
             query_candidate.unmatched_tokens)
         # Find the relations that match.
         for rel in relations:
-            # Ignore mediators here.
+            # Only consider mediators here.
             if rel not in self.mediator_relations:
                 continue
             rev_rel = rel

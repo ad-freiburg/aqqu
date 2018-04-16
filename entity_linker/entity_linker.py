@@ -200,7 +200,7 @@ class EntityLinker:
         # CD for: episode 1
         # HYPH for "the amazing spider-man"
         # XX for abc (news)
-        # FW for: ?
+        # FW for "draco _malloy_", "annie"
         self.valid_entity_tag = re.compile(r'^(UH|\.|TO|PRP.?|#|FW|IN|VB.?|'
                                            r'RB|CC|HYPH|XX|NNP.?|NN.?|JJ.?|CD|DT|MD|'
                                            r'POS)+$')
@@ -270,9 +270,11 @@ class EntityLinker:
                 token_list[0].lemma_ != 'the':
             return False
 
-        # For length 1 only allows nouns
+        # For length 1 only allows nouns and foreign and unknown word types
         elif len(pos_list) == 1 and (pos_list[0].startswith('N') or
-                                     pos_list[0].startswith('J')) or \
+                                     pos_list[0].startswith('J') or \
+                                     pos_list[0] == 'FW' or \
+                                     pos_list[0] == 'XX') or \
                 (len(pos_list) > 1 and self.valid_entity_tag.match(pos_str)):
             # It is not allowed to split a consecutive NNP
             # if it is a single token.
