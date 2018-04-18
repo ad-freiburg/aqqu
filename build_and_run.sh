@@ -6,7 +6,12 @@ if [ $? -eq 0 ] && ! [ -v NO_GPU ]; then
 	DOCKER_CMD=`/usr/bin/which nvidia-docker`
 	TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-gpu-py3
 else
-	DOCKER_CMD=`/usr/bin/which docker`
+	which wharfer
+	if [ $? -eq 0 ]; then
+		DOCKER_CMD=`/usr/bin/which wharfer`
+	else
+		DOCKER_CMD=`/usr/bin/which docker`
+	fi
 fi
 
 function help {
