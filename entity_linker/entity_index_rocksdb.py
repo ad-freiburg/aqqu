@@ -94,9 +94,16 @@ class EntityIndex:
         options = rocksdb.Options()
         options.create_if_missing = True
         options.merge_operator = ConcatenationMerger(b'\t')
-        entity_db = rocksdb.DB(entity_db_path,
-                               options, read_only=True)
-        write_enabled = False
+        try:
+            entity_db = rocksdb.DB(entity_db_path,
+                                   options, read_only=True)
+            write_enabled = False
+        except rocksdb.errors.RocksIOError:
+            # DB does not exist yet so we need to open it with write enabled to
+            # create
+            write_enabled = True
+            entity_db = rocksdb.DB(entity_db_path, options)
+
         if not entity_db.get(CONTROL_PREFIX+b'entity_vocab_loaded'):
             if not write_enabled:
                 entity_db = rocksdb.DB(entity_db_path, options)
