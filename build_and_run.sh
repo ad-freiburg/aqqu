@@ -69,7 +69,14 @@ fi
 
 INPUT_VOLUME="$(pwd)/$INPUT_DIR:/app/input"
 WORKDATA_VOLUME="$(pwd)/$WORKDATA_DIR:/app/data"
-MODELS_VOLUME="aqqu_learner_${NAME}_models_vol:/app/models"
+
+MODELS_DIR="aqqu_learner_${NAME}_models"
+# Create a model directory if it doesn't exist
+mkdir -p ${MODELS_DIR}
+chmod o+wx ${MODELS_DIR}
+# Add .gitignore so the models don't end up in git, '>' overwrites if it exists but that's ok
+echo '!.gitignore' > ${MODELS_DIR}/.gitignore
+MODELS_VOLUME="$(pwd)/${MODELS_DIR}:/app/models"
 if [ "$1" == "train" ] || [ "$1" == "cv" ]; then
 	echo "Learner"
 	echo "-----------------------------------------------------------------"

@@ -23,6 +23,9 @@ All data required for learning can be found under
     cp -r /nfs/datasets/aqqu_input_data/* input/
 
 ## Train with the provided script
+When using docker/wharfer with user namespaces you may need to first run
+`chmod o+wx data` so Aqqu running inside docker can write data even if it is
+a very restricted user like `nobody`
 
     ./build_and_run.sh train -n <user_provided_name> -r <ranker e.g. WQSP_Ranker> <additional args>
 
