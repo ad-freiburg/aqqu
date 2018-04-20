@@ -268,7 +268,7 @@ def main() -> None:
         """
         REST entry point providing a very simple query interface
         """
-        raw_query = flask.request.args.get('q')
+        raw_query = flask.request.args.get('q', "")
         LOG.info("Translating query: %s", raw_query)
         parsed_query, candidates = translator.translate_and_execute_query(
             raw_query)
