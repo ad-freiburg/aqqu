@@ -92,7 +92,7 @@ if [ "$1" == "train" ] || [ "$1" == "cv" ]; then
 		"aqqu_${NAME}" query_translator.learner "$1" "${RANKER}" "${@:2}"
 elif [ "$1" == "backend" ]; then
 	echo "Backend"
-	$DOCKER_CMD run --restart unless-stopped --init -d -p 0.0.0.0:${PORT}:8090 \
+	$DOCKER_CMD run --restart unless-stopped --init -d -p ${PORT}:8090 \
 		--name "aqqu_$1_${NAME}_inst" \
 		-v $INPUT_VOLUME  \
 		-v $WORKDATA_VOLUME \
@@ -104,7 +104,7 @@ else
 	$DOCKER_CMD build ${CACHE} -t "aqqu_debug_${NAME}" \
 		--build-arg TENSORFLOW=$TENSORFLOW \
 		-f "Dockerfile.base" .
-	$DOCKER_CMD run --rm -it -p 0.0.0.0:$PORT:8090 --init --name "aqqu_$1_${NAME}_inst" \
+	$DOCKER_CMD run --rm -it -p $PORT:8090 --init --name "aqqu_$1_${NAME}_inst" \
 		-v $INPUT_VOLUME  \
 		-v $WORKDATA_VOLUME \
 		-v $MODELS_VOLUME \
