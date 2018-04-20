@@ -7,4 +7,5 @@ venv
 venv3
 build
 virtuoso-db
+aqqu_*_models
 eval_out.log translation_webserver.log
