@@ -86,6 +86,9 @@ class RankerParameters:
         # Path to file containing EntityOracle data,
         # ignored by all other EntityLinkers
         self.entity_oracle_file = None
+        # Match correct candidates with the parses (if available)
+        # instead of only by the F1 score of the target entities
+        self.use_parses = True
 
 
     def get_suffix(self):
@@ -120,9 +123,11 @@ class Ranker:
                  entity_oracle_file=None,
                  all_relations_match=True,
                  all_types_match=True,
+                 use_parses=False,
                  **kwargs):  # ignored but used by child classes
         self.name = name
         self.parameters = RankerParameters()
+        self.parameters.use_parses = use_parses
         self.parameters.entity_linker_class = entity_linker_class
         self.parameters.entity_oracle_file = entity_oracle_file
         self.parameters.require_relation_match = not all_relations_match
@@ -272,7 +277,8 @@ class AqquModel(MLModel, Ranker):
             if self.learn_ngram_rel_model:
                 relation_scorer = RelationNgramScorer(
                     self.get_model_name(),
-                    self.rel_regularization_C)
+                    self.rel_regularization_C,
+                    self.parameters.use_parses)
                 relation_scorer.load_model()
                 self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
@@ -299,6 +305,7 @@ class AqquModel(MLModel, Ranker):
     def learn_rel_score_model(self, queries, ngrams_dict=None):
         rel_model = RelationNgramScorer(self.get_model_name(),
                                         self.rel_regularization_C,
+                                        self.parameters.use_parses,
                                         ngrams_dict=ngrams_dict)
         rel_model.learn_model(queries)
         return rel_model
@@ -325,6 +332,7 @@ class AqquModel(MLModel, Ranker):
         # Extract features for each candidate onc
         labels, features = construct_train_examples(train_queries,
                                                     f_extract,
+                                                    self.parameters.use_parses,
                                                     score_threshold=.8)
         features = dict_vec.fit_transform(features)
         n_grams_dict = None
@@ -332,7 +340,8 @@ class AqquModel(MLModel, Ranker):
             logger.info("Collecting frequent n-gram features...")
             n_grams_dict = get_top_chi2_candidate_ngrams(train_queries,
                                                          f_ext.extract_ngram_features,
-                                                         percentile=self.top_ngram_percentile)
+                                                         self.top_ngram_percentile,
+                                                         self.parameters.use_parses)
             logger.info("Collected %s n-gram features" % len(n_grams_dict))
 
         # Compute deep/ngram relation-score based on folds and add
@@ -357,7 +366,8 @@ class AqquModel(MLModel, Ranker):
         pair_dict_vec, pair_features, pair_labels = construct_train_pair_examples(
             queries,
             features,
-            dict_vec)
+            dict_vec,
+            self.parameters.use_parses)
         logger.info("Training tree classifier for ranking.")
         logger.info("#of labeled examples: %s" % len(pair_features))
         logger.info("#labels non-zero: %s" % sum(pair_labels))
@@ -699,12 +709,14 @@ class RelationNgramScorer(MLModel):
     def __init__(self,
                  name,
                  regularization_C,
+                 use_parses,
                  ngrams_dict=None):
         name += self.get_relscorer_suffix()
         MLModel.__init__(self, name, None)
         # Note: The model is lazily when needed.
         self.model = None
         self.regularization_C = regularization_C
+        self.use_parses = use_parses
         self.ngrams_dict = ngrams_dict
         self.label_encoder = None
         self.dict_vec = None
@@ -732,8 +744,10 @@ class RelationNgramScorer(MLModel):
 
     def test_model(self, test_queries):
         logger.info("Scoring on test fold")
-        features, labels = construct_train_examples(test_queries,
-                                              f_ext.extract_ngram_features)
+        labels, features = construct_train_examples(
+            test_queries,
+            f_ext.extract_ngram_features,
+            self.use_parses)
         labels = self.label_encoder.transform(labels)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
@@ -746,7 +760,8 @@ class RelationNgramScorer(MLModel):
                                                 ngram_dict=self.ngrams_dict)
 
         labels, features = construct_train_examples(train_queries,
-                                                    ngram_features)
+                                                    ngram_features,
+                                                    self.use_parses)
         logger.info("#of labeled examples: %s" % len(features))
         logger.info("#labels non-zero: %s" % sum(labels))
         num_labels = float(len(labels))
@@ -1165,11 +1180,11 @@ class LiteralRanker(Ranker):
                 return 1
 
 
-def get_top_chi2_candidate_ngrams(queries, f_extract, percentile):
+def get_top_chi2_candidate_ngrams(queries, f_extract, percentile, use_parses):
     """Get top ngrams features according to chi2.
     """
     ngrams_dict = dict()
-    labels, features = construct_train_examples(queries, f_extract)
+    labels, features = construct_train_examples(queries, f_extract, use_parses)
     label_encoder = LabelEncoder()
     labels = label_encoder.fit_transform(labels)
     vec = DictVectorizer(sparse=True)
@@ -1183,7 +1198,7 @@ def get_top_chi2_candidate_ngrams(queries, f_extract, percentile):
     return ngrams_dict
 
 
-def get_compare_indices_for_pairs(queries, correct_threshold):
+def get_compare_indices_for_pairs(queries, use_parses, correct_threshold):
     compare_indices = []
     candidate_offset = 0
     for query in queries:
@@ -1197,7 +1212,7 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
             eval_result = query.eval_candidates[i].evaluation_result
             if i + 1 == oracle_position or \
                     eval_result.f1 >= correct_threshold or \
-                    eval_result.parse_match:
+                    (use_parses and eval_result.parse_match):
                 correct_cands_index.add(i)
 
         if correct_cands_index:
@@ -1219,7 +1234,7 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
     return compare_indices
 
 
-def construct_train_pair_examples(queries, features, dict_vec,
+def construct_train_pair_examples(queries, features, dict_vec, use_parses,
                                   correct_threshold=.9):
     """Construct training examples from candidates using pair-wise transform.
 
@@ -1231,7 +1246,8 @@ def construct_train_pair_examples(queries, features, dict_vec,
     # Return the matrix + an updated dict_vec
     logger.info("Extracting ranking features from candidates.")
     # A list of tuples of indices where the element at first index is better.
-    compare_indices = get_compare_indices_for_pairs(queries, correct_threshold)
+    compare_indices = get_compare_indices_for_pairs(
+        queries, use_parses, correct_threshold)
     # Create the feature matrix
     num_compare_examples = len(compare_indices)
     pos_i = [c[0] for c in compare_indices]
@@ -1267,7 +1283,7 @@ def construct_pair_features(features, indexes_a, indexes_b):
     return examples
 
 
-def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
+def construct_train_examples(train_queries, f_extract, use_parses, score_threshold=0.9):
     """Extract features from each candidate.
     Return labels, a matrix of features.
 
@@ -1287,7 +1303,7 @@ def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
             eval_result = query.eval_candidates[i].evaluation_result
             if i + 1 == oracle_position or \
                     eval_result.f1 >= score_threshold or \
-                    eval_result.parse_match:
+                    (use_parses and eval_result.parse_match):
                 labels.append(1)
             else:
                 labels.append(0)
@@ -1314,7 +1330,7 @@ def construct_ngram_examples(queries, f_extractor, correct_threshold=.9):
         for i, candidate in enumerate(candidates):
             relation = " ".join(candidate.get_relation_names())
             eval_result = query.eval_candidates[i].evaluation_result
-            if eval_result.f1 == correct_threshold or \
+            if eval_result.f1 >= correct_threshold or \
                     i + 1 == oracle_position or \
                     eval_result.parse_match:
                 positive_relations.add(relation)

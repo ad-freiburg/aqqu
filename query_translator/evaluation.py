@@ -53,6 +53,7 @@ class EvaluationQuery:
         # one LIST per target interpretation
         self.targets_mids = targets_mids
         self.targets_names = targets_names
+        self.targets_mids_or_names = targets_mids if targets_mids else targets_names
         self.targets_sparqls = targets_sparqls
         # the targeted parses if available in and implemented for the dataset
         # represented using the ER(T), ERMR(T), ERMRER(T) patterns and string
@@ -129,7 +130,7 @@ class EvaluationQuery:
                     EvaluationQuery(idn, utterance.strip(),
                                     [mids],
                                     None,
-                                    [(subj_mid, pred_mid)],
+                                    [(subj_mid, pred_mid, obj_mid)],
                                     None))
         return eval_queries
 
@@ -188,6 +189,8 @@ class EvaluationCandidate:
         self.executed_sparql = executed_sparql
         self.prediction = prediction
         self.prediction_names = prediction_names
+        # some datasets only have the ground truth as names
+        self.prediction_mids_or_names = prediction if prediction else prediction_names
         # Is set when evaluated.
         self.evaluation_result = None
 
@@ -250,7 +253,7 @@ def evaluate_translator(translator, queries, n_queries=None,
                     q.utterance.lower().startswith('in how many'):
                 continue
         if ignore_invalid:
-            if not q.targets_mids and not q.targets_names:
+            if not q.targets_mids_or_names:
                 # Changed this, because it is debatable whether that is
                 # unanswerable bc the answer can be produced.
                 continue
@@ -346,14 +349,14 @@ def parse_date(date_string):
         return None
 
 
-def parse_float(float_string):
-    """Try to parse the string into a float.
+def parse_int(int_str):
+    """Try to parse the string into an int.
 
-    :param float_string:
+    :param int_str:
     :return:
     """
     try:
-        return float(float_string)
+        return int(int_str)
     except ValueError:
         return None
 
@@ -366,10 +369,18 @@ def parse_to_set(result_list):
     """
     result_set = set()
     for r in result_list:
-        r_float = parse_float(r)
-        if r_float:
-            result_set.add(r_float)
+        # NOTE: This used to be parse_float but floats in a set are murky
+        # Now this also matches date formats with only years but that's ok and probably even
+        # better than below because that silently adds the current month and day
+        r_int = parse_int(r)
+        if r_int:
+            result_set.add(r_int)
             continue
+        # NOTE: For negative dates e.g. -1340 (Tutankhamun's birth)
+        # this silently drops the minus, however since the month and year is missing
+        # this will be parsed as an int anyway.
+        # Also for years only it silently adds the current month and day. By
+        # not parsing floats above but ints we handle those values there
         r_date = parse_date(r)
         if r_date:
             result_set.add(r_date)
@@ -377,20 +388,25 @@ def parse_to_set(result_list):
         result_set.add(r)
     return result_set
 
+
 def compute_parse_match(candidate, parse):
     match = 0.0
 
     ents = {ie.entity.sparql_name()
             for ie in candidate.query_candidate.matched_entities}
-    rel_names = candidate.query_candidate.get_canonical_relation_names()
+    ents.union(candidate.prediction)
+    rel_names = set(candidate.query_candidate.get_canonical_relation_names())
     for idx, gold_part in enumerate(parse):
         # parses a subgraphs of a bipartite graph where entities are always
         # connected by relations. Thus in a subgraph description of the form
         # (E, R, M, R, E, R, T) starting with an entity every second element
-        # must be a relation/entity.
-        if idx % 2 == 0 and gold_part in ents:
+        # must be a relation/entity. We ignore the order of relations because
+        # e.g. in ERMRERT the order of the two last Rs is irrelevant
+
+        # For unknown mediator entities an entity may be None this is counted as matching
+        if idx % 2 == 0 and not gold_part or gold_part in ents:
             match += 1.0
-        elif idx % 2 == 1 and rel_names[idx // 2] == gold_part:
+        elif idx % 2 == 1 and gold_part in rel_names:
             match += 1.0
     match /= len(parse)
     return match
@@ -415,18 +431,12 @@ def evaluate_single_candidate(candidate, eval_query):
             parse_matches.append(compute_parse_match(candidate, parse))
         best_parse_match = max(parse_matches)
 
-    # we prefer to target (m)ids but some datasets only have
-    # the ground truth as human readable entity names so fallback to
-    # that
-    gold_targets_list = eval_query.targets_mids if eval_query.targets_mids \
-        else eval_query.targets_names
+    gold_targets_list = eval_query.targets_mids_or_names
 
     gold_targets_sets = [parse_to_set(targets)
                          for targets in gold_targets_list]
 
-    prediction_set = parse_to_set(candidate.prediction
-                                  if eval_query.targets_mids
-                                  else candidate.prediction_names)
+    prediction_set = parse_to_set(candidate.prediction_mids_or_names)
 
     logger.debug('prediction_set: %r', prediction_set)
 
@@ -552,10 +562,7 @@ def evaluate(queries, output_file="eval_out.log"):
     num_candidates = 0
     for query in queries:
         query.reset_results()
-        if query.targets_mids:
-            gold_targets_list = query.targets_mids
-        else:
-            gold_targets_list = query.targets_names
+        gold_targets_list = query.targets_mids_or_names
         candidates = query.eval_candidates
         if not gold_targets_list:
             num_q_no_answer += 1
