@@ -84,7 +84,7 @@ if [ "$1" == "train" ] || [ "$1" == "cv" ]; then
 	echo Executing $DOCKER_CMD build
 	$DOCKER_CMD build ${CACHE} -t "aqqu_${NAME}" \
 		--build-arg TENSORFLOW=$TENSORFLOW \
-		-f "Dockerfile.base" .
+		-f "Dockerfile" .
 	echo "-----------------------------------------------------------------"
 	$DOCKER_CMD run --rm -it --init --name "aqqu_$1_${NAME}_inst" \
 		-v $INPUT_VOLUME \
@@ -104,7 +104,7 @@ else
 	echo Executing $DOCKER_CMD build
 	$DOCKER_CMD build ${CACHE} -t "aqqu_debug_${NAME}" \
 		--build-arg TENSORFLOW=$TENSORFLOW \
-		-f "Dockerfile.base" .
+		-f "Dockerfile" .
 	$DOCKER_CMD run --rm -it -p $PORT:8090 --init --name "aqqu_$1_${NAME}_inst" \
 		-v $INPUT_VOLUME  \
 		-v $WORKDATA_VOLUME \

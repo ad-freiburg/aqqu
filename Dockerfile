@@ -1,6 +1,7 @@
 #ARG TENSORFLOW=gcr.io/tensorflow/tensorflow:latest-py3
 #FROM $TENSORFLOW
 FROM gcr.io/tensorflow/tensorflow:1.5.0-py3
+ENV LANG C.UTF-8
 RUN apt-get update && apt-get install -y python3-pip make libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
 
 COPY requirements.txt /app/
