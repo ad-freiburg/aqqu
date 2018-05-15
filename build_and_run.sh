@@ -69,6 +69,7 @@ fi
 
 INPUT_VOLUME="$(pwd)/$INPUT_DIR:/app/input"
 WORKDATA_VOLUME="$(pwd)/$WORKDATA_DIR:/app/data"
+chmod o+wx ${WORKDATA_VOLUME}
 
 MODELS_DIR="aqqu_learner_${NAME}_models"
 # Create a model directory if it doesn't exist
