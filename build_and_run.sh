@@ -15,7 +15,7 @@ else
 fi
 
 function help {
-	echo "Usage: $0 train|cv|backend|debug [--port PORT] [--name name] [--no-cache] [--ranker ranker] [ARGS..]"
+	echo "Usage: $0 train|cv|backend|debug|update [--port PORT] [--name name] [--no-cache] [--ranker ranker] [ARGS..]"
 	exit 1
 }
 
@@ -62,13 +62,14 @@ do
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-if [ "$1" != "backend" ] && [ "$1" != "train" ] && [ "$1" != "debug" ] && [ "$1" != "cv" ]; then
+if [ "$1" != "backend" ] && [ "$1" != "train" ] && \
+	 [ "$1" != "debug" ] && [ "$1" != "update" ] && [ "$1" != "cv" ]; then
 	help
 fi
 
 
-INPUT_VOLUME="$(pwd)/$INPUT_DIR:/app/input"
-WORKDATA_VOLUME="$(pwd)/$WORKDATA_DIR:/app/data"
+INPUT_VOLUME="$(pwd)/${INPUT_DIR}:/app/input"
+WORKDATA_VOLUME="$(pwd)/${WORKDATA_DIR}:/app/data"
 chmod o+wx ${WORKDATA_DIR}
 
 MODELS_DIR="aqqu_learner_${NAME}_models"
@@ -78,13 +79,18 @@ chmod o+wx ${MODELS_DIR}
 # Add .gitignore so the models don't end up in git, '>' overwrites if it exists but that's ok
 echo '!.gitignore' > ${MODELS_DIR}/.gitignore
 MODELS_VOLUME="$(pwd)/${MODELS_DIR}:/app/models"
-if [ "$1" == "train" ] || [ "$1" == "cv" ]; then
-	echo "Learner"
+
+function build {
 	echo "-----------------------------------------------------------------"
 	echo Executing $DOCKER_CMD build
-	$DOCKER_CMD build ${CACHE} -t "aqqu_${NAME}" \
+	$DOCKER_CMD build ${CACHE} -t "aqqu_$1" \
 		--build-arg TENSORFLOW=$TENSORFLOW \
 		-f "Dockerfile" .
+}
+
+if [ "$1" == "train" ] || [ "$1" == "cv" ]; then
+	echo "Learner"
+	build ${NAME}
 	echo "-----------------------------------------------------------------"
 	$DOCKER_CMD run --rm -it --init --name "aqqu_$1_${NAME}_inst" \
 		-v $INPUT_VOLUME \
@@ -99,15 +105,16 @@ elif [ "$1" == "backend" ]; then
 		-v $WORKDATA_VOLUME \
 		-v $MODELS_VOLUME \
 		"aqqu_${NAME}" translator_server "${RANKER}" "${@:2}"
-else
+elif [ "$1" == "debug" ]; then
 	echo "Debug"
-	echo Executing $DOCKER_CMD build
-	$DOCKER_CMD build ${CACHE} -t "aqqu_debug_${NAME}" \
-		--build-arg TENSORFLOW=$TENSORFLOW \
-		-f "Dockerfile" .
+	build debug_${NAME}
 	$DOCKER_CMD run --rm -it -p $PORT:8090 --init --name "aqqu_$1_${NAME}_inst" \
 		-v $INPUT_VOLUME  \
 		-v $WORKDATA_VOLUME \
 		-v $MODELS_VOLUME \
 		"aqqu_debug_${NAME}" translator_server "${RANKER}" "${@:2}"
+elif [ "$1" == "update" ]; then
+	echo "-----------------------------------------------------------------"
+	echo "Update"
+	build ${NAME}
 fi
