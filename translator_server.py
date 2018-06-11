@@ -277,6 +277,18 @@ def main() -> None:
         return flask.jsonify(map_candidates(
             raw_query, parsed_query, candidates))
 
+    @APP.route('/lookupid', methods=['GET'])
+    def lookupid():
+        """
+        REST entry point for looking up a human readable name for an entity
+        """
+        mid = flask.request.args.get('id', "")
+        entity = translator.entity_index.get_entity_for_mid(mid)
+        result = None
+        if entity:
+            result = map_entity(entity)
+        return flask.jsonify(result)
+
     @APP.route('/config', methods=['GET'])
     def get_config():
         """
