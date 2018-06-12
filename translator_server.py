@@ -144,10 +144,12 @@ def map_relation_matches(rel_matches: Iterable[RelationMatch])\
             count_match_dict = {'count': count_match.count}
             rel_match_dict['count_match'] = count_match_dict
 
-        relation_name = rel_match.relation
         if isinstance(rel_match.relation, tuple):
-            relation_name = ' -> '.join(rel_match.relation)
-        rel_match_dict['name'] = relation_name
+            rel_match_dict['name'] = ' -> '.join(rel_match.relation)
+            rel_match_dict['relations'] = list(rel_match.relation)
+        else:
+            rel_match_dict['name'] = rel_match.relation
+            rel_match_dict['relations'] = [rel_match.relation]
 
         token_positions = [tok.i for tok in rel_match.tokens]
         rel_match_dict['token_positions'] = token_positions
