@@ -34,6 +34,7 @@ class Query:
         self.text_entities = None  # type: Iterable[IdentifiedEntity]
         self.relation_oracle = None
         self.is_count_query = False
+        self.previous_entities = None
 
 class QueryTranslator(object):
 
@@ -91,10 +92,11 @@ class QueryTranslator(object):
         """
         return self.scorer
 
-    def translate_query(self, query_text):
+    def translate_query(self, query_text, previous_entities):
         """
         Perform the actual translation.
         :param query_text:
+        :param previous_entities:
         :param relation_oracle:
         :return:
         """
@@ -102,7 +104,7 @@ class QueryTranslator(object):
         logger.info("Translating query: %s." % query_text)
         start_time = time.time()
         # Parse the query.
-        query = self.parse_and_identify_entities(query_text)
+        query = self.parse_and_identify_entities(query_text, previous_entities)
         # Identify the target type.
         self.answer_type_identifier.identify_target(query)
         # Set the relation oracle.
@@ -123,9 +125,10 @@ class QueryTranslator(object):
         logging.info("Total translation time: %.2f ms." % duration)
         return query, ert_matches + ermrt_matches + ermrert_matches
 
-    def parse_and_identify_entities(self, query_text):
+    def parse_and_identify_entities(self, query_text, previous_entities):
         """
-        Parses the provided text and identifies entities.
+        Parses the provided text, identifies entities and a list with
+        previous identified entities.
         Returns a query object.
         :param query_text:
         :return:
@@ -134,23 +137,39 @@ class QueryTranslator(object):
         query_doc = self.nlp(query_text)
         # Create a query object.
         query = Query(query_doc)
+        """ entities is a list of objects,
+        text_entities is always None"""
         entities, text_entities = self.entity_linker.identify_entities_in_tokens(
             query.tokens)
-        query.identified_entities = entities
+        """ Need to add entities from previous run here"""
+        
+        """ Check if words he, she or it were in the query,
+        if yes - the add previous entities list to a current
+        entities and do not change previous entities list.
+        If no, then just take entities, that have been identified
+        and update previous entities list."""
+        if " he " in query_text or " she " in query_text or " it " in query_text:
+            print("He, she or it are in the query.")
+            query.identified_entities = entities + previous_entities
+            query.previous_entities = previous_entities
+        else:
+            query.identified_entities = entities
+            query.previous_entities = entities
         query.text_entities = text_entities
         return query
 
-    def translate_and_execute_query(self, query, n_top=200):
+    def translate_and_execute_query(self, query, previous_entities, n_top=200):
         """
         Translates the query and returns a list
         of type TranslationResult.
         :param query:
+        :param previous_entities:
         :return:
         """
         # Parse query.
         num_sparql_queries = self.backend.num_queries_executed
         sparql_query_time = self.backend.total_query_time
-        parsed_query, query_candidates = self.translate_query(query)
+        parsed_query, query_candidates = self.translate_query(query, previous_entities)
         translation_time = (self.backend.total_query_time - sparql_query_time) * 1000
         num_sparql_queries = self.backend.num_queries_executed - num_sparql_queries
         avg_query_time = translation_time / (num_sparql_queries + 0.001)

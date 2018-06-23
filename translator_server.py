@@ -28,6 +28,7 @@ LOG = logging.getLogger(__name__)
 
 
 APP = flask.Flask(__name__)
+previous_entities = []
 
 class ClassNameJSONEncoder(json.JSONEncoder):
     """
@@ -37,7 +38,6 @@ class ClassNameJSONEncoder(json.JSONEncoder):
         return obj.__class__.__name__
 
 APP.json_encoder = ClassNameJSONEncoder
-
 
 def map_results_list(results: Iterable[List[Union[str, int]]]) -> List[dict]:
     """
@@ -94,6 +94,7 @@ def map_query(query: Query) -> Dict[str, Any]:
 
     identified_entities = [map_identified_entity(entity)
                            for entity in query.identified_entities]
+
     query_map = {
         'target_type': query.target_type.as_string(),
         'tokens': tokens,
@@ -268,12 +269,19 @@ def main() -> None:
         """
         REST entry point providing a very simple query interface
         """
+        # at the beginning of using the app previous_entities are []
+        global previous_entities
         raw_query = flask.request.args.get('q', "")
+        # raw_query = "who played dory in finding nemo"
         LOG.info("Translating query: %s", raw_query)
         parsed_query, candidates = translator.translate_and_execute_query(
-            raw_query)
+            raw_query, previous_entities)
         LOG.info("Done translating query: %s", raw_query)
         LOG.info("#candidates: %s", len(candidates))
+
+        """ A list of previous entities, to follow the conversation."""
+        # update previous_entities
+        previous_entities = parsed_query.previous_entities
         return flask.jsonify(map_candidates(
             raw_query, parsed_query, candidates))
 
