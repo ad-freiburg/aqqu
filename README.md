@@ -48,6 +48,11 @@ training image without rerunning the training. Note however that this is
 somewhat dangerous as it does not work for changes that would make the model
 incompatible to the trained model.
 
+Once the changes have been tested the image used by the `backend` command can
+be updated using
+
+    ./build_and_run.sh update -n <user_provided_name>
+
 ## Run Cross Validation with the provided script
 
     ./build_and_run.sh cv -n <user_provided_name> -r <ranker> <dataset name>

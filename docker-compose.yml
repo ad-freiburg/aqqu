@@ -24,7 +24,6 @@ services:
       - varnish
     build:
       context: .
-      dockerfile: Dockerfile.base
     volumes:
       - ./models:/app/models
       - ./data:/app/data
