@@ -270,24 +270,8 @@ def main() -> None:
         """
         REST entry point providing a very simple query interface
         """
-        # at the beginning of using the app previous_entities are []
-        # global previous_entities
         raw_query = flask.request.args.get('q', "")
 
-        """raw_previous_entities = flask.request.args.getlist("p")
-        previous_entities = []
-        for raw_entity in raw_previous_entities:
-            ent = KBEntity("PREV", raw_entity, 1.0, [])
-            types = translator.entity_index.get_types_for_mid(ent.id, 3)
-            category = translator.entity_index.get_category_for_mid(ent.id)
-            ide = IdentifiedEntity(translator.nlp(u""),
-                                   ent.name, ent,
-                                   types=types,
-                                   category=category,
-                                   score=ent.score,
-                                   surface_score=1.0, 
-                                   perfect_match=1.0)
-            previous_entities.append(ide)"""
         # raw_query = "who played dory in finding nemo"
         LOG.info("Translating query: %s", raw_query)
         parsed_query, candidates = translator.translate_and_execute_query(
@@ -295,9 +279,6 @@ def main() -> None:
         LOG.info("Done translating query: %s", raw_query)
         LOG.info("#candidates: %s", len(candidates))
 
-        """ A list of previous entities, to follow the conversation."""
-        # update previous_entities
-        # previous_entities = parsed_query.previous_entities
         return flask.jsonify(map_candidates(
             raw_query, parsed_query, candidates))
 

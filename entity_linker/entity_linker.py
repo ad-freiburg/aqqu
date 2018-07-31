@@ -314,14 +314,20 @@ class EntityLinker:
                     identified_dates.append(ie)
         return identified_dates
 
-    def identify_from_context(self, tokens, emp_tocken):
+    def identify_from_context(self, tokens, emp_token):
+        '''
+        Identify entities using previous identified entities.
+        :param tokens: A list of string tokens.
+        :emp_token: empty token.
+        :return: A list of IdentifiedEntity from previous request.
+        '''
         raw_previous_entities = flask.request.args.getlist("p")
         previous_entities = []
         for raw_entity in raw_previous_entities:
             ent = KBEntity("PREV", raw_entity, 1.0, [])
             types = self.entity_index.get_types_for_mid(ent.id, 3)
             category = self.entity_index.get_category_for_mid(ent.id)
-            ide = IdentifiedEntity(emp_tocken,
+            ide = IdentifiedEntity(emp_token,
                                    ent.name, ent,
                                    types=types,
                                    category=category,
@@ -387,14 +393,8 @@ class EntityLinker:
         identified_entities = []
         start_time = time.time()
         identified_entities.extend(self.identify_in_tokens(tokens, min_surface_score))
+        ''' Add identified entities from the previous request.'''
         identified_entities.extend(self.identify_from_context(tokens, emp_tocken))
-
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        print(tokens.ents)
-        print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-        if " he " in tokens.text or " she " in tokens.text or " it " in tokens.text:
-            print("He, she or it are in the query.")
-            identified_entities.extend(self.identify_from_context(tokens, emp_tocken))
 
         if len(identified_entities) == 0:
             # Without any identified entities we would be unable to find anything for

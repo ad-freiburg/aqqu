@@ -138,26 +138,11 @@ class QueryTranslator(object):
         query = Query(query_doc)
         """ entities is a list of objects,
         text_entities is always None"""
+        """ I am not sure if it is a good idea to pass self.nlp(u"")
+        as an argument, maybe there is a better way."""
         entities, text_entities = self.entity_linker.identify_entities_in_tokens(
             query.tokens, self.nlp(u""))
-        """ Need to add entities from previous run here"""
-        
-        """ Check if words he, she or it were in the query,
-        if yes - the add previous entities list to a current
-        entities and do not change previous entities list.
-        If no, then just take entities, that have been identified
-        and update previous entities list."""
-        """if " he " in query_text or " she " in query_text or " it " in query_text:
-            print("He, she or it are in the query.")
-            query.identified_entities = entities + previous_entities
-            query.previous_entities = previous_entities
-        else:
-            query.identified_entities = entities
-            query.previous_entities = entities"""
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        print(query.tokens)
-        print(type(query.tokens))
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
         query.identified_entities = entities
         query.text_entities = text_entities
         return query
