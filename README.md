@@ -53,6 +53,15 @@ be updated using
 
     ./build_and_run.sh update -n <user_provided_name>
 
+Test the Backend
+----------------
+The Aqqu backend provides a simple JSON API that can easily be tested using
+`curl`. If you have the `./build_and_run.sh backend …` command running on
+a server `<host>` with port `<port>` the following asks for Albert Einstein's
+place of birth
+
+    curl http://<host>:<port>/?q=where%20was%20albert%einstein%20born
+
 ## Run Cross Validation with the provided script
 
     ./build_and_run.sh cv -n <user_provided_name> -r <ranker> <dataset name>
