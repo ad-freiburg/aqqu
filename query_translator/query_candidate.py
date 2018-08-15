@@ -607,11 +607,10 @@ class QueryCandidate:
             limit *= 100
             # Note: this does not add "distinct" to the inner clause,
             # which is wrong but what sempre did as well.
-            query = "%s\nSELECT count(%s) WHERE " \
-                    "{\nSELECT %s WHERE {\n %s \n} LIMIT %s" \
-                    "\n}" % (query_prefix,
+            query = "%s\n" \
+                    "\nSELECT (COUNT(%s) AS ?count) WHERE {\n %s \n} LIMIT %s" \
+                    "\n" % (query_prefix,
                            query_vars[0],
-                           query_vars_str,
                            triples_string, limit)
         # Just prepend the prefix
         else:

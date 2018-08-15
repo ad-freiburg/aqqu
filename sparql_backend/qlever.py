@@ -62,8 +62,7 @@ class Backend(object):
     def __init__(self, backend_host,
                  backend_port,
                  backend_url,
-                 # TODO(schnelle) increase once QLever multithreads
-                 connection_pool_maxsize=1, 
+                 connection_pool_maxsize=4,
                  cache_enabled=False,
                  cache_maxsize=10000,
                  retry=None,
@@ -83,8 +82,8 @@ class Backend(object):
         self.num_queries_executed = 0
         self.total_query_time = 0.0
         # Backend capabilities
-        self.supports_count = False
-        self.supports_optional = False
+        self.supports_count = True
+        self.supports_optional = True
         self.supports_text = True
         self.lang_in_relations = lang_in_relations
         self.query_log = open('qlever_log.txt', 'wt', encoding='UTF-8')
