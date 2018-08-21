@@ -29,6 +29,16 @@ def normalize_freebase_output(text):
         endQuote = text.rfind('"')
         if endQuote >= 0:
             text = text[startQuote+1:endQuote]
+        # In QLever dates without a time have a time of 00:00:00
+        # remove that to match WebQSP answers
+        zerotime = 'T00:00:00'
+        if text.endswith(zerotime):
+            text = text[0:-len(zerotime)]
+        # When dates are only available to the year the day and month
+        # will be 00-00. Again to match WebQSP answers strip that
+        zeromonthday = '-00-00'
+        if text.endswith(zeromonthday):
+            text = text[0:-len(zeromonthday)]
 
     if len(text) > 1 and text.startswith('<') and text.endswith('>'):
         text = text[1:-1]
@@ -43,7 +53,6 @@ def filter_results_language(results, language):
     :param language:
     :return:
     """
-    langsuffix = "@"+language
     filtered_results = []
     for row in results:
         contains_literal = False
@@ -51,7 +60,10 @@ def filter_results_language(results, language):
             value = value.strip()
             if value.startswith('"'):
                 contains_literal = True
-                if value.endswith(langsuffix):
+                quoteatpos = value.rfind('"@')
+                if quoteatpos < 0:
+                    filtered_results.append(row)
+                elif value[quoteatpos+2:].startswith(language):
                     filtered_results.append(row)
         if not contains_literal:
             filtered_results.append(row)
@@ -147,13 +159,16 @@ class Backend(object):
         try:
             if resp.status == 200:
                 data = json.loads(resp.data.decode('utf-8'))
-                key_indices = sorted([(column, key.lstrip('?')) for column, key 
+                key_indices = sorted([(column, key.lstrip('?')) for column, key
                     in enumerate(data['selected'])], key=itemgetter(1))
                 result_rows = data['res']
+                # TODO(schnelle) once QLever uses null instead of '' for missing
+                # we need to change the check
                 if filter_lang:
                     result_rows = filter_results_language(result_rows, filter_lang)
-                results = [[normalize_output(row[index]) for index, _ in key_indices]
-                        for row in result_rows]
+                results = [[normalize_output(row[index])
+                            for index, _ in key_indices if row[index] != '']
+                           for row in result_rows]
             else:
                 logger.warn("Return code %s for query '%s'" % (resp.status,
                                                                query))
