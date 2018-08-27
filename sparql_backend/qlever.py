@@ -57,6 +57,8 @@ def filter_results_language(results, language):
     for row in results:
         contains_literal = False
         for value in row:
+            if value == None:
+                continue
             value = value.strip()
             if value.startswith('"'):
                 contains_literal = True
@@ -167,7 +169,7 @@ class Backend(object):
                 if filter_lang:
                     result_rows = filter_results_language(result_rows, filter_lang)
                 results = [[normalize_output(row[index])
-                            for index, _ in key_indices if row[index] != '']
+                            for index, _ in key_indices if row[index]]
                            for row in result_rows]
             else:
                 logger.warn("Return code %s for query '%s'" % (resp.status,
