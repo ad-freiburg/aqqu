@@ -29,7 +29,6 @@ LOG = logging.getLogger(__name__)
 
 
 APP = flask.Flask(__name__)
-# previous_entities = []
 
 class ClassNameJSONEncoder(json.JSONEncoder):
     """

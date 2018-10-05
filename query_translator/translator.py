@@ -136,12 +136,12 @@ class QueryTranslator(object):
         query_doc = self.nlp(query_text)
         # Create a query object.
         query = Query(query_doc)
+
         """ entities is a list of objects,
         text_entities is always None"""
-        """ I am not sure if it is a good idea to pass self.nlp(u"")
-        as an argument, maybe there is a better way."""
+
         entities, text_entities = self.entity_linker.identify_entities_in_tokens(
-            query.tokens, self.nlp(u""))
+            query.tokens)
 
         query.identified_entities = entities
         query.text_entities = text_entities

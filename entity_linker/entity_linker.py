@@ -314,20 +314,28 @@ class EntityLinker:
                     identified_dates.append(ie)
         return identified_dates
 
-    def identify_from_context(self, tokens, emp_token):
+    def identify_from_context(self, tokens):
         '''
         Identify entities using previous identified entities.
-        :param tokens: A list of string tokens.
-        :emp_token: empty token.
+        :tokens: A list of string tokens.
         :return: A list of IdentifiedEntity from previous request.
         '''
+        gender = None
+        gender_list = ["he", "she", "it"]
+        for position, t in enumerate(tokens):
+            for g in gender_list:
+                if t.text == g:
+                    gender = tokens[position : position + 1]
+                    break
+
         raw_previous_entities = flask.request.args.getlist("p")
         previous_entities = []
+
         for raw_entity in raw_previous_entities:
-            ent = KBEntity("PREV", raw_entity, 1.0, [])
+            ent = KBEntity("PREV:" + raw_entity, raw_entity, 1.0, [])
             types = self.entity_index.get_types_for_mid(ent.id, 3)
             category = self.entity_index.get_category_for_mid(ent.id)
-            ide = IdentifiedEntity(emp_token,
+            ide = IdentifiedEntity(gender,
                                    ent.name, ent,
                                    types=types,
                                    category=category,
@@ -382,7 +390,7 @@ class EntityLinker:
                     identified_entities.append(ide)
         return identified_entities
 
-    def identify_entities_in_tokens(self, tokens, emp_tocken, min_surface_score=0.1):
+    def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):
         '''
         Identify instances in the tokens.
         :param tokens: A list of string tokens.
@@ -393,8 +401,8 @@ class EntityLinker:
         identified_entities = []
         start_time = time.time()
         identified_entities.extend(self.identify_in_tokens(tokens, min_surface_score))
-        ''' Add identified entities from the previous request.'''
-        identified_entities.extend(self.identify_from_context(tokens, emp_tocken))
+        # Add identified entities from the previous request.
+        identified_entities.extend(self.identify_from_context(tokens))
 
         if len(identified_entities) == 0:
             # Without any identified entities we would be unable to find anything for
