@@ -88,7 +88,7 @@ class RankerParameters:
         self.entity_oracle_file = None
         # Match correct candidates with the parses (if available)
         # instead of only by the F1 score of the target entities
-        self.use_parses = True
+        self.use_parses = False
 
 
     def get_suffix(self):

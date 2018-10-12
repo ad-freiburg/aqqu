@@ -122,15 +122,17 @@ class EvaluationQuery:
         with open(filename, 'r', encoding='utf-8') as sq_file:
             for idn, line in enumerate(sq_file):
                 subj_url, pred_url, obj_url, utterance = line.split('\t')
+                mids = [obj_mid]
+                parses = None
                 subj_mid = sq_normalize(subj_url)
                 obj_mid = sq_normalize(obj_url)
                 pred_mid = sq_normalize(pred_url)
-                mids = [obj_mid]
+                parses = [(subj_mid, pred_mid, obj_mid)]
                 eval_queries.append(
                     EvaluationQuery(idn, utterance.strip(),
                                     [mids],
                                     None,
-                                    [(subj_mid, pred_mid, obj_mid)],
+                                    parses,
                                     None))
         return eval_queries
 
@@ -157,10 +159,19 @@ class EvaluationQuery:
                 possible_targets = []
                 possible_targets_names = []
                 possible_targets_sparqls = []
+                possible_targets_parses = []
                 for parse in question['Parses']:
                     possible_targets_sparqls.append(parse['Sparql'])
                     result_names = []
                     results = []
+                    inf_chain = parse['InferentialChain']
+                    topic_mid = parse['TopicEntityMid']
+                    target_parse = (topic_mid,)
+                    if inf_chain:
+                        for rel in inf_chain:
+                            target_parse += (rel, None)
+                    possible_targets_parses.append(target_parse)
+
                     for answer in parse['Answers']:
                         atype = answer['AnswerType']
                         if atype == 'Entity':
@@ -171,11 +182,12 @@ class EvaluationQuery:
                         results.append(answer['AnswerArgument'])
                     possible_targets_names.append(result_names)
                     possible_targets.append(results)
+                logger.info('Possible targets parses %r', possible_targets_parses)
                 eval_queries.append(
                     EvaluationQuery(idn, utterance,
                                     possible_targets,
                                     possible_targets_names,
-                                    None,
+                                    possible_targets_parses,
                                     possible_targets_sparqls))
 
         return sorted(eval_queries, key=lambda x: x.id)
@@ -397,7 +409,7 @@ def compute_parse_match(candidate, parse):
     ents.union(candidate.prediction)
     rel_names = set(candidate.query_candidate.get_canonical_relation_names())
     for idx, gold_part in enumerate(parse):
-        # parses a subgraphs of a bipartite graph where entities are always
+        # parses are subgraphs of a bipartite graph where entities are always
         # connected by relations. Thus in a subgraph description of the form
         # (E, R, M, R, E, R, T) starting with an entity every second element
         # must be a relation/entity. We ignore the order of relations because

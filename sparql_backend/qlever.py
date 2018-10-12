@@ -40,6 +40,10 @@ def normalize_freebase_output(text):
         if text.endswith(zeromonthday):
             text = text[0:-len(zeromonthday)]
 
+    # handle QLever's language augmented relations until they are hidden
+    if text.startswith('@en@'):
+        text = text[4:]
+
     if len(text) > 1 and text.startswith('<') and text.endswith('>'):
         text = text[1:-1]
     return freebase.remove_freebase_ns(text)
