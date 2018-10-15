@@ -11,6 +11,7 @@ import time
 import os
 import copy
 import logging
+import gc
 import itertools
 import random
 import numpy as np
@@ -329,11 +330,13 @@ class AqquModel(MLModel, Ranker):
     def learn_model(self, train_queries):
         f_extract = f_ext.extract_features
         dict_vec = DictVectorizer(sparse=False)
-        # Extract features for each candidate onc
+        # Extract features for each candidate once
         labels, features = construct_train_examples(train_queries,
                                                     f_extract,
                                                     self.parameters.use_parses,
                                                     score_threshold=.8)
+        logger.info('AqquModel: # features: %r, # labels: %r, # pos labels: %r, feature example: %r',
+                    len(features), len(labels), np.count_nonzero(labels), features[0])
         features = dict_vec.fit_transform(features)
         n_grams_dict = None
         if self.top_ngram_percentile:
@@ -370,7 +373,7 @@ class AqquModel(MLModel, Ranker):
             self.parameters.use_parses)
         logger.info("Training tree classifier for ranking.")
         logger.info("#of labeled examples: %s" % len(pair_features))
-        logger.info("#labels non-zero: %s" % sum(pair_labels))
+        logger.info("#labels non-zero: %s" % np.count_nonzero(pair_labels))
         label_encoder = LabelEncoder()
         pair_labels = label_encoder.fit_transform(pair_labels)
         X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
@@ -504,6 +507,7 @@ class AqquModel(MLModel, Ranker):
         return ranked_candidates
 
     def prune_query_candidates(self, query_candidates, features, key=lambda x: x):
+        #return query_candidates, features
         remaining = []
         if len(query_candidates) > 0:
             remaining, new_features = self.pruner.prune_query_candidates(query_candidates,
@@ -618,9 +622,9 @@ class CandidatePruner(MLModel):
     def learn_model(self, labels, X):
         logger.info("Learning prune classifier.")
         logger.info("#of labeled examples: %s" % len(X))
-        logger.info("#labels non-zero: %s" % sum(labels))
-        num_labels = float(len(labels))
-        num_pos_labels = sum(labels)
+        num_pos_labels = np.count_nonzero(labels)
+        logger.info("#labels non-zero: %r", num_pos_labels)
+        num_labels = float(labels.shape[0])
         num_neg_labels = num_labels - num_pos_labels
         pos_class_weight = num_labels / num_pos_labels
         neg_class_weight = num_labels / num_neg_labels
@@ -762,10 +766,10 @@ class RelationNgramScorer(MLModel):
         labels, features = construct_train_examples(train_queries,
                                                     ngram_features,
                                                     self.use_parses)
-        logger.info("#of labeled examples: %s" % len(features))
-        logger.info("#labels non-zero: %s" % sum(labels))
+        logger.info("# of labeled examples: %s" % len(features))
+        num_pos_labels = np.count_nonzero(labels)
+        logger.info("# labels non-zero: %s" % num_pos_labels)
         num_labels = float(len(labels))
-        num_pos_labels = sum(labels)
         num_neg_labels = num_labels - num_pos_labels
         pos_class_weight = num_labels / num_pos_labels
         neg_class_weight = num_labels / num_neg_labels
@@ -774,22 +778,22 @@ class RelationNgramScorer(MLModel):
         neg_class_weight /= total_weight
         pos_class_boost = 1.0
         label_encoder = LabelEncoder()
-        logger.info(features[-1])
+        logger.info('RelNgramScorer: Feature map example %r', features[0])
         labels = label_encoder.fit_transform(labels)
         vec = DictVectorizer(sparse=True)
         scaler = StandardScaler(with_mean=False)
         X = vec.fit_transform(features)
         X = scaler.fit_transform(X)
         X, labels = utils.shuffle(X, labels, random_state=999)
-        logger.info("#Features: %s" % len(vec.vocabulary_))
+        logger.info("# destinct feature maps: %s" % len(vec.vocabulary_))
         class_weights = {1: pos_class_weight * pos_class_boost,
-                         0: neg_class_weight} 
+                         0: neg_class_weight}
         logger.info("Weights: %s" % str(class_weights))
         # Perform grid search or use provided C.
         if self.regularization_C is None:
             logger.info("Performing grid search.")
             # Smaller -> stronger.
-            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001, 
+            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001,
                                 1e-3, 1e-4, 1e-5, 1e-6]}]
             relation_scorer = LogisticRegression(class_weight=class_weights,
                                                  max_iter=200,
@@ -848,7 +852,7 @@ class RelationNgramScorer(MLModel):
     def score(self, candidate):
         if not self.model:
             self.load_model()
-        features = f_ext.ngram_features(candidate)
+        features = f_ext.extract_ngram_features(candidate)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
         prob = self.model.predict_proba(X)
@@ -1290,63 +1294,29 @@ def construct_train_examples(train_queries, f_extract, use_parses, score_thresho
     :param train_queries:
     :return:
     """
-    candidates = [x.query_candidate
-                  for q in train_queries
-                  for x in q.eval_candidates]
-    features = f_extract(candidates)
-    logger.info("Extracting features from candidates.")
-    labels = []
+    features = []
+    logger.info("Extracting features from %r queries", len(train_queries))
+    for i, query in enumerate(train_queries):
+        logger.info("Query %r: extracting features from %r candidates.",
+                    i, len(query.eval_candidates))
+        candidates = [ec.query_candidate for ec in query.eval_candidates]
+        newfeatures = f_extract(candidates)
+        features.extend(newfeatures)
+    """ Collect all the garbage from feature extraction """
+    gc.collect()
+
+    labels = np.zeros((len(features),), dtype=np.int8)
+    label_idx = 0
     for query in train_queries:
         oracle_position = query.oracle_position
-        candidates = [x.query_candidate for x in query.eval_candidates]
-        for i, candidate in enumerate(candidates):
-            eval_result = query.eval_candidates[i].evaluation_result
+        for i, eval_candidate in enumerate(query.eval_candidates):
+            eval_result = eval_candidate.evaluation_result
             if i + 1 == oracle_position or \
                     eval_result.f1 >= score_threshold or \
                     (use_parses and eval_result.parse_match):
-                labels.append(1)
-            else:
-                labels.append(0)
+                labels[label_idx] = 1
+            label_idx += 1
     return labels, features
-
-
-def construct_ngram_examples(queries, f_extractor, correct_threshold=.9):
-    """Construct training examples from candidates.
-
-    Construct a list of examples from the given evaluated queries.
-    Returns a list of features and a list of corresponding labels
-    :type queries list[EvaluationQuery]
-    :return:
-    """
-    logger.info("Extracting features from candidates.")
-    labels = []
-    features = []
-    for query in queries:
-        positive_relations = set()
-        seen_positive_relations = set()
-        oracle_position = query.oracle_position
-        candidates = [x.query_candidate for x in query.eval_candidates]
-        negative_relations = set()
-        for i, candidate in enumerate(candidates):
-            relation = " ".join(candidate.get_relation_names())
-            eval_result = query.eval_candidates[i].evaluation_result
-            if eval_result.f1 >= correct_threshold or \
-                    i + 1 == oracle_position or \
-                    eval_result.parse_match:
-                positive_relations.add(relation)
-        for i, candidate in enumerate(candidates):
-            relation = " ".join(candidate.get_relation_names())
-            candidate_features = f_extractor.extract_features(candidate)
-            if relation in positive_relations and \
-                    relation not in seen_positive_relations:
-                seen_positive_relations.add(relation)
-                labels.append(1)
-                features.append(candidate_features)
-            elif relation not in negative_relations:
-                negative_relations.add(relation)
-                labels.append(0)
-                features.append(candidate_features)
-    return features, labels
 
 
 def feature_diff(features_a, features_b):
