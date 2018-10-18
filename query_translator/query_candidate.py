@@ -301,6 +301,11 @@ class QueryCandidate:
         entities = sorted([me.entity for me in self.matched_entities])
         return [e.score for e in entities]
 
+    def prune_for_training(self):
+        """ Removes attributes which are not needed for training """
+        self.extension_history = []
+        self.current_extension = None
+
     def __getstate__(self):
         """
         We do this for pickling. Everything requiring a SPARQL backend

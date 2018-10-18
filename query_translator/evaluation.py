@@ -236,7 +236,8 @@ class CandidateEvaluationResult:
 
 def evaluate_translator(translator, queries, n_queries=None,
                         ignore_howmany=False, ignore_invalid=False,
-                        n_top=1000, output_result=True):
+                        n_top=1000, output_result=True,
+                        prune_for_training=False):
     """Evaluate the translator on the provided queries.
 
     Returns a result object as defined in the evaluation
@@ -293,7 +294,12 @@ def evaluate_translator(translator, queries, n_queries=None,
                     result_strs.append(row[1])
                 else:
                     result_strs.append(row[0])
-            executed_sparql = candidate.to_sparql_query(include_name=True)
+
+            executed_sparql = None
+            if not prune_for_training:
+                executed_sparql = candidate.to_sparql_query(include_name=True)
+            else:
+                candidate.prune_for_training()
             eval_candidate = EvaluationCandidate(candidate,
                                                  executed_sparql,
                                                  result_target_mids,

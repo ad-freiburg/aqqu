@@ -153,7 +153,7 @@ def cache_evaluated_queries(dataset, queries, parameters):
             logger.error("Error during query dump", sys.exc_info()[0])
 
 
-def get_evaluated_queries(dataset, cached, parameters, n_top=2000):
+def get_evaluated_queries(dataset, cached, parameters, n_top, prune_for_training):
     """Returns evaluated queries.
 
     :rtype list[EvaluationQuery]
@@ -183,7 +183,8 @@ def get_evaluated_queries(dataset, cached, parameters, n_top=2000):
                                          queries,
                                          n_top=n_top,
                                          ignore_invalid=False,
-                                         output_result=False)
+                                         output_result=False,
+                                         prune_for_training=prune_for_training)
         if cached:
             cache_evaluated_queries(dataset, queries, parameters)
     return queries
@@ -211,7 +212,8 @@ def train(scorer_name, override, cached):
         train_queries = get_evaluated_queries(train_dataset,
                                               cached,
                                               scorer_obj.get_parameters(),
-                                              n_top=2000)
+                                              n_top=1000,
+                                              prune_for_training=True)
         logger.info("Loaded %s queries for training on %s",
                     len(train_queries), train_dataset)
         train_queries_all.extend(train_queries)
@@ -269,7 +271,7 @@ def test(scorer_name, override, test_dataset, cached, avg_runs=1):
     queries = get_evaluated_queries(test_dataset,
                                     cached,
                                     scorer_obj.get_parameters(),
-                                    n_top=2000)
+                                    n_top=1000)
     result = defaultdict(int)
     n_runs = 1
     for _ in range(avg_runs):
@@ -300,7 +302,8 @@ def cv(scorer_name, override, dataset, cached, n_folds=3, avg_runs=1):
     queries = get_evaluated_queries(dataset,
                                     cached,
                                     scorer_obj.get_parameters(),
-                                    n_top=2000)
+                                    n_top=1000,
+                                    prune_for_training=True)
     fold_size = len(queries) // n_folds
     logger.info("Splitting into %s folds with %s queries each.",
                 n_folds, fold_size)
