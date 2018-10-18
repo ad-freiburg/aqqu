@@ -204,7 +204,7 @@ def map_candidate(candidate: QueryCandidate) -> Dict[str, Any]:
     root_node = map_query_graph(candidate.root_node, visited)
 
     return {
-        'sparql': candidate.to_sparql_query(),
+        'sparql': candidate.to_sparql_query(include_name=True),
         'rank_score': candidate.rank_score,
         'matches_answer_type': candidate.matches_answer_type,
         'features': candidate.feature_dict,
