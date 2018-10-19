@@ -10,6 +10,7 @@ import random
 import json
 import time
 from collections import namedtuple
+from typing import List
 
 from dateutil import parser as dateparser
 import urllib3
@@ -63,6 +64,7 @@ class EvaluationQuery:
         # When processed, the ranked list of candidates returned.
         self.eval_candidates = []
         self.oracle_position = -1
+        self.oracle_position_parse = -1
         # These are the final results for this query.
         # If the query has at least one candidate, these are identical
         # to the first candidate's results.
@@ -74,7 +76,6 @@ class EvaluationQuery:
         self.oracle_f1 = 0.0
         self.oracle_parse_score = 0.0
         self.oracle_parse_match = False
-        self.oracle_parse_score = 0.0
         self.false_negatives = []
         self.false_positives = []
 
@@ -84,6 +85,7 @@ class EvaluationQuery:
         :return:
         """
         self.oracle_position = -1
+        self.oracle_position_parse = -1
         self.precision = 0.0
         self.recall = 0.0
         self.f1 = 0.0
@@ -105,7 +107,7 @@ class EvaluationQuery:
         return d
 
     @staticmethod
-    def queries_from_simple_questions(filename):
+    def queries_from_simple_questions(filename: str):
         """Load evaluation queries from SimpleQuestion TSV files"""
         # SimpleQuestions uses a simple TSV format with
         # <subject_url>\t<predicate_url>\t<object_url>\n
@@ -122,11 +124,10 @@ class EvaluationQuery:
         with open(filename, 'r', encoding='utf-8') as sq_file:
             for idn, line in enumerate(sq_file):
                 subj_url, pred_url, obj_url, utterance = line.split('\t')
-                mids = [obj_mid]
-                parses = None
                 subj_mid = sq_normalize(subj_url)
                 obj_mid = sq_normalize(obj_url)
                 pred_mid = sq_normalize(pred_url)
+                mids = [obj_mid]
                 parses = [(subj_mid, pred_mid, obj_mid)]
                 eval_queries.append(
                     EvaluationQuery(idn, utterance.strip(),
@@ -166,11 +167,20 @@ class EvaluationQuery:
                     results = []
                     inf_chain = parse['InferentialChain']
                     topic_mid = parse['TopicEntityMid']
-                    target_parse = (topic_mid,)
+                    constraints = parse['Constraints']
+                    target_parse = [topic_mid]
                     if inf_chain:
                         for rel in inf_chain:
-                            target_parse += (rel, None)
-                    possible_targets_parses.append(target_parse)
+                            target_parse.extend([rel, None])
+                    if constraints:
+                        for constraint in constraints:
+                            if constraint['Operator'] == 'Equal' and \
+                               constraint['SourceNodeIndex'] == 0:
+                                # In Aqqu we only support "constraints" as an additional relation
+                                # from the mediator not from the target
+                                target_parse.extend([constraint['NodePredicate'], constraint['Argument']])
+
+                    possible_targets_parses.append(tuple(target_parse))
 
                     for answer in parse['Answers']:
                         atype = answer['AnswerType']
@@ -178,7 +188,7 @@ class EvaluationQuery:
                             result_names.append(answer['EntityName'])
                         elif atype == 'Value':
                             result_names.append(answer['AnswerArgument'])
-                        # results are mid strings or numeric/date/.. values
+                        # results are mid strings or numeric/date/.. string values
                         results.append(answer['AnswerArgument'])
                     possible_targets_names.append(result_names)
                     possible_targets.append(results)
@@ -541,7 +551,7 @@ def compare_evaluation_runs(queries_a, queries_b):
     return a_not_b, b_not_a
 
 
-def evaluate(queries, output_file="eval_out.log"):
+def evaluate(queries :List[EvaluationQuery], output_file="eval_out.log"):
     """Evaluates the queries.
 
     Returns a tuple of EvaluationResult and the list of queries. Each
@@ -617,9 +627,10 @@ def evaluate(queries, output_file="eval_out.log"):
                         prediction, query)
                     # TODO(schnelle) for WebQSP we currently simply count
                     # the best result
-                    best_candidate_eval = sorted(candidate_evals,
-                                                 key=lambda ev: ev.f1,
-                                                 reverse=True)[0]
+                    best_candidate_eval = max(candidate_evals,
+                                              key=lambda ev: ev.f1,)
+                    best_candidate_eval_parse = max(candidate_evals,
+                                                    key=lambda ev: ev.parse_score)
                     prediction.evaluation_result = best_candidate_eval
                 if i == 0:
                     query.precision = best_candidate_eval.precision
@@ -631,9 +642,12 @@ def evaluate(queries, output_file="eval_out.log"):
                     query.false_positives = best_candidate_eval.false_positives
                 if query.oracle_f1 < best_candidate_eval.f1:
                     query.oracle_f1 = best_candidate_eval.f1
+                    query.oracle_position = i + 1
+                if query.oracle_parse_score < best_candidate_eval_parse.parse_score:
                     query.oracle_parse_score = best_candidate_eval.parse_score
                     query.oracle_parse_match = best_candidate_eval.parse_score > 0.99
-                    query.oracle_position = i + 1
+                    query.oracle_parse_position = i + 1
+
     num_queries = len(queries)
     num_unanswered_queries = float(len([q for q in queries
                                         if not q.eval_candidates]))

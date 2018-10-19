@@ -1207,6 +1207,7 @@ def get_compare_indices_for_pairs(queries, use_parses, correct_threshold):
     candidate_offset = 0
     for query in queries:
         oracle_position = query.oracle_position
+        oracle_position_parse = query.oracle_position_parse
         # Only create pairs for which we "know" a correct solution
         # The oracle answer is the one with highest F1 but not necessarily
         # perfect.
@@ -1214,9 +1215,10 @@ def get_compare_indices_for_pairs(queries, use_parses, correct_threshold):
         candidates = [x.query_candidate for x in query.eval_candidates]
         for i, _ in enumerate(candidates):
             eval_result = query.eval_candidates[i].evaluation_result
-            if i + 1 == oracle_position or \
-                    eval_result.f1 >= correct_threshold or \
-                    (use_parses and eval_result.parse_match):
+            if i + 1 == oracle_position or eval_result.f1 >= correct_threshold:
+                correct_cands_index.add(i)
+            if use_parses and \
+               (i + 1 == oracle_position_parse or eval_result.parse_match):
                 correct_cands_index.add(i)
 
         if correct_cands_index:
@@ -1224,9 +1226,10 @@ def get_compare_indices_for_pairs(queries, use_parses, correct_threshold):
             sample_size = n_candidates // 2
             if sample_size < 200:
                 sample_size = min(200, n_candidates)
-            sample_candidates_index = random.sample(range(n_candidates), sample_size)
-            #sample_size = min(100, n_candidates)
-            #sample_candidates_index = range(n_candidates)
+            sample_candidates_index = random.sample(
+                    range(n_candidates), sample_size)
+            # sample_size = min(100, n_candidates)
+            # sample_candidates_index = range(n_candidates)
             for sample_candidate_index in sample_candidates_index:
                 for correct_cand_index in correct_cands_index:
                     if sample_candidate_index in correct_cands_index:
@@ -1309,12 +1312,15 @@ def construct_train_examples(train_queries, f_extract, use_parses, score_thresho
     label_idx = 0
     for query in train_queries:
         oracle_position = query.oracle_position
+        oracle_position_parse = query.oracle_position_parse
         for i, eval_candidate in enumerate(query.eval_candidates):
             eval_result = eval_candidate.evaluation_result
-            if i + 1 == oracle_position or \
-                    eval_result.f1 >= score_threshold or \
-                    (use_parses and eval_result.parse_match):
+            if i + 1 == oracle_position or eval_result.f1 >= score_threshold:
                 labels[label_idx] = 1
+            if use_parses and \
+               (i + 1 == oracle_position_parse or eval_candidate.parse_match):
+                labels[label_idx] = 1
+
             label_idx += 1
     return labels, features
 
