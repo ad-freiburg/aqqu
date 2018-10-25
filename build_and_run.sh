@@ -4,7 +4,7 @@ TENSORFLOW=tensorflow/tensorflow:1.5.0-py3
 which nvidia-docker
 if [ $? -eq 0 ] && ! [ -v NO_GPU ]; then
 	DOCKER_CMD=`/usr/bin/which nvidia-docker`
-	TENSORFLOW=tensorflow/tensorflow:latest-gpu-py3
+	TENSORFLOW=tensorflow/tensorflow:1.5.0-gpu-py3
 else
 	which wharfer
 	if [ $? -eq 0 ]; then
