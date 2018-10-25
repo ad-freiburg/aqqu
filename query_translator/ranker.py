@@ -385,9 +385,9 @@ class AqquModel(MLModel, Ranker):
         importances = decision_tree.feature_importances_
         indices = np.argsort(importances)[::-1]
         for f in range(X.shape[1]):
-            print("%d. feature %s (%f)" % (f + 1,
-                                           pair_dict_vec.feature_names_[indices[f]],
-                                           importances[indices[f]]))
+            feature_name = pair_dict_vec.feature_names_[indices[f]]
+            logger.info('%r feature %r (%r)',
+                        f + 1, feature_name, importances[indices[f]])
         logger.info("Done.")
         self.model = decision_tree
         self.pair_dict_vec = pair_dict_vec
