@@ -321,7 +321,8 @@ class EntityLinker:
         :return: A list of IdentifiedEntity from previous request.
         '''
         gender = None
-        gender_list = ["he", "she", "it"]
+        gender_list = ["he", "she", "it", "her", "his", "him", "they",
+                       "their", "its"]
         for position, t in enumerate(tokens):
             for g in gender_list:
                 if t.text == g:
@@ -332,7 +333,8 @@ class EntityLinker:
         previous_entities = []
 
         for raw_entity in raw_previous_entities:
-            ent = KBEntity("PREV:" + raw_entity, raw_entity, 1.0, [])
+            raw_entity_list = raw_entity.split(",")
+            ent = KBEntity("PREV:" + raw_entity_list[1], raw_entity_list[0], 1.0, [])
             types = self.entity_index.get_types_for_mid(ent.id, 3)
             category = self.entity_index.get_category_for_mid(ent.id)
             ide = IdentifiedEntity(gender,
