@@ -322,7 +322,7 @@ class EntityLinker:
         '''
         gender = None
         gender_list = ["he", "she", "it", "her", "his", "him", "they",
-                       "their", "its"]
+                       "their", "its", "there", "thems"]
         for position, t in enumerate(tokens):
             for g in gender_list:
                 if t.text == g:

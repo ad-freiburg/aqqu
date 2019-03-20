@@ -10,15 +10,21 @@ import logging
 import time
 from typing import Tuple, Iterable
 import spacy
+import sys
+import csv
+import re
+import gender_guesser.detector as gender
 import sparql_backend.loader
 import config_helper
 from answer_type.answer_type_identifier import AnswerTypeIdentifier
 from entity_linker.entity_index_rocksdb import EntityIndex
 from query_translator.pattern_matcher import QueryCandidateExtender,\
         QueryPatternMatcher, get_content_tokens
+from query_translator.query_candidate import QueryCandidate
 from query_translator import ranker
 
 logger = logging.getLogger(__name__)
+
 
 class Query:
     """
@@ -35,6 +41,7 @@ class Query:
         self.relation_oracle = None
         self.is_count_query = False
         # self.previous_entities = None
+
 
 class QueryTranslator(object):
 
@@ -53,6 +60,7 @@ class QueryTranslator(object):
         self.entity_index = entity_index
         self.answer_type_identifier = answer_type_identifier
         self.query_extender.set_parameters(scorer.get_parameters())
+        self.gender = Gender()
 
     @staticmethod
     def init_from_config():
@@ -185,11 +193,126 @@ class QueryTranslator(object):
                 " Avg per query: %.2f ms." % (n_total_answers, len(ranked_candidates[:n_top]),
                                                   result_fetch_time, avg_result_fetch_time))
         logger.info("Done translating and executing: %s." % query)
-        return parsed_query, ranked_candidates[:n_top]
+        gender = self.get_genders(ranked_candidates[:n_top], parsed_query)
+        return parsed_query, ranked_candidates[:n_top], gender
+
+    def get_genders(self, candidates: Iterable[QueryCandidate],
+                    parsed_query: Query):
+
+        query_results = []
+        for candidate in candidates:
+            for result in candidate.query_result:
+                if len(result) > 1:
+                    res1 = result[1].encode('ascii', 'ignore').decode('ascii')
+                    res0 = result[0].encode('ascii', 'ignore').decode('ascii')
+                    query_results.append({'name': res1, 'mid': res0})
+                else:
+                    res0 = result[0].encode('ascii', 'ignore').decode('ascii')
+                    query_results.append({'name': res0})
+        gender_dict = {}
+        # for result in query_results:
+        if len(query_results) > 0:
+            try:
+                mid = query_results[0]["mid"]
+            except KeyError:
+                mid = ''
+            try:
+                name = query_results[0]["name"]
+            except KeyError:
+                name = ''
+            if mid != '':
+                if mid not in gender_dict:
+                    gender = self.gender.get_gender(name)
+                    gender_dict[mid] = gender
+        for ie in parsed_query.identified_entities:
+            mid = ie.sparql_name()
+            mid = mid.encode('ascii', 'ignore').decode('ascii')
+            if ie.name[:5] == "PREV:":
+                name = ie.name[5:]
+            else:
+                name = ie.name
+            name = name.encode('ascii', 'ignore').decode('ascii')
+            print("Identified entities name and id: ", name, mid)
+            if mid not in gender_dict:
+                gender = self.gender.get_gender(name)
+                gender_dict[mid] = gender
+        print("Gender dictionary: ", gender_dict)
+        return gender_dict
 
 
+class Gender:
+
+    """ A gender class."""
+
+    def __init__(self):
+        self.gender_data = self.get_gender_data()
+        print("Creating gender class.")
+        print("Size of gender dictionary is ", sys.getsizeof(self.gender_data))
+
+    def get_gender(self, name):
+
+        """ Look the name up in a gender.csv, if not there -
+        use gender-guesser."""
+
+        gender = None
+        print(self.gender_data["Albert Einstein"])
+        try:
+            gender = self.gender_data[name]
+            print("Getting gender from gender.csv.")
+        except KeyError:
+            print("Guessing gender.")
+            gender = self.use_gender_guesser(name)
+        gender = self.process_gender(gender)
+        print("The gender is: ", gender)
+        return gender
+
+    def get_gender_data(self):
+
+        """ Read a csv file with person names and genders and
+        create a dictionary {name : gender} """
+
+        gender_data = {}
+        with open('gender.csv', mode='r', encoding="utf-8") as infile:
+            reader = csv.reader(infile)
+            for rows in reader:
+                rows[1] = re.sub(' +', ' ', rows[1])
+                rows[1] = rows[1].lstrip()
+                # possible to remove all non alphabetic caracters
+                # rows[1] = re.sub(r'([^\s\w]|_)+', '', rows[1])
+                rows[1] = rows[1].encode('ascii', 'ignore').decode('ascii')
+                rows[2] = rows[2].encode('ascii', 'ignore').decode('ascii')
+                if rows[1] != '':
+                    if rows[2] == 'Male@en' or rows[2] == 'Female@en':
+                        gender_data[rows[1][:-3]] = rows[2][:-3]
+                    """else:
+                        gender_data[rows[1][:-3]] = rows[2]"""
+        return gender_data
+
+    def use_gender_guesser(self, name):
+
+        """ Use gender guesser if th name is not in a gender.csv."""
+
+        print("Using gender guesser!!!")
+        first_name = name.split(" ")[0]
+        d = gender.Detector()
+        g = d.get_gender(first_name)
+        return g
+
+    def process_gender(self, gender):
+
+        """ There are few possible gender inputs:
+        "Male", "Female", "male", "female", "andy", "unknown",
+        "mostly_male", "mostly_female". """
+
+        if gender == "Male" or gender == "male" or gender == "mostly_male":
+            gender = "male"
+        elif gender == "Female" or gender == "female" or \
+        gender == "mostly_female":
+            gender = "female"
+        else:
+            gender = "unknown"
+        return gender
 
 
 if __name__ == '__main__':
     logger.warn("No MAIN")
-

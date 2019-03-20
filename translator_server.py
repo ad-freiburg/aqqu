@@ -18,7 +18,6 @@ from query_translator.query_candidate import RelationMatch,\
     QueryCandidate, QueryCandidateNode
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
-from entity_linker.entity_linker import KBEntity, IdentifiedEntity
 
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
@@ -30,6 +29,7 @@ LOG = logging.getLogger(__name__)
 
 APP = flask.Flask(__name__)
 
+
 class ClassNameJSONEncoder(json.JSONEncoder):
     """
     Allows JSON serializing classes as their name
@@ -37,7 +37,9 @@ class ClassNameJSONEncoder(json.JSONEncoder):
     def default(self, obj):
         return obj.__class__.__name__
 
+
 APP.json_encoder = ClassNameJSONEncoder
+
 
 def map_results_list(results: Iterable[List[Union[str, int]]]) -> List[dict]:
     """
@@ -216,7 +218,8 @@ def map_candidate(candidate: QueryCandidate) -> Dict[str, Any]:
 
 
 def map_candidates(raw_query: str, parsed_query: Query,
-                   candidates: Iterable[QueryCandidate])\
+                   candidates: Iterable[QueryCandidate],
+                   gender: dict)\
                                              -> Dict[str, Any]:
     """
     Turns the final translations which are lists of namedtuple with
@@ -229,7 +232,9 @@ def map_candidates(raw_query: str, parsed_query: Query,
 
     return {'raw_query': raw_query,
             'parsed_query': map_query(parsed_query),
-            'candidates': candidate_dicts}
+            'candidates': candidate_dicts,
+            'gender': gender}
+
 
 def main() -> None:
     """
@@ -270,16 +275,16 @@ def main() -> None:
         REST entry point providing a very simple query interface
         """
         raw_query = flask.request.args.get('q', "")
-
         # raw_query = "who played dory in finding nemo"
         LOG.info("Translating query: %s", raw_query)
-        parsed_query, candidates = translator.translate_and_execute_query(
-            raw_query)
+        parsed_query, candidates, gender = translator.\
+        translate_and_execute_query(raw_query)
+        print("Gender dictonary is: ", gender)
         LOG.info("Done translating query: %s", raw_query)
         LOG.info("#candidates: %s", len(candidates))
 
         return flask.jsonify(map_candidates(
-            raw_query, parsed_query, candidates))
+            raw_query, parsed_query, candidates, gender))
 
     @APP.route('/config', methods=['GET'])
     def get_config():
@@ -295,6 +300,7 @@ def main() -> None:
 
     APP.run(use_reloader=False, host='0.0.0.0', threaded=False,
             port=args.port, debug=False)
+
 
 if __name__ == "__main__":
     main()
