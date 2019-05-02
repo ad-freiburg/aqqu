@@ -9,9 +9,7 @@ Setup is easy if all pre-requisites are met.
 
 ## Requirements:
 
-* OS: Linux system (tested on Ubuntu 12.04)
-* Software: Python 2.7 as well as Java 8 + Prerequisites for Virtuoso, see
-  QUICKSTART.md for more details.
+* Docker > 18.09 on 64 bit Linux
 * RAM: 40 GB for training the large WebQuestions models
 * Disk: about 40 GB for all pre-requisite data
 
