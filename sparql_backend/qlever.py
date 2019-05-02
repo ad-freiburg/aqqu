@@ -29,6 +29,20 @@ def normalize_freebase_output(text):
         endQuote = text.rfind('"')
         if endQuote >= 0:
             text = text[startQuote+1:endQuote]
+        # In QLever dates without a time have a time of 00:00:00
+        # remove that to match WebQSP answers
+        zerotime = 'T00:00:00'
+        if text.endswith(zerotime):
+            text = text[0:-len(zerotime)]
+        # When dates are only available to the year the day and month
+        # will be 00-00. Again to match WebQSP answers strip that
+        zeromonthday = '-00-00'
+        if text.endswith(zeromonthday):
+            text = text[0:-len(zeromonthday)]
+
+    # handle QLever's language augmented relations until they are hidden
+    if text.startswith('@en@'):
+        text = text[4:]
 
     if len(text) > 1 and text.startswith('<') and text.endswith('>'):
         text = text[1:-1]
@@ -43,15 +57,19 @@ def filter_results_language(results, language):
     :param language:
     :return:
     """
-    langsuffix = "@"+language
     filtered_results = []
     for row in results:
         contains_literal = False
         for value in row:
+            if value == None:
+                continue
             value = value.strip()
             if value.startswith('"'):
                 contains_literal = True
-                if value.endswith(langsuffix):
+                quoteatpos = value.rfind('"@')
+                if quoteatpos < 0:
+                    filtered_results.append(row)
+                elif value[quoteatpos+2:].startswith(language):
                     filtered_results.append(row)
         if not contains_literal:
             filtered_results.append(row)
@@ -62,8 +80,7 @@ class Backend(object):
     def __init__(self, backend_host,
                  backend_port,
                  backend_url,
-                 # TODO(schnelle) increase once QLever multithreads
-                 connection_pool_maxsize=1, 
+                 connection_pool_maxsize=4,
                  cache_enabled=False,
                  cache_maxsize=10000,
                  retry=None,
@@ -83,8 +100,8 @@ class Backend(object):
         self.num_queries_executed = 0
         self.total_query_time = 0.0
         # Backend capabilities
-        self.supports_count = False
-        self.supports_optional = False
+        self.supports_count = True
+        self.supports_optional = True
         self.supports_text = True
         self.lang_in_relations = lang_in_relations
         self.query_log = open('qlever_log.txt', 'wt', encoding='UTF-8')
@@ -148,13 +165,16 @@ class Backend(object):
         try:
             if resp.status == 200:
                 data = json.loads(resp.data.decode('utf-8'))
-                key_indices = sorted([(column, key.lstrip('?')) for column, key 
+                key_indices = sorted([(column, key.lstrip('?')) for column, key
                     in enumerate(data['selected'])], key=itemgetter(1))
                 result_rows = data['res']
+                # TODO(schnelle) once QLever uses null instead of '' for missing
+                # we need to change the check
                 if filter_lang:
                     result_rows = filter_results_language(result_rows, filter_lang)
-                results = [[normalize_output(row[index]) for index, _ in key_indices]
-                        for row in result_rows]
+                results = [[normalize_output(row[index])
+                            for index, _ in key_indices if row[index]]
+                           for row in result_rows]
             else:
                 logger.warn("Return code %s for query '%s'" % (resp.status,
                                                                query))

@@ -11,6 +11,7 @@ import time
 import os
 import copy
 import logging
+import gc
 import itertools
 import random
 import numpy as np
@@ -86,6 +87,9 @@ class RankerParameters:
         # Path to file containing EntityOracle data,
         # ignored by all other EntityLinkers
         self.entity_oracle_file = None
+        # Match correct candidates with the parses (if available)
+        # instead of only by the F1 score of the target entities
+        self.use_parses = False
 
 
     def get_suffix(self):
@@ -120,9 +124,11 @@ class Ranker:
                  entity_oracle_file=None,
                  all_relations_match=True,
                  all_types_match=True,
+                 use_parses=False,
                  **kwargs):  # ignored but used by child classes
         self.name = name
         self.parameters = RankerParameters()
+        self.parameters.use_parses = use_parses
         self.parameters.entity_linker_class = entity_linker_class
         self.parameters.entity_oracle_file = entity_oracle_file
         self.parameters.require_relation_match = not all_relations_match
@@ -272,7 +278,8 @@ class AqquModel(MLModel, Ranker):
             if self.learn_ngram_rel_model:
                 relation_scorer = RelationNgramScorer(
                     self.get_model_name(),
-                    self.rel_regularization_C)
+                    self.rel_regularization_C,
+                    self.parameters.use_parses)
                 relation_scorer.load_model()
                 self.relation_scorer = relation_scorer
             if self.learn_deep_rel_model:
@@ -299,6 +306,7 @@ class AqquModel(MLModel, Ranker):
     def learn_rel_score_model(self, queries, ngrams_dict=None):
         rel_model = RelationNgramScorer(self.get_model_name(),
                                         self.rel_regularization_C,
+                                        self.parameters.use_parses,
                                         ngrams_dict=ngrams_dict)
         rel_model.learn_model(queries)
         return rel_model
@@ -322,17 +330,21 @@ class AqquModel(MLModel, Ranker):
     def learn_model(self, train_queries):
         f_extract = f_ext.extract_features
         dict_vec = DictVectorizer(sparse=False)
-        # Extract features for each candidate onc
+        # Extract features for each candidate once
         labels, features = construct_train_examples(train_queries,
                                                     f_extract,
+                                                    self.parameters.use_parses,
                                                     score_threshold=.8)
+        logger.info('AqquModel: # features: %r, # labels: %r, # pos labels: %r, feature example: %r',
+                    len(features), len(labels), np.count_nonzero(labels), features[0])
         features = dict_vec.fit_transform(features)
         n_grams_dict = None
         if self.top_ngram_percentile:
             logger.info("Collecting frequent n-gram features...")
             n_grams_dict = get_top_chi2_candidate_ngrams(train_queries,
                                                          f_ext.extract_ngram_features,
-                                                         percentile=self.top_ngram_percentile)
+                                                         self.top_ngram_percentile,
+                                                         self.parameters.use_parses)
             logger.info("Collected %s n-gram features" % len(n_grams_dict))
 
         # Compute deep/ngram relation-score based on folds and add
@@ -357,10 +369,11 @@ class AqquModel(MLModel, Ranker):
         pair_dict_vec, pair_features, pair_labels = construct_train_pair_examples(
             queries,
             features,
-            dict_vec)
+            dict_vec,
+            self.parameters.use_parses)
         logger.info("Training tree classifier for ranking.")
         logger.info("#of labeled examples: %s" % len(pair_features))
-        logger.info("#labels non-zero: %s" % sum(pair_labels))
+        logger.info("#labels non-zero: %s" % np.count_nonzero(pair_labels))
         label_encoder = LabelEncoder()
         pair_labels = label_encoder.fit_transform(pair_labels)
         X, labels = utils.shuffle(pair_features, pair_labels, random_state=999)
@@ -372,9 +385,9 @@ class AqquModel(MLModel, Ranker):
         importances = decision_tree.feature_importances_
         indices = np.argsort(importances)[::-1]
         for f in range(X.shape[1]):
-            print("%d. feature %s (%f)" % (f + 1,
-                                           pair_dict_vec.feature_names_[indices[f]],
-                                           importances[indices[f]]))
+            feature_name = pair_dict_vec.feature_names_[indices[f]]
+            logger.info('%r feature %r (%r)',
+                        f + 1, feature_name, importances[indices[f]])
         logger.info("Done.")
         self.model = decision_tree
         self.pair_dict_vec = pair_dict_vec
@@ -494,6 +507,7 @@ class AqquModel(MLModel, Ranker):
         return ranked_candidates
 
     def prune_query_candidates(self, query_candidates, features, key=lambda x: x):
+        #return query_candidates, features
         remaining = []
         if len(query_candidates) > 0:
             remaining, new_features = self.pruner.prune_query_candidates(query_candidates,
@@ -608,9 +622,9 @@ class CandidatePruner(MLModel):
     def learn_model(self, labels, X):
         logger.info("Learning prune classifier.")
         logger.info("#of labeled examples: %s" % len(X))
-        logger.info("#labels non-zero: %s" % sum(labels))
-        num_labels = float(len(labels))
-        num_pos_labels = sum(labels)
+        num_pos_labels = np.count_nonzero(labels)
+        logger.info("#labels non-zero: %r", num_pos_labels)
+        num_labels = float(labels.shape[0])
         num_neg_labels = num_labels - num_pos_labels
         pos_class_weight = num_labels / num_pos_labels
         neg_class_weight = num_labels / num_neg_labels
@@ -699,12 +713,14 @@ class RelationNgramScorer(MLModel):
     def __init__(self,
                  name,
                  regularization_C,
+                 use_parses,
                  ngrams_dict=None):
         name += self.get_relscorer_suffix()
         MLModel.__init__(self, name, None)
         # Note: The model is lazily when needed.
         self.model = None
         self.regularization_C = regularization_C
+        self.use_parses = use_parses
         self.ngrams_dict = ngrams_dict
         self.label_encoder = None
         self.dict_vec = None
@@ -732,8 +748,10 @@ class RelationNgramScorer(MLModel):
 
     def test_model(self, test_queries):
         logger.info("Scoring on test fold")
-        features, labels = construct_train_examples(test_queries,
-                                              f_ext.extract_ngram_features)
+        labels, features = construct_train_examples(
+            test_queries,
+            f_ext.extract_ngram_features,
+            self.use_parses)
         labels = self.label_encoder.transform(labels)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
@@ -746,11 +764,12 @@ class RelationNgramScorer(MLModel):
                                                 ngram_dict=self.ngrams_dict)
 
         labels, features = construct_train_examples(train_queries,
-                                                    ngram_features)
-        logger.info("#of labeled examples: %s" % len(features))
-        logger.info("#labels non-zero: %s" % sum(labels))
+                                                    ngram_features,
+                                                    self.use_parses)
+        logger.info("# of labeled examples: %s" % len(features))
+        num_pos_labels = np.count_nonzero(labels)
+        logger.info("# labels non-zero: %s" % num_pos_labels)
         num_labels = float(len(labels))
-        num_pos_labels = sum(labels)
         num_neg_labels = num_labels - num_pos_labels
         pos_class_weight = num_labels / num_pos_labels
         neg_class_weight = num_labels / num_neg_labels
@@ -759,22 +778,22 @@ class RelationNgramScorer(MLModel):
         neg_class_weight /= total_weight
         pos_class_boost = 1.0
         label_encoder = LabelEncoder()
-        logger.info(features[-1])
+        logger.info('RelNgramScorer: Feature map example %r', features[0])
         labels = label_encoder.fit_transform(labels)
         vec = DictVectorizer(sparse=True)
         scaler = StandardScaler(with_mean=False)
         X = vec.fit_transform(features)
         X = scaler.fit_transform(X)
         X, labels = utils.shuffle(X, labels, random_state=999)
-        logger.info("#Features: %s" % len(vec.vocabulary_))
+        logger.info("# destinct feature maps: %s" % len(vec.vocabulary_))
         class_weights = {1: pos_class_weight * pos_class_boost,
-                         0: neg_class_weight} 
+                         0: neg_class_weight}
         logger.info("Weights: %s" % str(class_weights))
         # Perform grid search or use provided C.
         if self.regularization_C is None:
             logger.info("Performing grid search.")
             # Smaller -> stronger.
-            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001, 
+            cv_params = [{"C": [1.0, 0.1, 0.01, 0.001,
                                 1e-3, 1e-4, 1e-5, 1e-6]}]
             relation_scorer = LogisticRegression(class_weight=class_weights,
                                                  max_iter=200,
@@ -833,7 +852,7 @@ class RelationNgramScorer(MLModel):
     def score(self, candidate):
         if not self.model:
             self.load_model()
-        features = f_ext.ngram_features(candidate)
+        features = f_ext.extract_ngram_features(candidate)
         X = self.dict_vec.transform(features)
         X = self.scaler.transform(X)
         prob = self.model.predict_proba(X)
@@ -1165,11 +1184,11 @@ class LiteralRanker(Ranker):
                 return 1
 
 
-def get_top_chi2_candidate_ngrams(queries, f_extract, percentile):
+def get_top_chi2_candidate_ngrams(queries, f_extract, percentile, use_parses):
     """Get top ngrams features according to chi2.
     """
     ngrams_dict = dict()
-    labels, features = construct_train_examples(queries, f_extract)
+    labels, features = construct_train_examples(queries, f_extract, use_parses)
     label_encoder = LabelEncoder()
     labels = label_encoder.fit_transform(labels)
     vec = DictVectorizer(sparse=True)
@@ -1183,11 +1202,12 @@ def get_top_chi2_candidate_ngrams(queries, f_extract, percentile):
     return ngrams_dict
 
 
-def get_compare_indices_for_pairs(queries, correct_threshold):
+def get_compare_indices_for_pairs(queries, use_parses, correct_threshold):
     compare_indices = []
     candidate_offset = 0
     for query in queries:
         oracle_position = query.oracle_position
+        oracle_position_parse = query.oracle_position_parse
         # Only create pairs for which we "know" a correct solution
         # The oracle answer is the one with highest F1 but not necessarily
         # perfect.
@@ -1195,9 +1215,10 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
         candidates = [x.query_candidate for x in query.eval_candidates]
         for i, _ in enumerate(candidates):
             eval_result = query.eval_candidates[i].evaluation_result
-            if i + 1 == oracle_position or \
-                    eval_result.f1 >= correct_threshold or \
-                    eval_result.parse_match:
+            if i + 1 == oracle_position or eval_result.f1 >= correct_threshold:
+                correct_cands_index.add(i)
+            if use_parses and \
+               (i + 1 == oracle_position_parse or eval_result.parse_match):
                 correct_cands_index.add(i)
 
         if correct_cands_index:
@@ -1205,9 +1226,10 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
             sample_size = n_candidates // 2
             if sample_size < 200:
                 sample_size = min(200, n_candidates)
-            sample_candidates_index = random.sample(range(n_candidates), sample_size)
-            #sample_size = min(100, n_candidates)
-            #sample_candidates_index = range(n_candidates)
+            sample_candidates_index = random.sample(
+                    range(n_candidates), sample_size)
+            # sample_size = min(100, n_candidates)
+            # sample_candidates_index = range(n_candidates)
             for sample_candidate_index in sample_candidates_index:
                 for correct_cand_index in correct_cands_index:
                     if sample_candidate_index in correct_cands_index:
@@ -1219,7 +1241,7 @@ def get_compare_indices_for_pairs(queries, correct_threshold):
     return compare_indices
 
 
-def construct_train_pair_examples(queries, features, dict_vec,
+def construct_train_pair_examples(queries, features, dict_vec, use_parses,
                                   correct_threshold=.9):
     """Construct training examples from candidates using pair-wise transform.
 
@@ -1231,7 +1253,8 @@ def construct_train_pair_examples(queries, features, dict_vec,
     # Return the matrix + an updated dict_vec
     logger.info("Extracting ranking features from candidates.")
     # A list of tuples of indices where the element at first index is better.
-    compare_indices = get_compare_indices_for_pairs(queries, correct_threshold)
+    compare_indices = get_compare_indices_for_pairs(
+        queries, use_parses, correct_threshold)
     # Create the feature matrix
     num_compare_examples = len(compare_indices)
     pos_i = [c[0] for c in compare_indices]
@@ -1267,70 +1290,39 @@ def construct_pair_features(features, indexes_a, indexes_b):
     return examples
 
 
-def construct_train_examples(train_queries, f_extract, score_threshold=1.0):
+def construct_train_examples(train_queries, f_extract, use_parses, score_threshold=0.9):
     """Extract features from each candidate.
     Return labels, a matrix of features.
 
     :param train_queries:
     :return:
     """
-    candidates = [x.query_candidate
-                  for q in train_queries
-                  for x in q.eval_candidates]
-    features = f_extract(candidates)
-    logger.info("Extracting features from candidates.")
-    labels = []
+    features = []
+    logger.info("Extracting features from %r queries", len(train_queries))
+    for i, query in enumerate(train_queries):
+        logger.info("Query %r: extracting features from %r candidates.",
+                    i, len(query.eval_candidates))
+        candidates = [ec.query_candidate for ec in query.eval_candidates]
+        newfeatures = f_extract(candidates)
+        features.extend(newfeatures)
+    """ Collect all the garbage from feature extraction """
+    gc.collect()
+
+    labels = np.zeros((len(features),), dtype=np.int8)
+    label_idx = 0
     for query in train_queries:
         oracle_position = query.oracle_position
-        candidates = [x.query_candidate for x in query.eval_candidates]
-        for i, candidate in enumerate(candidates):
-            eval_result = query.eval_candidates[i].evaluation_result
-            if i + 1 == oracle_position or \
-                    eval_result.f1 >= score_threshold or \
-                    eval_result.parse_match:
-                labels.append(1)
-            else:
-                labels.append(0)
+        oracle_position_parse = query.oracle_position_parse
+        for i, eval_candidate in enumerate(query.eval_candidates):
+            eval_result = eval_candidate.evaluation_result
+            if i + 1 == oracle_position or eval_result.f1 >= score_threshold:
+                labels[label_idx] = 1
+            if use_parses and \
+               (i + 1 == oracle_position_parse or eval_candidate.parse_match):
+                labels[label_idx] = 1
+
+            label_idx += 1
     return labels, features
-
-
-def construct_ngram_examples(queries, f_extractor, correct_threshold=.9):
-    """Construct training examples from candidates.
-
-    Construct a list of examples from the given evaluated queries.
-    Returns a list of features and a list of corresponding labels
-    :type queries list[EvaluationQuery]
-    :return:
-    """
-    logger.info("Extracting features from candidates.")
-    labels = []
-    features = []
-    for query in queries:
-        positive_relations = set()
-        seen_positive_relations = set()
-        oracle_position = query.oracle_position
-        candidates = [x.query_candidate for x in query.eval_candidates]
-        negative_relations = set()
-        for i, candidate in enumerate(candidates):
-            relation = " ".join(candidate.get_relation_names())
-            eval_result = query.eval_candidates[i].evaluation_result
-            if eval_result.f1 == correct_threshold or \
-                    i + 1 == oracle_position or \
-                    eval_result.parse_match:
-                positive_relations.add(relation)
-        for i, candidate in enumerate(candidates):
-            relation = " ".join(candidate.get_relation_names())
-            candidate_features = f_extractor.extract_features(candidate)
-            if relation in positive_relations and \
-                    relation not in seen_positive_relations:
-                seen_positive_relations.add(relation)
-                labels.append(1)
-                features.append(candidate_features)
-            elif relation not in negative_relations:
-                negative_relations.add(relation)
-                labels.append(0)
-                features.append(candidate_features)
-    return features, labels
 
 
 def feature_diff(features_a, features_b):

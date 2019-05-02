@@ -201,8 +201,9 @@ class EntityLinker:
         # HYPH for "the amazing spider-man"
         # XX for abc (news)
         # FW for "draco _malloy_", "annie"
+        # WP for "_niall_ ferguson"
         self.valid_entity_tag = re.compile(r'^(UH|\.|TO|PRP.?|#|FW|IN|VB.?|'
-                                           r'RB|CC|HYPH|XX|NNP.?|NN.?|JJ.?|CD|DT|MD|'
+                                           r'RB|CC|HYPH|WP|XX|NNP.?|NN.?|JJ.?|CD|DT|MD|'
                                            r'POS)+$')
         self.ignore_lemmas = {'be', 'of', 'the', 'and', 'or', 'a'}
         self.year_re = re.compile(r'[0-9]{4}')
@@ -272,8 +273,8 @@ class EntityLinker:
 
         # For length 1 only allows nouns and foreign and unknown word types
         elif len(pos_list) == 1 and (pos_list[0].startswith('N') or
-                                     pos_list[0].startswith('J') or \
-                                     pos_list[0] == 'FW' or \
+                                     pos_list[0].startswith('J') or
+                                     pos_list[0] == 'FW' or
                                      pos_list[0] == 'XX') or \
                 (len(pos_list) > 1 and self.valid_entity_tag.match(pos_str)):
             # It is not allowed to split a consecutive NNP

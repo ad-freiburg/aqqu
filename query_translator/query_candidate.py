@@ -301,6 +301,11 @@ class QueryCandidate:
         entities = sorted([me.entity for me in self.matched_entities])
         return [e.score for e in entities]
 
+    def prune_for_training(self):
+        """ Removes attributes which are not needed for training """
+        self.extension_history = []
+        self.current_extension = None
+
     def __getstate__(self):
         """
         We do this for pickling. Everything requiring a SPARQL backend
@@ -607,11 +612,10 @@ class QueryCandidate:
             limit *= 100
             # Note: this does not add "distinct" to the inner clause,
             # which is wrong but what sempre did as well.
-            query = "%s\nSELECT count(%s) WHERE " \
-                    "{\nSELECT %s WHERE {\n %s \n} LIMIT %s" \
-                    "\n}" % (query_prefix,
+            query = "%s\n" \
+                    "\nSELECT (COUNT(%s) AS ?count) WHERE {\n %s \n} LIMIT %s" \
+                    "\n" % (query_prefix,
                            query_vars[0],
-                           query_vars_str,
                            triples_string, limit)
         # Just prepend the prefix
         else:

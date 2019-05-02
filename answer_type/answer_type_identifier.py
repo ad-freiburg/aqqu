@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 PAD = 'PAD'
 
 class EntityMention:
-    def __init__(self, name=None, 
+    def __init__(self, name=None,
                  mid='UNK', types=['UNK'], position=0):
         self.name = name
         self.mid = mid
@@ -39,7 +39,7 @@ class EntityMention:
 
     def __repr__(self):
         return "[{}|{}|{}]".format(self.name,
-                self.mid, ','.join(self.types)) 
+                self.mid, ','.join(self.types))
 
     @staticmethod
     def fromString(text, entity_index, position=0, num_types=1):
@@ -130,7 +130,7 @@ def gq_read(gq_path, entity_index):
                                          types=types,
                                          category=category,
                                          score=0,
-                                         surface_score=0, 
+                                         surface_score=0,
                                          perfect_match=True)
             query = DummyQuery()
             for position, raw_tok in enumerate(query_str.split(' ')):
@@ -148,7 +148,7 @@ def gq_read(gq_path, entity_index):
                                           types=types,
                                           category=category,
                                           score=0,
-                                          surface_score=0, 
+                                          surface_score=0,
                                           perfect_match=True)
                     query.identified_entities.append(ie)
                 else:
