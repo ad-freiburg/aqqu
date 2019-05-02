@@ -1,9 +1,14 @@
 # Aqqu Question Answering System
 
-This is the code accompanying the publication "More Accurate Question Answering on Freebase, Hannah Bast and Elmar Haussmann, CIKM 2015"
+This is an ancestor of the code accompanying the publication "More Accurate
+Question Answering on Freebase, Hannah Bast and Elmar Haussmann, CIKM 2015"
 
-Follow the instructions in QUICKSTART.md to set up the system. This also includes descriptions on how to 
-obtain pre-requisite data, e.g., a complete index of Freebase.
+The original version can be found as as the very first commit of this
+repository and under the v1.0 tag.
+
+Follow the instructions in QUICKSTART.md to set up the system. This also
+includes descriptions on how to obtain pre-requisite data, e.g., a complete
+index of Freebase.
 
 Setup is easy if all pre-requisites are met.
 
