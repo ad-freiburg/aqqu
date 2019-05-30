@@ -327,8 +327,8 @@ def extract_features(candidates,
     all_features = []
     for c in candidates:
         feature_dict = simple_features(c)
+        ''' feature_dict:  {'result_size_1_to_20': 1, 'n_entity_matches': 1, 'n_word_relation_tokens': 1, 'avg_em_surface_score': 0.59, 'result_size_gte_20': 0, 'sum_weak_relation_tokens': 0, 'result_size_0': 0, 'n_literal_relations': 0, 'sum_em_surface_score': 0.59, 'matches_answer_type': 0.5, 'sum_em_popularity': 8.45, 'n_weak_relation_tokens': 0, 'n_literal_entity_tokens': 1, 'n_literal_relation_tokens': 0, 'coverage': 0.3333333333333333, 'n_literal_entities': 1, 'cardinality': 8, 'n_relations': 1, 'sum_context_relation_tokens': 0.000711, 'n_total_literal_tokens': 1, 'avg_em_popularity': 8.45, 'n_derivation_relation_tokens': 0, 'pattern_complexity': 1}'''
         all_features.append(feature_dict)
-
     if deep_rel_score_model:
         deep_rel_scores = deep_rel_score_model.score_multiple(candidates)
         for i, f in enumerate(all_features):

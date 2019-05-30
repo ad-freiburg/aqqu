@@ -257,8 +257,8 @@ def evaluate_translator(translator, queries, n_queries=None,
         logger.info("Translating query (id=%s) %s of %s for evaluation.",
                     q.id, n_translated_queries + 1, len(evaluation_queries))
         try:
-            _, candidates = translator.translate_and_execute_query(
-                q.utterance,
+            _, candidates, gender = translator.translate_and_execute_query(
+                q.utterance, [],
                 n_top=n_top)
         except urllib3.exceptions.MaxRetryError:
             # In some instances virtuoso just really really doesn't want to

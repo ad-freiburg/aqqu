@@ -13,6 +13,7 @@ import spacy
 import sys
 import csv
 import re
+import flask
 import gender_guesser.detector as gender
 import sparql_backend.loader
 import config_helper
@@ -100,7 +101,7 @@ class QueryTranslator(object):
         """
         return self.scorer
 
-    def translate_query(self, query_text):
+    def translate_query(self, query_text, raw_previous_entities):
         """
         Perform the actual translation.
         :param query_text:
@@ -111,7 +112,7 @@ class QueryTranslator(object):
         logger.info("Translating query: %s." % query_text)
         start_time = time.time()
         # Parse the query.
-        query = self.parse_and_identify_entities(query_text)
+        query = self.parse_and_identify_entities(query_text, raw_previous_entities)
         # Identify the target type.
         self.answer_type_identifier.identify_target(query)
         # Set the relation oracle.
@@ -132,7 +133,7 @@ class QueryTranslator(object):
         logging.info("Total translation time: %.2f ms." % duration)
         return query, ert_matches + ermrt_matches + ermrert_matches
 
-    def parse_and_identify_entities(self, query_text):
+    def parse_and_identify_entities(self, query_text, raw_previous_entities):
         """
         Parses the provided text, identifies entities and a list with
         previous identified entities.
@@ -149,23 +150,25 @@ class QueryTranslator(object):
         text_entities is always None"""
 
         entities, text_entities = self.entity_linker.identify_entities_in_tokens(
-            query.tokens)
+            query.tokens, raw_previous_entities)
 
         query.identified_entities = entities
         query.text_entities = text_entities
         return query
 
-    def translate_and_execute_query(self, query, n_top=200):
+    def translate_and_execute_query(self, query, raw_previous_entities, n_top=200):
         """
         Translates the query and returns a list
         of type TranslationResult.
         :param query:
+        :param raw_previous_entities:
         :return:
         """
         # Parse query.
+
         num_sparql_queries = self.backend.num_queries_executed
         sparql_query_time = self.backend.total_query_time
-        parsed_query, query_candidates = self.translate_query(query)
+        parsed_query, query_candidates = self.translate_query(query, raw_previous_entities)
         translation_time = (self.backend.total_query_time - sparql_query_time) * 1000
         num_sparql_queries = self.backend.num_queries_executed - num_sparql_queries
         avg_query_time = translation_time / (num_sparql_queries + 0.001)
@@ -232,11 +235,9 @@ class QueryTranslator(object):
             else:
                 name = ie.name
             name = name.encode('ascii', 'ignore').decode('ascii')
-            print("Identified entities name and id: ", name, mid)
             if mid not in gender_dict:
                 gender = self.gender.get_gender(name)
                 gender_dict[mid] = gender
-        print("Gender dictionary: ", gender_dict)
         return gender_dict
 
 
@@ -255,7 +256,6 @@ class Gender:
         use gender-guesser."""
 
         gender = None
-        print(self.gender_data["Albert Einstein"])
         try:
             gender = self.gender_data[name]
             print("Getting gender from gender.csv.")
@@ -292,7 +292,7 @@ class Gender:
 
         """ Use gender guesser if th name is not in a gender.csv."""
 
-        print("Using gender guesser!!!")
+        print("Using gender guesser.")
         first_name = name.split(" ")[0]
         d = gender.Detector()
         g = d.get_gender(first_name)

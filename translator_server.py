@@ -18,6 +18,7 @@ from query_translator.query_candidate import RelationMatch,\
     QueryCandidate, QueryCandidateNode
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
+from chatbot_dataset import ChatbotDataset
 
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
@@ -75,6 +76,11 @@ def map_identified_entity(entity: entity_linker.IdentifiedEntity)\
     """
     Maps an IdentifiedEntity into a JSON compatible dict
     """
+    try:
+        raw_name = entity.raw_name.text
+    except AttributeError:
+        raw_name = entity.entity.name
+
     mapped_entity = {
         'token_positions': [tok.i for tok in entity.tokens],
         'surface_score': entity.surface_score,
@@ -82,7 +88,8 @@ def map_identified_entity(entity: entity_linker.IdentifiedEntity)\
         'entity': map_entity(entity.entity),
         'perfect_match': entity.perfect_match,
         'text_match': entity.text_match,
-        'types': entity.types
+        'types': entity.types,
+        'raw_name': raw_name
     }
     return mapped_entity
 
@@ -263,8 +270,11 @@ def main() -> None:
     override = json.loads(args.override)
     if override != {}:
         LOG.info('overrides: %s', json.dumps(override))
+    # args.ranker_name: WQSP_Ranker
     ranker_conf = scorer_globals.scorers_dict[args.ranker_name]
+    # ranker_conf: <scorer_globals.Conf object at 0x7f5b672451d0>
     ranker = ranker_conf.instance(override)
+    # ranker: <query_translator.ranker.AqquModel object at 0x7f5b671bceb8>
     translator = QueryTranslator.init_from_config()
     translator.set_ranker(ranker)
 
@@ -277,9 +287,10 @@ def main() -> None:
         raw_query = flask.request.args.get('q', "")
         # raw_query = "who played dory in finding nemo"
         LOG.info("Translating query: %s", raw_query)
+        raw_previous_entities = flask.request.args.getlist("p")
+        # raw_query_and_prev_entities = [raw_query, raw_previous_entities]
         parsed_query, candidates, gender = translator.\
-        translate_and_execute_query(raw_query)
-        print("Gender dictonary is: ", gender)
+        translate_and_execute_query(raw_query, raw_previous_entities, 200)
         LOG.info("Done translating query: %s", raw_query)
         LOG.info("#candidates: %s", len(candidates))
 
@@ -297,6 +308,50 @@ def main() -> None:
             'config': ranker_conf.config()
             }
         return flask.jsonify(result)
+
+    @APP.route('/save', methods=['POST'])
+    def save():
+
+        """ Save the user approved question with answer data
+        that is sent from the Aqqu Chatbot"""
+
+        # user_approved_answer = request.form['Answer']
+        question = flask.request.args.get('Question')
+        index = flask.request.args.get('Index')
+        index = int(index)
+        user_approved_answer = flask.request.args.get('Answer')
+        file_to_save = flask.request.args.get('file_to_save')
+        file_to_save_main = flask.request.args.get('file_to_save_main')
+
+        parsed_query, candidates, gender = translator.\
+        translate_and_execute_query(question, [], 200)
+        api_data = map_candidates(
+            question, parsed_query, candidates, gender)
+
+        answer_is_correct = check_the_answer(api_data, index, user_approved_answer)
+        print(answer_is_correct)
+        ChatbotDataset(api_data, index, question,
+                       file_to_save, file_to_save_main)
+        return ('', 204)
+
+    def check_the_answer(api_data, index, user_approved_answer):
+
+        """ Check if the answer is the same as the one the user meant."""
+
+        answers = user_approved_answer.split(': ')[-1]
+        answers_list = answers.split(', ')
+        print(answers_list)
+        answers_set = set(answers_list)
+        answers_from_api_list = []
+        for a in api_data['candidates'][index]['answers']:
+            answers_from_api_list.append(a['name'])
+        print(answers_from_api_list)
+        answers_from_api_list = set(answers_from_api_list)
+        if answers_from_api_list == answers_set:
+            return True
+        else:
+            return False
+
 
     APP.run(use_reloader=False, host='0.0.0.0', threaded=False,
             port=args.port, debug=False)
