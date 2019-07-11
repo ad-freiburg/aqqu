@@ -13,6 +13,8 @@ from collections import namedtuple
 
 from dateutil import parser as dateparser
 import urllib3
+from translator_server import map_candidates
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +152,14 @@ class EvaluationQuery:
                                     [query.get('targetOrigSparql', None)]))
         elif isinstance(queries_json, dict):
             # WebQSP format
-            questions = queries_json['Questions']
+            try:
+                questions = queries_json['Questions']
+            except KeyError:
+                questions = []
+                conversations = queries_json['Conversations']
+                for c in conversations:
+                    for q in c['Questions']:
+                        questions.append(q)
             for idn, question in enumerate(questions):
                 utterance = question['RawQuestion']
                 possible_targets = []
@@ -237,6 +246,8 @@ def evaluate_translator(translator, queries, n_queries=None,
     """
     translated_queries = []
     n_translated_queries = 0
+    prev_id_list = []
+    gender_dict = {"male" : "", "female" : "", "unknown" : ""}
     start_time = time.time()
     if n_queries and len(queries) > n_queries:
         # Set the seed.
@@ -244,6 +255,7 @@ def evaluate_translator(translator, queries, n_queries=None,
         evaluation_queries = random.sample(queries, n_queries)
     else:
         evaluation_queries = queries
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!STARTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     for q in evaluation_queries:
         if ignore_howmany:
             if q.utterance.lower().startswith('how many') or \
@@ -256,10 +268,26 @@ def evaluate_translator(translator, queries, n_queries=None,
                 continue
         logger.info("Translating query (id=%s) %s of %s for evaluation.",
                     q.id, n_translated_queries + 1, len(evaluation_queries))
+
+        idx = 0
+        raw_query = q.utterance
+        print("query_text", raw_query)
+        # print("Previous id list before: ", prev_id_list)
+        prev_id_list = get_prev_id_from_gender_dict(raw_query, gender_dict)
+        # print("Previous id list after: ", prev_id_list)
+
         try:
-            _, candidates, gender = translator.translate_and_execute_query(
-                q.utterance, [],
+            parsed_query, candidates, gender = translator.translate_and_execute_query(
+                q.utterance, prev_id_list,
                 n_top=n_top)
+
+            api_data = map_candidates(raw_query, parsed_query, candidates, gender)
+            # print("api_data: ", api_data)
+            entity_dict = get_entity_dict(api_data)
+
+            if api_data["candidates"] != []:
+                # answer = get_answer(api_data, entity_dict, 0)
+                gender_dict = get_gender_dict(api_data, entity_dict, gender_dict)
         except urllib3.exceptions.MaxRetryError:
             # In some instances virtuoso just really really doesn't want to
             # give results. Completely screwing the training sucks though.  So
@@ -698,3 +726,208 @@ def evaluate(queries, output_file="eval_out.log"):
     if output_file:
         write_result_output(queries, output_file)
     return overall_result, queries
+
+
+"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""
+
+def get_prev_id_from_gender_dict(question, gender_dict):
+
+    male = [" he ", " his ", " him "]
+    additional_male = [" he", " he?", " his", " his?", " him", " him?"]
+    for am in additional_male:
+        if question.endswith(am):
+            male.append(am)
+
+    female = [" she ", " her "]
+    additional_female = [" she", " she?", " her", " her?"]
+    for af in additional_female:
+        if question.endswith(af):
+            female.append(af)
+
+    neutral = [" it ", " there ", " its "]
+    additional_neutral = [" it", " there", " its", " it?", " there?", " its?"]
+    for an in additional_neutral:
+        if question.endswith(an):
+            neutral.append(an)
+
+    all_gender = [" they ", " their ", " thems "]
+    additional_all_gender = [" they", " their", " thems", " they?", " their?", " thems?"]
+    for aag in additional_all_gender:
+        if question.endswith(aag):
+            all_gender.append(aag)
+
+    prev_id_list = []
+    print("*************************************")
+    # print("Gender dict: ", gender_dict)
+    if any(x in question for x in female):
+        # prev_id = request.cookies.get('prev_id_female')
+        prev_id = gender_dict["female"]
+        # now prev_id is a list
+        if prev_id != "" and prev_id != None:
+            prev_id_list = prev_id.split(";")
+    elif any(x in question for x in male):
+        prev_id = gender_dict["male"]
+        # now prev_id is a list
+        if prev_id != "" and prev_id != None:
+            prev_id_list = prev_id.split(";")
+    elif any(x in question for x in neutral):
+        prev_id = gender_dict["unknown"]
+        # now prev_id is a list
+        if prev_id != "" and prev_id != None:
+            prev_id_list = prev_id.split(";")
+    elif any(x in question for x in all_gender):
+        prev_id_list = []
+        prev_id1 = gender_dict["female"]
+        prev_id2 = gender_dict["male"]
+        prev_id3 = gender_dict["unknown"]
+        for pid in [prev_id1, prev_id2, prev_id3]:
+            if pid != "":
+                prev_id_list.append(pid)
+    else:
+        prev_id = ""
+        prev_id_list = []
+    """ """
+    pronoun = [" he", " she", " his", " her", " him", " it", " they", " their", " there"]
+    if all(x not in question for x in pronoun):
+        prev_id = ""
+        prev_id_list = []
+
+    return prev_id_list
+
+def get_entity_dict(api_data):
+
+    """ The function filters the identified entities from answer API.
+    It returns the entity dictionary, where entity id is a key
+    and entity name is a value."""
+
+    entity_dict = {}
+    identified_entities = api_data["parsed_query"]["identified_entities"]
+    for e in identified_entities:
+        entity_dict[e["entity"]["mid"]] = e["entity"]["name"]
+
+    return entity_dict
+
+def get_identified_entities(api_data):
+
+    # current_id is a set with all identified entities
+    # that came up in candidates answers
+    """ There will alsways be an mid for entity matches!"""
+
+    current_id = set()
+    for ans in api_data["candidates"]:
+        for pid in ans["entity_matches"]:
+            current_id.add(pid["mid"])
+    return current_id
+
+def get_prev_id_to_save(api_data, entity_dict):
+
+    """ The function adds enttiy names to the prev_id
+    to store it in cookies together.
+    prev_id is a string with id1,name1;id2,name;..."""
+    current_id = get_identified_entities(api_data)
+    prev_id = ""
+    for ci in current_id:
+        prev_obj_name = entity_dict[ci]
+        prev_obj_name = prev_obj_name.replace('PREV:', '')
+        prev_id = prev_id + ";" + ci + "," + prev_obj_name
+    prev_id = prev_id[1:]
+    return prev_id
+
+def get_answer_entities(api_data):
+
+    """ Add answers entities, not sure about it."""
+
+    answ_entity_set = set()
+    first_answer = api_data["candidates"][0]["answers"]
+    for fa in first_answer:
+        try:
+            answ_entity_set.add(fa["mid"] + "," + fa["name"])
+        except KeyError:
+            pass
+    return answ_entity_set
+
+def add_answer_entities(api_data, prev_id):
+
+    """ Add the entities, that are identified in answers candidates
+    to identified entites to store them together."""
+    # get entities, identified in answers
+    answ_entity_set = get_answer_entities(api_data)
+    for aes in answ_entity_set:
+        prev_id = prev_id + ";" + aes
+    return prev_id
+
+def get_prev_id_dict(api_data, prev_id):
+
+    """ Make a dictionary out of prev_id string.""" 
+
+    # other identified entities
+    prev_id = add_answer_entities(api_data, prev_id)
+    prev_id_list = prev_id.split(";")
+
+    prev_id_dict = {}
+    for pil in prev_id_list:
+        ent = pil.split(",")
+        try:
+            prev_id_dict[ent[0]] = ent[1]
+        except IndexError:
+            print("No entity id or entity name.")
+    return prev_id_dict
+
+def get_gender_dict(api_data, entity_dict, gender_dict):
+
+    """ Getting gender dictionary where keys are: male, female and unknown,
+    values are id1,name1;id2,name2;..."""
+    prev_id = get_prev_id_to_save(api_data, entity_dict)
+    prev_id_dict = get_prev_id_dict(api_data, prev_id)
+    gender_dict = {"male" : "", "female" : "", "unknown" : ""}
+    for e in prev_id_dict.keys():
+        gender = "unknown"
+        parsed_query_obj = prev_id_dict[e]
+        try:
+            gender = api_data["gender"][e]
+        except KeyError:
+            gender = "unknown"
+        if gender_dict[gender] == "":
+            gender_dict[gender] = e + "," + prev_id_dict[e]
+        else:
+            gender_dict[gender] = gender_dict[gender] + ";" + e + "," + prev_id_dict[e]
+    return gender_dict
+
+def get_answer(api_data, entity_dict, idx):
+
+    # get all the identified entities id of an answer
+    answer_entity_id = []
+    for aei in api_data["candidates"][idx]["entity_matches"]:
+        answer_entity_id.append(aei["mid"])
+
+    parsed_query_obj_name = ""
+    for aei in answer_entity_id:
+        if entity_dict[aei][:5] == "PREV:":
+            obj_name = entity_dict[aei][5:]
+        else:
+            obj_name = entity_dict[aei]
+        parsed_query_obj_name = parsed_query_obj_name + ", " + obj_name
+
+    # Cut the firs ", "
+    parsed_query_obj_name = parsed_query_obj_name[2:]
+    if parsed_query_obj_name is '' or parsed_query_obj_name is None:
+        """"""
+        parsed_query_obj_name = api_data["parsed_query"]["identified_entities"][0]["entity"]["name"]
+        answer_entity_id = [api_data["parsed_query"]["identified_entities"][0]["entity"]["mid"]]
+
+    # type of question, relation that helped to find an answer
+    parsed_query_type_whole = api_data["candidates"][idx]["relation_matches"]\
+                                      [0]["name"]
+    # Take the last part of a relation
+    parsed_query_type = parsed_query_type_whole.split(".")[-1]
+    # delete all non characters and non numbers
+    parsed_query_type = re.sub('[^0-9a-zA-Z]+', ' ', parsed_query_type)
+    # print("api_data[candidates][idx][answers]: ", api_data["candidates"][idx]["answers"])
+    answer = api_data["candidates"][idx]["answers"][0]["name"]
+    # if more than one answer
+    for i in range(1, len(api_data["candidates"][idx]["answers"])):
+        answer = answer + ", " + api_data["candidates"][idx]["answers"][i]["name"]
+
+    return parsed_query_obj_name + ", " + parsed_query_type + ": " + str(answer)
+
+"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""

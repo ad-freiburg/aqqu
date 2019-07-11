@@ -288,7 +288,7 @@ def main() -> None:
         # raw_query = "who played dory in finding nemo"
         LOG.info("Translating query: %s", raw_query)
         raw_previous_entities = flask.request.args.getlist("p")
-        # raw_query_and_prev_entities = [raw_query, raw_previous_entities]
+        # raw_previous_entities:  ['m.03_f0,Johann Sebastian Bach']
         parsed_query, candidates, gender = translator.\
         translate_and_execute_query(raw_query, raw_previous_entities, 200)
         LOG.info("Done translating query: %s", raw_query)
@@ -330,8 +330,9 @@ def main() -> None:
 
         answer_is_correct = check_the_answer(api_data, index, user_approved_answer)
         print(answer_is_correct)
-        ChatbotDataset(api_data, index, question,
-                       file_to_save, file_to_save_main)
+        if answer_is_correct:
+            ChatbotDataset(api_data, index, question,
+                           file_to_save, file_to_save_main)
         return ('', 204)
 
     def check_the_answer(api_data, index, user_approved_answer):

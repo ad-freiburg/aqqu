@@ -3,13 +3,13 @@
 
 import json
 import codecs
-import os
-from difflib import SequenceMatcher
 import copy
+
 
 class ChatbotDataset():
 
-    def __init__(self, api_data, idx, question, file_to_save, file_to_save_main):
+    def __init__(self, api_data, idx, question,
+                 file_to_save, file_to_save_main):
 
         self.file_to_save = file_to_save
         self.file_to_save_main = file_to_save_main
@@ -20,14 +20,8 @@ class ChatbotDataset():
 
         """ Save a question and the data, validated
         by an Aqqu Chatbot user to a special dataset."""
-        # if not os.path.exists('/data/'):
-            # os.mkdir('/data/')
 
-        # os.chdir("/local/data/davtyana/aqqu/Aqqu")
-        # print("Changed: ", os.getcwd())
         question = question.lower()
-        # isascii = lambda question: len(question) == len(question.encode())
-        # question = question.encode('ascii', 'ignore').decode('ascii')
         data = self.open_users_data_file(self.file_to_save)
         data = self.add_query(data, api_data, idx, question)
         data = self.check_if_merge(data)
@@ -38,13 +32,11 @@ class ChatbotDataset():
         """ Open and read the file with already
         saved quesries and answers."""
 
-        # f = open(filename, 'r')
         print("Open file ", filename)
         try:
             f = open(filename, 'r')
         except IOError:
             f = open(filename, 'w+')
-        # data = json.load(f)
         try:
             data = json.load(f)
         except ValueError:
@@ -60,27 +52,17 @@ class ChatbotDataset():
         """ Checks if a query have been asked before, if yes - rewrite it,
         if no - add a new question-answer to a questions list."""
 
-        '''try:
-            questions = data['Questions']
-        except KeyError:
-            data['Questions'] = []'''
-        questions = data['Questions']
         add_question = True
-        '''for q in questions:
-            data_raw_question = q['RawQuestion']
-            data_proc_question = q['ProcessedQuestion']
-            if question == data_raw_question or question == data_proc_question:
-                q = create_new_question_for_data(data, api_data, idx, question)
-                question_exists = True'''
-        # print('data[Questions] : ', data['Questions'])
-        new_question = self.create_new_question_for_data(data, api_data, idx, question)
+        new_question = self.create_new_question_for_data(data,
+                                                         api_data,
+                                                         idx,
+                                                         question)
         for q in data['Questions']:
             if q['ProcessedQuestion'] == new_question['ProcessedQuestion']:
                 q = new_question
                 add_question = False
         if add_question:
             data['Questions'].append(new_question)
-        # print('data[Questions] after: ', data['Questions'])
         return data
 
     def create_new_question_for_data(self, data, api_data, idx, question):
@@ -120,6 +102,7 @@ class ChatbotDataset():
     def get_parses_list(self, api_data, idx):
 
         """ Get the value for data['Questions']['Parses']"""
+
         parses_list = []
         parses_dict = {}
         parses_dict["AnnotatorId"] = None
@@ -128,13 +111,16 @@ class ChatbotDataset():
         parses_dict["AnnotatorComment"]["ParseQuality"] = "Complete"
         parses_dict["AnnotatorComment"]["QuestionQuality"] = "Good"
         parses_dict["AnnotatorComment"]["Confidence"] = "Normal"
-        parses_dict["AnnotatorComment"]["FreeFormComment"] = "First-round parse verification"
+        parses_dict["AnnotatorComment"]["FreeFormComment"] = \
+            "First-round parse verification"
         parses_dict["Sparql"] = api_data["candidates"][idx]["sparql"]
-        topic_entity_mid = api_data["candidates"][idx]["entity_matches"][0]["mid"]
+        first_ent_match = api_data["candidates"][idx]["entity_matches"][0]
+        topic_entity_mid = first_ent_match["mid"]
         parses_dict["TopicEntityMid"] = topic_entity_mid
-        topic_entity_name, potential_topic_entity_mention = self.get_topic_entity_name(api_data, topic_entity_mid)
+        topic_entity_name, pot_entity_mention = self.get_topic_entity_name(
+            api_data, topic_entity_mid)
         parses_dict["TopicEntityName"] = topic_entity_name
-        parses_dict["PotentialTopicEntityMention"] = potential_topic_entity_mention
+        parses_dict["PotentialTopicEntityMention"] = pot_entity_mention
         inferential_chain = []
         for ic in api_data["candidates"][idx]["relation_matches"]:
             inferential_chain.append(ic["name"])
@@ -154,14 +140,13 @@ class ChatbotDataset():
 
         topic_entity_name = ""
         potential_topic_entity_mention = ""
-        # identified_entities is a listanswer_dict = {}
         identified_entities = api_data["parsed_query"]["identified_entities"]
         for ie in identified_entities:
             entity_mid = ie["entity"]["mid"]
             if entity_mid == topic_entity_mid:
                 topic_entity_name = ie["entity"]["name"]
                 potential_topic_entity_mention = ie["raw_name"]
-        return topic_entity_name,potential_topic_entity_mention
+        return topic_entity_name, potential_topic_entity_mention
 
     def get_answers(self, api_data, idx):
 
@@ -175,7 +160,7 @@ class ChatbotDataset():
             answer_dict["EntityName"] = a["name"]
             # if the answer is a date - no mid for answer, only name
             # if the answer is a date - "AnswerType" is value
-            # if the answer is a date - "EntityName" is null 
+            # if the answer is a date - "EntityName" is null
             # and "AnswerArgument" is the "name" of api answer
             try:
                 answer_dict["AnswerArgument"] = a["mid"]
@@ -203,7 +188,6 @@ class ChatbotDataset():
             data["FreebaseVersion"] = "Model Trained on 2015-08-09"
             data["Questions"] = []
         return data
-
 
     def merge(self, data):
 
@@ -233,12 +217,7 @@ class ChatbotDataset():
             main_data["Questions"].extend(questions)
         return main_data
 
-
     def write_renewed_data(self, filename, data):
 
-        '''f = open(filename, "w+")
-        f.write(json.dumps(data, indent=4))
-        f.close()'''
-        print("Writing data!")
-        with codecs.open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
+       with codecs.open(filename, 'w', encoding='utf-8') as f:
+           json.dump(data, f, ensure_ascii=False, indent=4)

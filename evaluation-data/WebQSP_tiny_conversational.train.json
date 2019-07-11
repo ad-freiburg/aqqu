@@ -1,0 +1,316 @@
+{
+  "Version": "1.0",
+  "FreebaseVersion": "2015-08-09",
+  "Questions": [
+  {
+      "QuestionId": "WebQTrn-0",
+      "RawQuestion": "what is the name of justin bieber brother?",
+      "ProcessedQuestion": "what is the name of justin bieber brother",
+      "Parses": [
+        {
+          "ParseId": "WebQTrn-0.P0",
+          "AnnotatorId": 1,
+          "AnnotatorComment": {
+            "ParseQuality": "Complete",
+            "QuestionQuality": "Good",
+            "Confidence": "Normal",
+            "FreeFormComment": "First-round parse verification"
+          },
+          "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.06w2sn5)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.06w2sn5 ns:people.person.sibling_s ?y .\n?y ns:people.sibling_relationship.sibling ?x .\n?x ns:people.person.gender ns:m.05zppz .\n}\n",
+          "PotentialTopicEntityMention": "justin bieber",
+          "TopicEntityName": "Justin Bieber",
+          "TopicEntityMid": "m.06w2sn5",
+          "InferentialChain": [
+            "people.person.sibling_s",
+            "people.sibling_relationship.sibling"
+          ],
+          "Constraints": [
+            {
+              "Operator": "Equal",
+              "ArgumentType": "Entity",
+              "Argument": "m.05zppz",
+              "EntityName": "Male",
+              "SourceNodeIndex": 1,
+              "NodePredicate": "people.person.gender",
+              "ValueType": "String"
+            }
+          ],
+          "Time": null,
+          "Order": null,
+          "Answers": [
+            {
+              "AnswerType": "Entity",
+              "AnswerArgument": "m.0gxnnwq",
+              "EntityName": "Jaxon Bieber"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "QuestionId": "WebQTrn-1",
+      "RawQuestion": "what character did natalie portman play in star wars?",
+      "ProcessedQuestion": "what character did natalie portman play in star wars",
+      "Parses": [
+        {
+          "ParseId": "WebQTrn-1.P0",
+          "AnnotatorId": 2,
+          "AnnotatorComment": {
+            "ParseQuality": "Complete",
+            "QuestionQuality": "Good",
+            "Confidence": "Normal",
+            "FreeFormComment": ""
+          },
+          "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.09l3p)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.09l3p ns:film.actor.film ?y .\n?y ns:film.performance.character ?x .\n?y ns:film.performance.film ns:m.0ddt_ .\n}\n",
+          "PotentialTopicEntityMention": "natalie portman",
+          "TopicEntityName": "Natalie Portman",
+          "TopicEntityMid": "m.09l3p",
+          "InferentialChain": [
+            "film.actor.film",
+            "film.performance.character"
+          ],
+          "Constraints": [
+            {
+              "Operator": "Equal",
+              "ArgumentType": "Entity",
+              "Argument": "m.0ddt_",
+              "EntityName": "Star Wars Episode I: The Phantom Menace",
+              "SourceNodeIndex": 0,
+              "NodePredicate": "film.performance.film",
+              "ValueType": "String"
+            }
+          ],
+          "Time": null,
+          "Order": null,
+          "Answers": [
+            {
+              "AnswerType": "Entity",
+              "AnswerArgument": "m.0drf_",
+              "EntityName": "Padmé Amidala"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "QuestionId": "WebQTrn-3",
+      "RawQuestion": "what country is the grand bahama island in?",
+      "ProcessedQuestion": "what country is the grand bahama island in",
+      "Parses": [
+        {
+          "ParseId": "WebQTrn-3.P0",
+          "AnnotatorId": 1,
+          "AnnotatorComment": {
+            "ParseQuality": "Complete",
+            "QuestionQuality": "Good",
+            "Confidence": "Normal",
+            "FreeFormComment": ""
+          },
+          "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.03st9j)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.03st9j ns:location.location.containedby ?x .\n?x ns:base.biblioness.bibs_location.loc_type ?sk0 .\nFILTER (str(?sk0) = \"Country\")\n}\n",
+          "PotentialTopicEntityMention": "grand bahama island",
+          "TopicEntityName": "Grand Bahama",
+          "TopicEntityMid": "m.03st9j",
+          "InferentialChain": [
+            "location.location.containedby"
+          ],
+          "Constraints": [
+            {
+              "Operator": "Equal",
+              "ArgumentType": "Value",
+              "Argument": "Country",
+              "EntityName": null,
+              "SourceNodeIndex": 0,
+              "NodePredicate": "base.biblioness.bibs_location.loc_type",
+              "ValueType": "String"
+            }
+          ],
+          "Time": null,
+          "Order": null,
+          "Answers": [
+            {
+              "AnswerType": "Entity",
+              "AnswerArgument": "m.0160w",
+              "EntityName": "Bahamas"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "QuestionId": "WebQTrn-4",
+      "RawQuestion": "what kind of money to take to bahamas?",
+      "ProcessedQuestion": "what kind of money to take to bahamas",
+      "Parses": [
+        {
+          "ParseId": "WebQTrn-4.P0",
+          "AnnotatorId": 1,
+          "AnnotatorComment": {
+            "ParseQuality": "Complete",
+            "QuestionQuality": "Good",
+            "Confidence": "Normal",
+            "FreeFormComment": "First-round parse verification"
+          },
+          "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0160w)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0160w ns:location.country.currency_used ?x .\n}\n",
+          "PotentialTopicEntityMention": "bahamas",
+          "TopicEntityName": "Bahamas",
+          "TopicEntityMid": "m.0160w",
+          "InferentialChain": [
+            "location.country.currency_used"
+          ],
+          "Constraints": [],
+          "Time": null,
+          "Order": null,
+          "Answers": [
+            {
+              "AnswerType": "Entity",
+              "AnswerArgument": "m.01l6dm",
+              "EntityName": "Bahamian dollar"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "QuestionId": "WebQTrn-5",
+      "RawQuestion": "what character did john noble play in lord of the rings?",
+      "ProcessedQuestion": "what character did john noble play in lord of the rings",
+      "Parses": [
+        {
+          "ParseId": "WebQTrn-5.P0",
+          "AnnotatorId": 2,
+          "AnnotatorComment": {
+            "ParseQuality": "Complete",
+            "QuestionQuality": "Good",
+            "Confidence": "Normal",
+            "FreeFormComment": ""
+          },
+          "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.02fgm7)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.02fgm7 ns:film.actor.film ?y .\n?y ns:film.performance.character ?x .\n?y ns:film.performance.film ns:m.017gm7 .\n}\n",
+          "PotentialTopicEntityMention": "john noble",
+          "TopicEntityName": "John Noble",
+          "TopicEntityMid": "m.02fgm7",
+          "InferentialChain": [
+            "film.actor.film",
+            "film.performance.character"
+          ],
+          "Constraints": [
+            {
+              "Operator": "Equal",
+              "ArgumentType": "Entity",
+              "Argument": "m.017gm7",
+              "EntityName": "The Lord of the Rings: The Two Towers",
+              "SourceNodeIndex": 0,
+              "NodePredicate": "film.performance.film",
+              "ValueType": "String"
+            }
+          ],
+          "Time": null,
+          "Order": null,
+          "Answers": [
+            {
+              "AnswerType": "Entity",
+              "AnswerArgument": "m.0gp7f",
+              "EntityName": "Denethor II"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "QuestionId": "WebQTrn-6",
+      "RawQuestion": "who does joakim noah play for?",
+      "ProcessedQuestion": "who does joakim noah play for",
+      "Parses": [
+        {
+          "ParseId": "WebQTrn-6.P0",
+          "AnnotatorId": 1,
+          "AnnotatorComment": {
+            "ParseQuality": "Complete",
+            "QuestionQuality": "Good",
+            "Confidence": "Normal",
+            "FreeFormComment": "First-round parse verification"
+          },
+          "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0c2yrf)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0c2yrf ns:sports.pro_athlete.teams ?y .\n?y ns:sports.sports_team_roster.team ?x .\nFILTER(NOT EXISTS {?y ns:sports.sports_team_roster.from ?sk0} || \nEXISTS {?y ns:sports.sports_team_roster.from ?sk1 . \nFILTER(xsd:datetime(?sk1) <= \"2015-08-10\"^^xsd:dateTime) })\nFILTER(NOT EXISTS {?y ns:sports.sports_team_roster.to ?sk2} || \nEXISTS {?y ns:sports.sports_team_roster.to ?sk3 . \nFILTER(xsd:datetime(?sk3) >= \"2015-08-10\"^^xsd:dateTime) })\n}\n",
+          "PotentialTopicEntityMention": "joakim noah",
+          "TopicEntityName": "Joakim Noah",
+          "TopicEntityMid": "m.0c2yrf",
+          "InferentialChain": [
+            "sports.pro_athlete.teams",
+            "sports.sports_team_roster.team"
+          ],
+          "Constraints": [
+            {
+              "Operator": "LessOrEqual",
+              "ArgumentType": "Value",
+              "Argument": "2015-08-10",
+              "EntityName": "",
+              "SourceNodeIndex": 0,
+              "NodePredicate": "sports.sports_team_roster.from",
+              "ValueType": "DateTime"
+            },
+            {
+              "Operator": "GreaterOrEqual",
+              "ArgumentType": "Value",
+              "Argument": "2015-08-10",
+              "EntityName": "",
+              "SourceNodeIndex": 0,
+              "NodePredicate": "sports.sports_team_roster.to",
+              "ValueType": "DateTime"
+            }
+          ],
+          "Time": {
+            "IsRelativeToNow": true,
+            "Start": "0000-00-00",
+            "End": "0000-00-00",
+            "AssociatedConstraints": [
+              0,
+              1
+            ],
+            "PotentialTimeMention": null
+          },
+          "Order": null,
+          "Answers": [
+            {
+              "AnswerType": "Entity",
+              "AnswerArgument": "m.0jm74",
+              "EntityName": "Chicago Bulls"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "QuestionId": "WebQTrn-7",
+      "RawQuestion": "where are the nfl redskins from?",
+      "ProcessedQuestion": "where are the nfl redskins from",
+      "Parses": [
+        {
+          "ParseId": "WebQTrn-7.P0",
+          "AnnotatorId": 3,
+          "AnnotatorComment": {
+            "ParseQuality": "Complete",
+            "QuestionQuality": "Good",
+            "Confidence": "Normal",
+            "FreeFormComment": ""
+          },
+          "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.084l5)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.084l5 ns:sports.sports_team.location ?x .\n}\n",
+          "PotentialTopicEntityMention": "redskins",
+          "TopicEntityName": "Washington Redskins",
+          "TopicEntityMid": "m.084l5",
+          "InferentialChain": [
+            "sports.sports_team.location"
+          ],
+          "Constraints": [],
+          "Time": null,
+          "Order": null,
+          "Answers": [
+            {
+              "AnswerType": "Entity",
+              "AnswerArgument": "m.0rh6k",
+              "EntityName": "Washington, D.C."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

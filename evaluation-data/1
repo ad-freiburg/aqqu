@@ -1,0 +1,755 @@
+{
+    "FreebaseVersion": "2015-08-09", 
+    "Conversations": [
+        {
+            "TopicEntityMid": "m.01_d4", 
+            "Questions": [
+                {
+                    "QuestionId": "WebQTest-973", 
+                    "utterance": "what time zone is chicago in right now", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 0, 
+                            "ParseId": "WebQTest-973.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": "First-round parse verification"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.01_d4)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.01_d4 ns:location.location.time_zones ?x .\n}\n", 
+                            "InferentialChain": [
+                                "location.location.time_zones"
+                            ], 
+                            "PotentialTopicEntityMention": "chicago", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.02fqwt", 
+                                    "EntityName": "Central Time Zone", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Chicago", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.01_d4", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Central Time Zone"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.01_d4)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.01_d4 ns:location.location.time_zones ?x .\n}\n", 
+                    "RawQuestion": "what time zone is chicago in right now?", 
+                    "ProcessedQuestion": "what time zone is chicago in right now", 
+                    "id": 9
+                }, 
+                {
+                    "QuestionId": "WebQTest-2013", 
+                    "utterance": "where to stay in it tourist", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 0, 
+                            "ParseId": "WebQTest-2013.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": "First-round parse verification"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.01_d4)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.01_d4 ns:travel.travel_destination.accommodation ?x .\n}\n", 
+                            "InferentialChain": [
+                                "travel.travel_destination.accommodation"
+                            ], 
+                            "PotentialTopicEntityMention": "chicago", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.0ldv2s1", 
+                                    "EntityName": "Hotel Sax Chicago", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Chicago", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.01_d4", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Hotel Sax Chicago"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.01_d4)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.01_d4 ns:travel.travel_destination.accommodation ?x .\n}\n", 
+                    "RawQuestion": "where to stay in it tourist?", 
+                    "ProcessedQuestion": "where to stay in it tourist", 
+                    "id": 10
+                }
+            ]
+        }, 
+        {
+            "TopicEntityMid": "m.02lfw5", 
+            "Questions": [
+                {
+                    "QuestionId": "WebQTest-1142", 
+                    "utterance": "who does ronaldinho play for now 2011", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 2, 
+                            "ParseId": "WebQTest-1142.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Low", 
+                                "FreeFormComment": "?"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.02lfw5)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.02lfw5 ns:sports.pro_athlete.teams ?y .\n?y ns:sports.sports_team_roster.team ?x .\nFILTER(NOT EXISTS {?y ns:sports.sports_team_roster.from ?sk0} || \nEXISTS {?y ns:sports.sports_team_roster.from ?sk1 . \nFILTER(xsd:datetime(?sk1) <= \"2011-12-31\"^^xsd:dateTime) })\nFILTER(NOT EXISTS {?y ns:sports.sports_team_roster.to ?sk2} || \nEXISTS {?y ns:sports.sports_team_roster.to ?sk3 . \nFILTER(xsd:datetime(?sk3) >= \"2011-01-01\"^^xsd:dateTime) })\n}\n", 
+                            "InferentialChain": [
+                                "sports.pro_athlete.teams", 
+                                "sports.sports_team_roster.team"
+                            ], 
+                            "PotentialTopicEntityMention": "ronaldinho", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.01352_", 
+                                    "EntityName": "Brazil national football team", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.019lty", 
+                                    "EntityName": "Clube de Regatas do Flamengo", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Ronaldinho", 
+                            "Time": {
+                                "Start": "2011-01-01", 
+                                "PotentialTimeMention": "2011", 
+                                "End": "2011-12-31", 
+                                "IsRelativeToNow": false, 
+                                "AssociatedConstraints": [
+                                    0, 
+                                    1
+                                ]
+                            }, 
+                            "TopicEntityMid": "m.02lfw5", 
+                            "Order": null, 
+                            "Constraints": [
+                                {
+                                    "EntityName": "", 
+                                    "Argument": "2011-12-31", 
+                                    "ArgumentType": "Value", 
+                                    "Operator": "LessOrEqual", 
+                                    "NodePredicate": "sports.sports_team_roster.from", 
+                                    "SourceNodeIndex": 0, 
+                                    "ValueType": "DateTime"
+                                }, 
+                                {
+                                    "EntityName": "", 
+                                    "Argument": "2011-01-01", 
+                                    "ArgumentType": "Value", 
+                                    "Operator": "GreaterOrEqual", 
+                                    "NodePredicate": "sports.sports_team_roster.to", 
+                                    "SourceNodeIndex": 0, 
+                                    "ValueType": "DateTime"
+                                }
+                            ]
+                        }
+                    ], 
+                    "results": [
+                        "Brazil national football team", 
+                        "Clube de Regatas do Flamengo"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.02lfw5)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.02lfw5 ns:sports.pro_athlete.teams ?y .\n?y ns:sports.sports_team_roster.team ?x .\nFILTER(NOT EXISTS {?y ns:sports.sports_team_roster.from ?sk0} || \nEXISTS {?y ns:sports.sports_team_roster.from ?sk1 . \nFILTER(xsd:datetime(?sk1) <= \"2011-12-31\"^^xsd:dateTime) })\nFILTER(NOT EXISTS {?y ns:sports.sports_team_roster.to ?sk2} || \nEXISTS {?y ns:sports.sports_team_roster.to ?sk3 . \nFILTER(xsd:datetime(?sk3) >= \"2011-01-01\"^^xsd:dateTime) })\n}\n", 
+                    "RawQuestion": "who does ronaldinho play for now 2011?", 
+                    "ProcessedQuestion": "who does ronaldinho play for now 2011", 
+                    "id": 11
+                }
+            ]
+        }, 
+        {
+            "TopicEntityMid": "m.0d9xq", 
+            "Questions": [
+                {
+                    "QuestionId": "WebQTest-941", 
+                    "utterance": "what is ella fitzgerald parents name", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 0, 
+                            "ParseId": "WebQTest-941.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": "First-round parse verification"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0d9xq)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0d9xq ns:people.person.parents ?x .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.parents"
+                            ], 
+                            "PotentialTopicEntityMention": "ella fitzgerald", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.0kcwjlp", 
+                                    "EntityName": "Temperance Fitzgerald", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.0kcwjlw", 
+                                    "EntityName": "William Fitzgerald", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Ella Fitzgerald", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0d9xq", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Temperance Fitzgerald", 
+                        "William Fitzgerald"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0d9xq)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0d9xq ns:people.person.parents ?x .\n}\n", 
+                    "RawQuestion": "what is ella fitzgerald parents name?", 
+                    "ProcessedQuestion": "what is ella fitzgerald parents name", 
+                    "id": 12
+                }
+            ]
+        }, 
+        {
+            "TopicEntityMid": "m.0271_s", 
+            "Questions": [
+                {
+                    "QuestionId": "WebQTest-184", 
+                    "utterance": "what state does romney live in", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 0, 
+                            "ParseId": "WebQTest-184.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": "First-round parse verification"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.places_lived ?y .\n?y ns:people.place_lived.location ?x .\n?x ns:common.topic.notable_types ns:m.0kpys4 .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.places_lived", 
+                                "people.place_lived.location"
+                            ], 
+                            "PotentialTopicEntityMention": "romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.05k7sb", 
+                                    "EntityName": "Massachusetts", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": [
+                                {
+                                    "EntityName": "US State", 
+                                    "Argument": "m.0kpys4", 
+                                    "ArgumentType": "Entity", 
+                                    "Operator": "Equal", 
+                                    "NodePredicate": "common.topic.notable_types", 
+                                    "SourceNodeIndex": 1, 
+                                    "ValueType": "String"
+                                }
+                            ]
+                        }
+                    ], 
+                    "results": [
+                        "Massachusetts"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.places_lived ?y .\n?y ns:people.place_lived.location ?x .\n?x ns:common.topic.notable_types ns:m.0kpys4 .\n}\n", 
+                    "RawQuestion": "what state does romney live in?", 
+                    "ProcessedQuestion": "what state does romney live in", 
+                    "id": 13
+                }, 
+                {
+                    "QuestionId": "WebQTest-271", 
+                    "utterance": "where did his parents come from", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 1, 
+                            "ParseId": "WebQTest-271.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": ""
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.place_of_birth ?x .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.place_of_birth"
+                            ], 
+                            "PotentialTopicEntityMention": "mitt romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.02dtg", 
+                                    "EntityName": "Detroit", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Detroit"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.place_of_birth ?x .\n}\n", 
+                    "RawQuestion": "where did his parents come from?", 
+                    "ProcessedQuestion": "where did his parents come from", 
+                    "id": 14
+                }, 
+                {
+                    "QuestionId": "WebQTest-438", 
+                    "utterance": "what university did it graduated from", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 3, 
+                            "ParseId": "WebQTest-438.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "VeryLow", 
+                                "FreeFormComment": "?? undergraduate or higher degree?"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.institution ?x .\n?y ns:education.education.degree ns:m.014mlp .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.education", 
+                                "education.education.institution"
+                            ], 
+                            "PotentialTopicEntityMention": "romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.0l2tk", 
+                                    "EntityName": "Brigham Young University", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": [
+                                {
+                                    "EntityName": "Bachelor of Arts", 
+                                    "Argument": "m.014mlp", 
+                                    "ArgumentType": "Entity", 
+                                    "Operator": "Equal", 
+                                    "NodePredicate": "education.education.degree", 
+                                    "SourceNodeIndex": 0, 
+                                    "ValueType": "String"
+                                }
+                            ]
+                        }
+                    ], 
+                    "results": [
+                        "Brigham Young University"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.institution ?x .\n?y ns:education.education.degree ns:m.014mlp .\n}\n", 
+                    "RawQuestion": "what university did it graduated from?", 
+                    "ProcessedQuestion": "what university did it graduated from", 
+                    "id": 15
+                }, 
+                {
+                    "QuestionId": "WebQTest-1145", 
+                    "utterance": "where did it graduated college", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 3, 
+                            "ParseId": "WebQTest-1145.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Low", 
+                                "FreeFormComment": "?"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.institution ?x .\n?y ns:education.education.degree ns:m.014mlp .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.education", 
+                                "education.education.institution"
+                            ], 
+                            "PotentialTopicEntityMention": "romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.0l2tk", 
+                                    "EntityName": "Brigham Young University", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": [
+                                {
+                                    "EntityName": "Bachelor of Arts", 
+                                    "Argument": "m.014mlp", 
+                                    "ArgumentType": "Entity", 
+                                    "Operator": "Equal", 
+                                    "NodePredicate": "education.education.degree", 
+                                    "SourceNodeIndex": 0, 
+                                    "ValueType": "String"
+                                }
+                            ]
+                        }
+                    ], 
+                    "results": [
+                        "Brigham Young University"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.institution ?x .\n?y ns:education.education.degree ns:m.014mlp .\n}\n", 
+                    "RawQuestion": "where did it graduated college?", 
+                    "ProcessedQuestion": "where did it graduated college", 
+                    "id": 16
+                }, 
+                {
+                    "QuestionId": "WebQTest-1425", 
+                    "utterance": "what colleges did it attend", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 5, 
+                            "ParseId": "WebQTest-1425.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": ""
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.institution ?x .\n?x ns:common.topic.notable_types ns:m.01y2hnl .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.education", 
+                                "education.education.institution"
+                            ], 
+                            "PotentialTopicEntityMention": "mitt romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.014zws", 
+                                    "EntityName": "Harvard Law School", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.03ksy", 
+                                    "EntityName": "Harvard University", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.06pwq", 
+                                    "EntityName": "Stanford University", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.0kqj1", 
+                                    "EntityName": "Harvard Business School", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.0l2tk", 
+                                    "EntityName": "Brigham Young University", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": [
+                                {
+                                    "EntityName": "College/University", 
+                                    "Argument": "m.01y2hnl", 
+                                    "ArgumentType": "Entity", 
+                                    "Operator": "Equal", 
+                                    "NodePredicate": "common.topic.notable_types", 
+                                    "SourceNodeIndex": 1, 
+                                    "ValueType": "String"
+                                }
+                            ]
+                        }
+                    ], 
+                    "results": [
+                        "Harvard Law School", 
+                        "Harvard University", 
+                        "Stanford University", 
+                        "Harvard Business School", 
+                        "Brigham Young University"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.institution ?x .\n?x ns:common.topic.notable_types ns:m.01y2hnl .\n}\n", 
+                    "RawQuestion": "what colleges did it attend?", 
+                    "ProcessedQuestion": "what colleges did it attend", 
+                    "id": 17
+                }, 
+                {
+                    "QuestionId": "WebQTest-1472", 
+                    "utterance": "when did it become governor", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 1, 
+                            "ParseId": "WebQTest-1472.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": ""
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:government.politician.government_positions_held ?y .\n?y ns:government.government_position_held.from ?x .\n?y ns:government.government_position_held.basic_title ns:m.0fkvn .\n}\n", 
+                            "InferentialChain": [
+                                "government.politician.government_positions_held", 
+                                "government.government_position_held.from"
+                            ], 
+                            "PotentialTopicEntityMention": "romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "2003-01-02", 
+                                    "EntityName": null, 
+                                    "AnswerType": "Value"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": [
+                                {
+                                    "EntityName": "Governor", 
+                                    "Argument": "m.0fkvn", 
+                                    "ArgumentType": "Entity", 
+                                    "Operator": "Equal", 
+                                    "NodePredicate": "government.government_position_held.basic_title", 
+                                    "SourceNodeIndex": 0, 
+                                    "ValueType": "String"
+                                }
+                            ]
+                        }
+                    ], 
+                    "results": [
+                        null
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:government.politician.government_positions_held ?y .\n?y ns:government.government_position_held.from ?x .\n?y ns:government.government_position_held.basic_title ns:m.0fkvn .\n}\n", 
+                    "RawQuestion": "when did it become governor?", 
+                    "ProcessedQuestion": "when did it become governor", 
+                    "id": 18
+                }, 
+                {
+                    "QuestionId": "WebQTest-1794", 
+                    "utterance": "where is his family from", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 1, 
+                            "ParseId": "WebQTest-1794.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": ""
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.place_of_birth ?x .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.place_of_birth"
+                            ], 
+                            "PotentialTopicEntityMention": "mitt romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.02dtg", 
+                                    "EntityName": "Detroit", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Detroit"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.place_of_birth ?x .\n}\n", 
+                    "RawQuestion": "where is his family from?", 
+                    "ProcessedQuestion": "where is his family from", 
+                    "id": 19
+                }, 
+                {
+                    "QuestionId": "WebQTest-2010", 
+                    "utterance": "what degrees does it have", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 0, 
+                            "ParseId": "WebQTest-2010.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": "First-round parse verification"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.degree ?x .\n}\n", 
+                            "InferentialChain": [
+                                "people.person.education", 
+                                "education.education.degree"
+                            ], 
+                            "PotentialTopicEntityMention": "romney", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.013zdg", 
+                                    "EntityName": "Juris Doctor", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.014mlp", 
+                                    "EntityName": "Bachelor of Arts", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.07s6fsf", 
+                                    "EntityName": "MBA", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Mitt Romney", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0271_s", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Juris Doctor", 
+                        "Bachelor of Arts", 
+                        "MBA"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0271_s)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0271_s ns:people.person.education ?y .\n?y ns:education.education.degree ?x .\n}\n", 
+                    "RawQuestion": "what degrees does it have?", 
+                    "ProcessedQuestion": "what degrees does it have", 
+                    "id": 20
+                }
+            ]
+        },
+        {
+            "TopicEntityMid": "m.076ltd", 
+            "Questions": [
+                {
+                    "QuestionId": "WebQTest-612", 
+                    "utterance": "who does jeremy shockey play for in 2012", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 3, 
+                            "ParseId": "WebQTest-612.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "VeryLow", 
+                                "FreeFormComment": "?? in 2012 filter not added."
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.076ltd)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.076ltd ns:base.schemastaging.athlete_extra.salary ?y .\n?y ns:base.schemastaging.athlete_salary.team ?x .\n}\n", 
+                            "InferentialChain": [
+                                "base.schemastaging.athlete_extra.salary", 
+                                "base.schemastaging.athlete_salary.team"
+                            ], 
+                            "PotentialTopicEntityMention": "jeremy shockey", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.01y3c", 
+                                    "EntityName": "Carolina Panthers", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Jeremy Shockey", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.076ltd", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Carolina Panthers"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.076ltd)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.076ltd ns:base.schemastaging.athlete_extra.salary ?y .\n?y ns:base.schemastaging.athlete_salary.team ?x .\n}\n", 
+                    "RawQuestion": "who does jeremy shockey play for in 2012?", 
+                    "ProcessedQuestion": "who does jeremy shockey play for in 2012", 
+                    "id": 1
+                }
+            ]
+        }, 
+        {
+            "TopicEntityMid": "m.0165v", 
+            "Questions": [
+                {
+                    "QuestionId": "WebQTest-823", 
+                    "utterance": "what does bolivia border", 
+                    "Parses": [
+                        {
+                            "AnnotatorId": 0, 
+                            "ParseId": "WebQTest-823.P0", 
+                            "AnnotatorComment": {
+                                "ParseQuality": "Complete", 
+                                "QuestionQuality": "Good", 
+                                "Confidence": "Normal", 
+                                "FreeFormComment": "First-round parse verification"
+                            }, 
+                            "Sparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0165v)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0165v ns:location.location.adjoin_s ?y .\n?y ns:location.adjoining_relationship.adjoins ?x .\n}\n", 
+                            "InferentialChain": [
+                                "location.location.adjoin_s", 
+                                "location.adjoining_relationship.adjoins"
+                            ], 
+                            "PotentialTopicEntityMention": "bolivia", 
+                            "Answers": [
+                                {
+                                    "AnswerArgument": "m.015fr", 
+                                    "EntityName": "Brazil", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.016wzw", 
+                                    "EntityName": "Peru", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.01p1v", 
+                                    "EntityName": "Chile", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.05v10", 
+                                    "EntityName": "Paraguay", 
+                                    "AnswerType": "Entity"
+                                }, 
+                                {
+                                    "AnswerArgument": "m.0jgd", 
+                                    "EntityName": "Argentina", 
+                                    "AnswerType": "Entity"
+                                }
+                            ], 
+                            "TopicEntityName": "Bolivia", 
+                            "Time": null, 
+                            "TopicEntityMid": "m.0165v", 
+                            "Order": null, 
+                            "Constraints": []
+                        }
+                    ], 
+                    "results": [
+                        "Brazil", 
+                        "Peru", 
+                        "Chile", 
+                        "Paraguay", 
+                        "Argentina"
+                    ], 
+                    "targetOrigSparql": "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.0165v)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.0165v ns:location.location.adjoin_s ?y .\n?y ns:location.adjoining_relationship.adjoins ?x .\n}\n", 
+                    "RawQuestion": "what does bolivia border?", 
+                    "ProcessedQuestion": "what does bolivia border", 
+                    "id": 2
+                }
+            ]
+        }
+    ], 
+    "Version": "1.0"
+}

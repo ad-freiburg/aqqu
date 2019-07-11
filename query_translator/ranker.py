@@ -322,6 +322,9 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        print("Learn Model line 324")
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
         f_extract = f_ext.extract_features
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate onc
@@ -614,6 +617,10 @@ class CandidatePruner(MLModel):
             logger.info("%s: %.4f" % (name, weight))
 
     def learn_model(self, labels, X):
+        ''' Learn model for candidate pruning.'''
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        print("Learn Model line 619")
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
         logger.info("Learning prune classifier.")
         logger.info("#of labeled examples: %s" % len(X))
         logger.info("#labels non-zero: %s" % sum(labels))
@@ -749,6 +756,10 @@ class RelationNgramScorer(MLModel):
         logger.info(classification_report(labels, labels_predict))
 
     def learn_model(self, train_queries):
+        ''' Learn scoring model.'''
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+        print("Learn Model line 758")
+        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
         def ngram_features(cs):
             return f_ext.extract_ngram_features(cs,
                                                 ngram_dict=self.ngrams_dict)
