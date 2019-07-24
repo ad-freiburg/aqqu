@@ -4,17 +4,30 @@
 import json
 import codecs
 import copy
+import os
 
 
 class ChatbotDataset():
 
     def __init__(self, api_data, idx, question,
-                 file_to_save, file_to_save_main):
+                 folder_to_save, user_agent):
 
-        self.file_to_save = file_to_save
-        self.file_to_save_main = file_to_save_main
+        self.folder_to_save = '/'.join([folder_to_save, user_agent]) + '/'
+        self.check_folder()
+        self.file_to_save = '/'.join([self.folder_to_save,
+                                      'aqqu_chatbot_data.json'])
+        self.file_to_save_main = ''.join([self.folder_to_save,
+                                          'main_aqqu_chatbot_data.json'])
+        self.user_agent = user_agent
 
         self.save_question_in_user_data(api_data, idx, question)
+
+    def check_folder(self):
+
+        """ If a folder for this user does not exist - create it."""
+
+        if not os.path.exists(self.folder_to_save):
+            os.makedirs(self.folder_to_save)
 
     def save_question_in_user_data(self, api_data, idx, question):
 
@@ -32,7 +45,6 @@ class ChatbotDataset():
         """ Open and read the file with already
         saved quesries and answers."""
 
-        print("Open file ", filename)
         try:
             f = open(filename, 'r')
         except IOError:
@@ -108,6 +120,8 @@ class ChatbotDataset():
         parses_dict["AnnotatorId"] = None
         parses_dict["ParseId"] = None
         parses_dict["AnnotatorComment"] = {}
+        parses_dict["AnnotatorComment"]["QuerySource"] = "Aqqu Chatbot"
+        parses_dict["AnnotatorComment"]["WrittenBy"] = self.user_agent
         parses_dict["AnnotatorComment"]["ParseQuality"] = "Complete"
         parses_dict["AnnotatorComment"]["QuestionQuality"] = "Good"
         parses_dict["AnnotatorComment"]["Confidence"] = "Normal"

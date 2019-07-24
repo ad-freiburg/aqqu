@@ -320,8 +320,9 @@ def main() -> None:
         index = flask.request.args.get('Index')
         index = int(index)
         user_approved_answer = flask.request.args.get('Answer')
-        file_to_save = flask.request.args.get('file_to_save')
-        file_to_save_main = flask.request.args.get('file_to_save_main')
+        folder_to_save = flask.request.args.get('folder_to_save')
+        # file_to_save_main = flask.request.args.get('file_to_save_main')
+        user_agent = flask.request.args.get('user_agent')
 
         parsed_query, candidates, gender = translator.\
         translate_and_execute_query(question, [], 200)
@@ -332,7 +333,7 @@ def main() -> None:
         print(answer_is_correct)
         if answer_is_correct:
             ChatbotDataset(api_data, index, question,
-                           file_to_save, file_to_save_main)
+                           folder_to_save, user_agent)
         return ('', 204)
 
     def check_the_answer(api_data, index, user_approved_answer):
