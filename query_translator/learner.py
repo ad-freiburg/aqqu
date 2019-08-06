@@ -197,17 +197,7 @@ def train(scorer_name, override, cached):
     :param cached:
     :return:
     """
-    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-    print('scorer_name: ', scorer_name)
-    print('override: ', override)
-    print('cached: ', cached)
-    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-    '''!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    scorer_name:  WQSP_Ranker
-    override:  {}
-    cached:  False
-    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    '''
+
     try:
         if override != {}:
             logger.info('Overrides: %s', json.dumps(override))
@@ -217,21 +207,17 @@ def train(scorer_name, override, cached):
         logger.error("Unknown scorer: %s", scorer_name)
         exit(1)
     train_datasets = scorer_obj.train_datasets
-    print('train_datasets: ', train_datasets)
-    '''train_datasets:  ['wqsptrain']'''
+
     train_queries_all = []
     for train_dataset in train_datasets:
         train_queries = get_evaluated_queries(train_dataset,
                                               cached,
                                               scorer_obj.get_parameters(),
                                               n_top=2000)
-        print("train_queries: ", train_queries)
         logger.info("Loaded %s queries for training on %s",
                     len(train_queries), train_dataset)
         train_queries_all.extend(train_queries)
     for tqa in train_queries_all:
-    	print("utterance: ", tqa.utterance)
-    	print("eval_candidates: ", tqa.eval_candidates)
 
     logger.info("Training model on %s queries", len(train_queries_all))
     scorer_obj.learn_model(train_queries_all)

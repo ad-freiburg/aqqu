@@ -255,7 +255,6 @@ def evaluate_translator(translator, queries, n_queries=None,
         evaluation_queries = random.sample(queries, n_queries)
     else:
         evaluation_queries = queries
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!STARTING!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     for q in evaluation_queries:
         if ignore_howmany:
             if q.utterance.lower().startswith('how many') or \
@@ -271,10 +270,8 @@ def evaluate_translator(translator, queries, n_queries=None,
 
         idx = 0
         raw_query = q.utterance
-        print("query_text", raw_query)
-        # print("Previous id list before: ", prev_id_list)
+
         prev_id_list = get_prev_id_from_gender_dict(raw_query, gender_dict)
-        # print("Previous id list after: ", prev_id_list)
 
         try:
             parsed_query, candidates, gender = translator.translate_and_execute_query(
@@ -282,11 +279,9 @@ def evaluate_translator(translator, queries, n_queries=None,
                 n_top=n_top)
 
             api_data = map_candidates(raw_query, parsed_query, candidates, gender)
-            # print("api_data: ", api_data)
             entity_dict = get_entity_dict(api_data)
 
             if api_data["candidates"] != []:
-                # answer = get_answer(api_data, entity_dict, 0)
                 gender_dict = get_gender_dict(api_data, entity_dict, gender_dict)
         except urllib3.exceptions.MaxRetryError:
             # In some instances virtuoso just really really doesn't want to
@@ -757,10 +752,7 @@ def get_prev_id_from_gender_dict(question, gender_dict):
             all_gender.append(aag)
 
     prev_id_list = []
-    print("*************************************")
-    # print("Gender dict: ", gender_dict)
     if any(x in question for x in female):
-        # prev_id = request.cookies.get('prev_id_female')
         prev_id = gender_dict["female"]
         # now prev_id is a list
         if prev_id != "" and prev_id != None:
@@ -922,12 +914,9 @@ def get_answer(api_data, entity_dict, idx):
     parsed_query_type = parsed_query_type_whole.split(".")[-1]
     # delete all non characters and non numbers
     parsed_query_type = re.sub('[^0-9a-zA-Z]+', ' ', parsed_query_type)
-    # print("api_data[candidates][idx][answers]: ", api_data["candidates"][idx]["answers"])
     answer = api_data["candidates"][idx]["answers"][0]["name"]
     # if more than one answer
     for i in range(1, len(api_data["candidates"][idx]["answers"])):
         answer = answer + ", " + api_data["candidates"][idx]["answers"][i]["name"]
 
     return parsed_query_obj_name + ", " + parsed_query_type + ": " + str(answer)
-
-"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"""

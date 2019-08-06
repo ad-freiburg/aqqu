@@ -330,7 +330,6 @@ def main() -> None:
             question, parsed_query, candidates, gender)
 
         answer_is_correct = check_the_answer(api_data, index, user_approved_answer)
-        print(answer_is_correct)
         if answer_is_correct:
             ChatbotDataset(api_data, index, question,
                            folder_to_save, user_agent)
@@ -342,12 +341,10 @@ def main() -> None:
 
         answers = user_approved_answer.split(': ')[-1]
         answers_list = answers.split(', ')
-        print(answers_list)
         answers_set = set(answers_list)
         answers_from_api_list = []
         for a in api_data['candidates'][index]['answers']:
             answers_from_api_list.append(a['name'])
-        print(answers_from_api_list)
         answers_from_api_list = set(answers_from_api_list)
         if answers_from_api_list == answers_set:
             return True

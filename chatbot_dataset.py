@@ -216,11 +216,8 @@ class ChatbotDataset():
             questions = copy.deepcopy(data["Questions"])
             main_questions = main_data["Questions"]
 
-            print("Length of questions: ", len(questions))
-
             for i, mq in enumerate(main_questions):
                 for q in data["Questions"]:
-                    print("Q")
                     if mq["ProcessedQuestion"] == q["ProcessedQuestion"]:
                         main_data["Questions"][i] = q
                         try:

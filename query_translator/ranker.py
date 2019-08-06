@@ -263,7 +263,6 @@ class AqquModel(MLModel, Ranker):
 
     def load_model(self):
         model_file = self.get_model_filename()
-        print('model_file: ', model_file)
         # model_file:  ./models//WQSP_Ranker_wqsptrain_arm_atm.model
         try:
 
@@ -322,9 +321,7 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        print("Learn Model line 324")
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+
         f_extract = f_ext.extract_features
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate onc
@@ -618,9 +615,6 @@ class CandidatePruner(MLModel):
 
     def learn_model(self, labels, X):
         ''' Learn model for candidate pruning.'''
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        print("Learn Model line 619")
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
         logger.info("Learning prune classifier.")
         logger.info("#of labeled examples: %s" % len(X))
         logger.info("#labels non-zero: %s" % sum(labels))
@@ -757,9 +751,7 @@ class RelationNgramScorer(MLModel):
 
     def learn_model(self, train_queries):
         ''' Learn scoring model.'''
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
-        print("Learn Model line 758")
-        print("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^")
+
         def ngram_features(cs):
             return f_ext.extract_ngram_features(cs,
                                                 ngram_dict=self.ngrams_dict)
