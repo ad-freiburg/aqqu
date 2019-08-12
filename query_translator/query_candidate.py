@@ -602,7 +602,8 @@ class QueryCandidate:
             for var in query_vars:
                 for node_str in node_strs:
                     filters.append('%s != %s' % (var, node_str))
-            triples_string += ' .\n FILTER (%s)' % (' && '.join(filters))
+            triples_string += ' .\n '+ ' . '.join(
+                ['FILTER ({})'.format(filt) for filt in filters])
 
         # If the query asks for a query count and the target relation is not already
         # a count -> count the results. (Also do this if exlicitly requested).
