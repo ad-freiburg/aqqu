@@ -18,7 +18,6 @@ from query_translator.query_candidate import RelationMatch,\
     QueryCandidate, QueryCandidateNode
 from query_translator.translator import QueryTranslator, Query
 import entity_linker.entity_linker as entity_linker
-from chatbot_dataset import ChatbotDataset
 
 
 logging.basicConfig(format="%(asctime)s : %(levelname)s "
@@ -308,48 +307,6 @@ def main() -> None:
             'config': ranker_conf.config()
             }
         return flask.jsonify(result)
-
-    @APP.route('/save', methods=['POST'])
-    def save():
-
-        """ Save the user approved question with answer data
-        that is sent from the Aqqu Chatbot"""
-
-        # user_approved_answer = request.form['Answer']
-        question = flask.request.args.get('Question')
-        index = flask.request.args.get('Index')
-        index = int(index)
-        user_approved_answer = flask.request.args.get('Answer')
-        folder_to_save = flask.request.args.get('folder_to_save')
-        # file_to_save_main = flask.request.args.get('file_to_save_main')
-        user_agent = flask.request.args.get('user_agent')
-
-        parsed_query, candidates, gender = translator.\
-        translate_and_execute_query(question, [], 200)
-        api_data = map_candidates(
-            question, parsed_query, candidates, gender)
-
-        answer_is_correct = check_the_answer(api_data, index, user_approved_answer)
-        if answer_is_correct:
-            ChatbotDataset(api_data, index, question,
-                           folder_to_save, user_agent)
-        return ('', 204)
-
-    def check_the_answer(api_data, index, user_approved_answer):
-
-        """ Check if the answer is the same as the one the user meant."""
-
-        answers = user_approved_answer.split(': ')[-1]
-        answers_list = answers.split(', ')
-        answers_set = set(answers_list)
-        answers_from_api_list = []
-        for a in api_data['candidates'][index]['answers']:
-            answers_from_api_list.append(a['name'])
-        answers_from_api_list = set(answers_from_api_list)
-        if answers_from_api_list == answers_set:
-            return True
-        else:
-            return False
 
 
     APP.run(use_reloader=False, host='0.0.0.0', threaded=False,
