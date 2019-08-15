@@ -196,22 +196,24 @@ class QueryTranslator(object):
                 " Avg per query: %.2f ms." % (n_total_answers, len(ranked_candidates[:n_top]),
                                                   result_fetch_time, avg_result_fetch_time))
         logger.info("Done translating and executing: %s." % query)
-        gender = self.get_genders(ranked_candidates[:n_top], parsed_query)
-        return parsed_query, ranked_candidates[:n_top], gender
+        # A dictionary with genders, dentified for each entity. 
+        gender_dict = self.get_genders(ranked_candidates[:n_top], parsed_query)
+        return parsed_query, ranked_candidates[:n_top], gender_dict
 
     def get_genders(self, candidates: Iterable[QueryCandidate],
                     parsed_query: Query):
+
+        """ Returns a dictionary, where entity ID id a key
+        and "male", "female", or "neutral" are the values.
+        gender_dict will be used for gender specific context tracking."""
 
         query_results = []
         for candidate in candidates:
             for result in candidate.query_result:
                 if len(result) > 1:
-                    res1 = result[1].encode('ascii', 'ignore').decode('ascii')
-                    res0 = result[0].encode('ascii', 'ignore').decode('ascii')
-                    query_results.append({'name': res1, 'mid': res0})
+                    query_results.append({'name': result[1], 'mid': result[0]})
                 else:
-                    res0 = result[0].encode('ascii', 'ignore').decode('ascii')
-                    query_results.append({'name': res0})
+                    query_results.append({'name': result[0]})
         gender_dict = {}
         # for result in query_results:
         if len(query_results) > 0:
@@ -229,12 +231,10 @@ class QueryTranslator(object):
                     gender_dict[mid] = gender
         for ie in parsed_query.identified_entities:
             mid = ie.sparql_name()
-            mid = mid.encode('ascii', 'ignore').decode('ascii')
             if ie.name[:5] == "PREV:":
                 name = ie.name[5:]
             else:
                 name = ie.name
-            name = name.encode('ascii', 'ignore').decode('ascii')
             if mid not in gender_dict:
                 gender = self.gender.get_gender(name)
                 gender_dict[mid] = gender
@@ -278,14 +278,9 @@ class Gender:
                 rows[1] = re.sub(' +', ' ', rows[1])
                 rows[1] = rows[1].lstrip()
                 # possible to remove all non alphabetic caracters
-                # rows[1] = re.sub(r'([^\s\w]|_)+', '', rows[1])
-                rows[1] = rows[1].encode('ascii', 'ignore').decode('ascii')
-                rows[2] = rows[2].encode('ascii', 'ignore').decode('ascii')
                 if rows[1] != '':
                     if rows[2] == 'Male@en' or rows[2] == 'Female@en':
                         gender_data[rows[1][:-3]] = rows[2][:-3]
-                    """else:
-                        gender_data[rows[1][:-3]] = rows[2]"""
         return gender_data
 
     def use_gender_guesser(self, name):
