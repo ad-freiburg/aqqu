@@ -29,12 +29,14 @@ LOG = logging.getLogger(__name__)
 
 APP = flask.Flask(__name__)
 
+
 class ClassNameJSONEncoder(json.JSONEncoder):
     """
     Allows JSON serializing classes as their name
     """
     def default(self, obj):
         return obj.__class__.__name__
+
 
 APP.json_encoder = ClassNameJSONEncoder
 
@@ -73,6 +75,11 @@ def map_identified_entity(entity: entity_linker.IdentifiedEntity)\
     """
     Maps an IdentifiedEntity into a JSON compatible dict
     """
+    try:
+        raw_name = entity.raw_name.text
+    except AttributeError:
+        raw_name = entity.entity.name
+
     mapped_entity = {
         'token_positions': [tok.i for tok in entity.tokens],
         'surface_score': entity.surface_score,
@@ -80,7 +87,8 @@ def map_identified_entity(entity: entity_linker.IdentifiedEntity)\
         'entity': map_entity(entity.entity),
         'perfect_match': entity.perfect_match,
         'text_match': entity.text_match,
-        'types': entity.types
+        'types': entity.types,
+        'raw_name': raw_name
     }
     return mapped_entity
 
@@ -94,6 +102,7 @@ def map_query(query: Query) -> Dict[str, Any]:
 
     identified_entities = [map_identified_entity(entity)
                            for entity in query.identified_entities]
+
     query_map = {
         'target_type': query.target_type.as_string(),
         'tokens': tokens,
@@ -217,7 +226,8 @@ def map_candidate(candidate: QueryCandidate) -> Dict[str, Any]:
 
 
 def map_candidates(raw_query: str, parsed_query: Query,
-                   candidates: Iterable[QueryCandidate])\
+                   candidates: Iterable[QueryCandidate],
+                   gender: dict)\
                                              -> Dict[str, Any]:
     """
     Turns the final translations which are lists of namedtuple with
@@ -230,7 +240,9 @@ def map_candidates(raw_query: str, parsed_query: Query,
 
     return {'raw_query': raw_query,
             'parsed_query': map_query(parsed_query),
-            'candidates': candidate_dicts}
+            'candidates': candidate_dicts,
+            'gender': gender}
+
 
 def main() -> None:
     """
@@ -259,8 +271,11 @@ def main() -> None:
     override = json.loads(args.override)
     if override != {}:
         LOG.info('overrides: %s', json.dumps(override))
+    # args.ranker_name: WQSP_Ranker
     ranker_conf = scorer_globals.scorers_dict[args.ranker_name]
+    # ranker_conf: <scorer_globals.Conf object at 0x7f5b672451d0>
     ranker = ranker_conf.instance(override)
+    # ranker: <query_translator.ranker.AqquModel object at 0x7f5b671bceb8>
     translator = QueryTranslator.init_from_config()
     translator.set_ranker(ranker)
 
@@ -271,13 +286,17 @@ def main() -> None:
         REST entry point providing a very simple query interface
         """
         raw_query = flask.request.args.get('q', "")
+        # raw_query = "who played dory in finding nemo"
         LOG.info("Translating query: %s", raw_query)
-        parsed_query, candidates = translator.translate_and_execute_query(
-            raw_query)
+        raw_previous_entities = flask.request.args.getlist("p")
+        # raw_previous_entities:  ['m.03_f0,Johann Sebastian Bach']
+        parsed_query, candidates, gender = translator.\
+        translate_and_execute_query(raw_query, raw_previous_entities, 200)
         LOG.info("Done translating query: %s", raw_query)
         LOG.info("#candidates: %s", len(candidates))
+
         return flask.jsonify(map_candidates(
-            raw_query, parsed_query, candidates))
+            raw_query, parsed_query, candidates, gender))
 
     @APP.route('/lookupid', methods=['GET'])
     def lookupid():
@@ -302,6 +321,7 @@ def main() -> None:
             'config': ranker_conf.config()
             }
         return flask.jsonify(result)
+
 
     APP.run(use_reloader=False, host='0.0.0.0', threaded=False,
             port=args.port, debug=False)

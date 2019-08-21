@@ -269,6 +269,7 @@ class AqquModel(MLModel, Ranker):
 
     def load_model(self):
         model_file = self.get_model_filename()
+        # model_file:  ./models//WQSP_Ranker_wqsptrain_arm_atm.model
         try:
 
             [model, label_enc, dict_vec, pair_dict_vec, scaler] \
@@ -328,6 +329,7 @@ class AqquModel(MLModel, Ranker):
         return prune_model
 
     def learn_model(self, train_queries):
+
         f_extract = f_ext.extract_features
         dict_vec = DictVectorizer(sparse=False)
         # Extract features for each candidate once
@@ -421,6 +423,12 @@ class AqquModel(MLModel, Ranker):
         """
         if not self.model:
             self.load_model()
+        '''self.model: RandomForestClassifier(bootstrap=True, class_weight=None, criterion='gini',
+            max_depth=None, max_features='auto', max_leaf_nodes=None,
+            min_impurity_decrease=0.0, min_impurity_split=None,
+            min_samples_leaf=1, min_samples_split=2,
+            min_weight_fraction_leaf=0.0, n_estimators=200, n_jobs=4,
+            oob_score=False, random_state=999, verbose=0, warm_start=False)'''
         start = time.time()
         num_candidates = len(candidates)
         pairs = list(itertools.combinations(range(num_candidates), 2))
@@ -488,7 +496,7 @@ class AqquModel(MLModel, Ranker):
         if store_features:
             for i, candidate in enumerate(candidates):
                 candidate.feature_dict = features[i]
-
+        '''features before self.dict_vec.transform: [{'matches_answer_type': 0.5, 'n_relations': 1, 'n_word_relation_tokens': 1, 'result_size_gte_20': 0, 'n_entity_matches': 1, 'coverage': 0.3333333333333333, 'n_derivation_relation_tokens': 0, 'sum_em_surface_score': 0.59, 'sum_context_relation_tokens': 0.000711, 'cardinality': 8, 'n_literal_entities': 1, 'pattern_complexity': 1, 'result_size_0': 0, 'n_weak_relation_tokens': 0, 'relation_score': 0.466, 'n_literal_relation_tokens': 0, 'avg_em_popularity': 8.45, 'avg_em_surface_score': 0.59, 'sum_weak_relation_tokens': 0, 'deep_relation_score': 0.0, 'n_total_literal_tokens': 1, 'n_literal_entity_tokens': 1, 'n_literal_relations': 0, 'result_size_1_to_20': 1, 'sum_em_popularity': 8.45}, {}, ....]'''
         features = self.dict_vec.transform(features)
         duration = (time.time() - start) * 1000
         logger.info("Extracted features in %s ms" % (duration))
@@ -620,6 +628,7 @@ class CandidatePruner(MLModel):
             logger.info("%s: %.4f" % (name, weight))
 
     def learn_model(self, labels, X):
+        ''' Learn model for candidate pruning.'''
         logger.info("Learning prune classifier.")
         logger.info("#of labeled examples: %s" % len(X))
         num_pos_labels = np.count_nonzero(labels)
@@ -759,6 +768,8 @@ class RelationNgramScorer(MLModel):
         logger.info(classification_report(labels, labels_predict))
 
     def learn_model(self, train_queries):
+        ''' Learn scoring model.'''
+
         def ngram_features(cs):
             return f_ext.extract_ngram_features(cs,
                                                 ngram_dict=self.ngrams_dict)
