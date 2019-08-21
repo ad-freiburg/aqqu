@@ -1,0 +1,35 @@
+---
+version: 1
+
+kind: experiment
+
+hptuning:
+  concurrency: 1
+  matrix:
+    dropout_keep_prob:
+      values: [0.5, 0.75, 0.875, 0.99]
+
+environment:
+  resources:
+    cpu:
+      requests: 4
+      limits: 4
+    gpu:
+      requests: 1
+      limits: 1
+    memory:
+      requests: 40000
+      limits: 40000
+
+build:
+  image: tensorflow/tensorflow:1.5.0-gpu-py3
+  build_steps:
+    - apt-get update && apt-get install -y libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev librocksdb-dev
+    - pip install -r requirements.txt
+    - python -m spacy download en_core_web_lg
+
+run:
+  cmd:
+    - python setup.py build_ext --inplace
+    - python -m query_translator.learner --config conf_riseml.cfg cv WQSP_Ranker wqsptrain --override '{"dropout_keeb_prob" : {{ dropout_keep_prob }} }'
+
