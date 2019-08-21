@@ -153,10 +153,12 @@ def map_relation_matches(rel_matches: Iterable[RelationMatch])\
             count_match_dict = {'count': count_match.count}
             rel_match_dict['count_match'] = count_match_dict
 
-        relation_name = rel_match.relation
         if isinstance(rel_match.relation, tuple):
-            relation_name = ' -> '.join(rel_match.relation)
-        rel_match_dict['name'] = relation_name
+            rel_match_dict['name'] = ' -> '.join(rel_match.relation)
+            rel_match_dict['relations'] = list(rel_match.relation)
+        else:
+            rel_match_dict['name'] = rel_match.relation
+            rel_match_dict['relations'] = [rel_match.relation]
 
         token_positions = [tok.i for tok in rel_match.tokens]
         rel_match_dict['token_positions'] = token_positions
@@ -211,7 +213,7 @@ def map_candidate(candidate: QueryCandidate) -> Dict[str, Any]:
     root_node = map_query_graph(candidate.root_node, visited)
 
     return {
-        'sparql': candidate.to_sparql_query(),
+        'sparql': candidate.to_sparql_query(include_name=True),
         'rank_score': candidate.rank_score,
         'matches_answer_type': candidate.matches_answer_type,
         'features': candidate.feature_dict,
@@ -295,6 +297,18 @@ def main() -> None:
 
         return flask.jsonify(map_candidates(
             raw_query, parsed_query, candidates, gender))
+
+    @APP.route('/lookupid', methods=['GET'])
+    def lookupid():
+        """
+        REST entry point for looking up a human readable name for an entity
+        """
+        mid = flask.request.args.get('id', "")
+        entity = translator.entity_index.get_entity_for_mid(mid)
+        result = None
+        if entity:
+            result = map_entity(entity)
+        return flask.jsonify(result)
 
     @APP.route('/config', methods=['GET'])
     def get_config():

@@ -10,6 +10,7 @@ import random
 import json
 import time
 from collections import namedtuple
+from typing import List
 
 from dateutil import parser as dateparser
 import urllib3
@@ -55,6 +56,7 @@ class EvaluationQuery:
         # one LIST per target interpretation
         self.targets_mids = targets_mids
         self.targets_names = targets_names
+        self.targets_mids_or_names = targets_mids if targets_mids else targets_names
         self.targets_sparqls = targets_sparqls
         # the targeted parses if available in and implemented for the dataset
         # represented using the ER(T), ERMR(T), ERMRER(T) patterns and string
@@ -64,6 +66,7 @@ class EvaluationQuery:
         # When processed, the ranked list of candidates returned.
         self.eval_candidates = []
         self.oracle_position = -1
+        self.oracle_position_parse = -1
         # These are the final results for this query.
         # If the query has at least one candidate, these are identical
         # to the first candidate's results.
@@ -75,7 +78,6 @@ class EvaluationQuery:
         self.oracle_f1 = 0.0
         self.oracle_parse_score = 0.0
         self.oracle_parse_match = False
-        self.oracle_parse_score = 0.0
         self.false_negatives = []
         self.false_positives = []
 
@@ -85,6 +87,7 @@ class EvaluationQuery:
         :return:
         """
         self.oracle_position = -1
+        self.oracle_position_parse = -1
         self.precision = 0.0
         self.recall = 0.0
         self.f1 = 0.0
@@ -106,7 +109,7 @@ class EvaluationQuery:
         return d
 
     @staticmethod
-    def queries_from_simple_questions(filename):
+    def queries_from_simple_questions(filename: str):
         """Load evaluation queries from SimpleQuestion TSV files"""
         # SimpleQuestions uses a simple TSV format with
         # <subject_url>\t<predicate_url>\t<object_url>\n
@@ -127,11 +130,12 @@ class EvaluationQuery:
                 obj_mid = sq_normalize(obj_url)
                 pred_mid = sq_normalize(pred_url)
                 mids = [obj_mid]
+                parses = [(subj_mid, pred_mid, obj_mid)]
                 eval_queries.append(
                     EvaluationQuery(idn, utterance.strip(),
                                     [mids],
                                     None,
-                                    [(subj_mid, pred_mid)],
+                                    parses,
                                     None))
         return eval_queries
 
@@ -165,25 +169,44 @@ class EvaluationQuery:
                 possible_targets = []
                 possible_targets_names = []
                 possible_targets_sparqls = []
+                possible_targets_parses = []
                 for parse in question['Parses']:
                     possible_targets_sparqls.append(parse['Sparql'])
                     result_names = []
                     results = []
+                    inf_chain = parse['InferentialChain']
+                    topic_mid = parse['TopicEntityMid']
+                    constraints = parse['Constraints']
+                    target_parse = [topic_mid]
+                    if inf_chain:
+                        for rel in inf_chain:
+                            target_parse.extend([rel, None])
+                    if constraints:
+                        for constraint in constraints:
+                            if constraint['Operator'] == 'Equal' and \
+                               constraint['SourceNodeIndex'] == 0:
+                                # In Aqqu we only support "constraints" as an additional relation
+                                # from the mediator not from the target
+                                target_parse.extend([constraint['NodePredicate'], constraint['Argument']])
+
+                    possible_targets_parses.append(tuple(target_parse))
+
                     for answer in parse['Answers']:
                         atype = answer['AnswerType']
                         if atype == 'Entity':
                             result_names.append(answer['EntityName'])
                         elif atype == 'Value':
                             result_names.append(answer['AnswerArgument'])
-                        # results are mid strings or numeric/date/.. values
+                        # results are mid strings or numeric/date/.. string values
                         results.append(answer['AnswerArgument'])
                     possible_targets_names.append(result_names)
                     possible_targets.append(results)
+                logger.info('Possible targets parses %r', possible_targets_parses)
                 eval_queries.append(
                     EvaluationQuery(idn, utterance,
                                     possible_targets,
                                     possible_targets_names,
-                                    None,
+                                    possible_targets_parses,
                                     possible_targets_sparqls))
 
         return sorted(eval_queries, key=lambda x: x.id)
@@ -197,6 +220,8 @@ class EvaluationCandidate:
         self.executed_sparql = executed_sparql
         self.prediction = prediction
         self.prediction_names = prediction_names
+        # some datasets only have the ground truth as names
+        self.prediction_mids_or_names = prediction if prediction else prediction_names
         # Is set when evaluated.
         self.evaluation_result = None
 
@@ -230,7 +255,8 @@ class CandidateEvaluationResult:
 
 def evaluate_translator(translator, queries, n_queries=None,
                         ignore_howmany=False, ignore_invalid=False,
-                        n_top=1000, output_result=True):
+                        n_top=1000, output_result=True,
+                        prune_for_training=False):
     """Evaluate the translator on the provided queries.
 
     Returns a result object as defined in the evaluation
@@ -261,7 +287,7 @@ def evaluate_translator(translator, queries, n_queries=None,
                     q.utterance.lower().startswith('in how many'):
                 continue
         if ignore_invalid:
-            if not q.targets_mids and not q.targets_names:
+            if not q.targets_mids_or_names:
                 # Changed this, because it is debatable whether that is
                 # unanswerable bc the answer can be produced.
                 continue
@@ -301,7 +327,12 @@ def evaluate_translator(translator, queries, n_queries=None,
                     result_strs.append(row[1])
                 else:
                     result_strs.append(row[0])
-            executed_sparql = candidate.to_sparql_query(include_name=True)
+
+            executed_sparql = None
+            if not prune_for_training:
+                executed_sparql = candidate.to_sparql_query(include_name=True)
+            else:
+                candidate.prune_for_training()
             eval_candidate = EvaluationCandidate(candidate,
                                                  executed_sparql,
                                                  result_target_mids,
@@ -369,14 +400,14 @@ def parse_date(date_string):
         return None
 
 
-def parse_float(float_string):
-    """Try to parse the string into a float.
+def parse_int(int_str):
+    """Try to parse the string into an int.
 
-    :param float_string:
+    :param int_str:
     :return:
     """
     try:
-        return float(float_string)
+        return int(int_str)
     except ValueError:
         return None
 
@@ -389,10 +420,18 @@ def parse_to_set(result_list):
     """
     result_set = set()
     for r in result_list:
-        r_float = parse_float(r)
-        if r_float:
-            result_set.add(r_float)
+        # NOTE: This used to be parse_float but floats in a set are murky
+        # Now this also matches date formats with only years but that's ok and probably even
+        # better than below because that silently adds the current month and day
+        r_int = parse_int(r)
+        if r_int:
+            result_set.add(r_int)
             continue
+        # NOTE: For negative dates e.g. -1340 (Tutankhamun's birth)
+        # this silently drops the minus, however since the month and year is missing
+        # this will be parsed as an int anyway.
+        # Also for years only it silently adds the current month and day. By
+        # not parsing floats above but ints we handle those values there
         r_date = parse_date(r)
         if r_date:
             result_set.add(r_date)
@@ -400,20 +439,25 @@ def parse_to_set(result_list):
         result_set.add(r)
     return result_set
 
+
 def compute_parse_match(candidate, parse):
     match = 0.0
 
     ents = {ie.entity.sparql_name()
             for ie in candidate.query_candidate.matched_entities}
-    rel_names = candidate.query_candidate.get_canonical_relation_names()
+    ents.union(candidate.prediction)
+    rel_names = set(candidate.query_candidate.get_canonical_relation_names())
     for idx, gold_part in enumerate(parse):
-        # parses a subgraphs of a bipartite graph where entities are always
+        # parses are subgraphs of a bipartite graph where entities are always
         # connected by relations. Thus in a subgraph description of the form
         # (E, R, M, R, E, R, T) starting with an entity every second element
-        # must be a relation/entity.
-        if idx % 2 == 0 and gold_part in ents:
+        # must be a relation/entity. We ignore the order of relations because
+        # e.g. in ERMRERT the order of the two last Rs is irrelevant
+
+        # For unknown mediator entities an entity may be None this is counted as matching
+        if idx % 2 == 0 and not gold_part or gold_part in ents:
             match += 1.0
-        elif idx % 2 == 1 and rel_names[idx // 2] == gold_part:
+        elif idx % 2 == 1 and gold_part in rel_names:
             match += 1.0
     match /= len(parse)
     return match
@@ -438,18 +482,12 @@ def evaluate_single_candidate(candidate, eval_query):
             parse_matches.append(compute_parse_match(candidate, parse))
         best_parse_match = max(parse_matches)
 
-    # we prefer to target (m)ids but some datasets only have
-    # the ground truth as human readable entity names so fallback to
-    # that
-    gold_targets_list = eval_query.targets_mids if eval_query.targets_mids \
-        else eval_query.targets_names
+    gold_targets_list = eval_query.targets_mids_or_names
 
     gold_targets_sets = [parse_to_set(targets)
                          for targets in gold_targets_list]
 
-    prediction_set = parse_to_set(candidate.prediction
-                                  if eval_query.targets_mids
-                                  else candidate.prediction_names)
+    prediction_set = parse_to_set(candidate.prediction_mids_or_names)
 
     logger.debug('prediction_set: %r', prediction_set)
 
@@ -536,7 +574,7 @@ def compare_evaluation_runs(queries_a, queries_b):
     return a_not_b, b_not_a
 
 
-def evaluate(queries, output_file="eval_out.log"):
+def evaluate(queries :List[EvaluationQuery], output_file="eval_out.log"):
     """Evaluates the queries.
 
     Returns a tuple of EvaluationResult and the list of queries. Each
@@ -575,10 +613,7 @@ def evaluate(queries, output_file="eval_out.log"):
     num_candidates = 0
     for query in queries:
         query.reset_results()
-        if query.targets_mids:
-            gold_targets_list = query.targets_mids
-        else:
-            gold_targets_list = query.targets_names
+        gold_targets_list = query.targets_mids_or_names
         candidates = query.eval_candidates
         if not gold_targets_list:
             num_q_no_answer += 1
@@ -615,9 +650,10 @@ def evaluate(queries, output_file="eval_out.log"):
                         prediction, query)
                     # TODO(schnelle) for WebQSP we currently simply count
                     # the best result
-                    best_candidate_eval = sorted(candidate_evals,
-                                                 key=lambda ev: ev.f1,
-                                                 reverse=True)[0]
+                    best_candidate_eval = max(candidate_evals,
+                                              key=lambda ev: ev.f1,)
+                    best_candidate_eval_parse = max(candidate_evals,
+                                                    key=lambda ev: ev.parse_score)
                     prediction.evaluation_result = best_candidate_eval
                 if i == 0:
                     query.precision = best_candidate_eval.precision
@@ -629,9 +665,12 @@ def evaluate(queries, output_file="eval_out.log"):
                     query.false_positives = best_candidate_eval.false_positives
                 if query.oracle_f1 < best_candidate_eval.f1:
                     query.oracle_f1 = best_candidate_eval.f1
+                    query.oracle_position = i + 1
+                if query.oracle_parse_score < best_candidate_eval_parse.parse_score:
                     query.oracle_parse_score = best_candidate_eval.parse_score
                     query.oracle_parse_match = best_candidate_eval.parse_score > 0.99
-                    query.oracle_position = i + 1
+                    query.oracle_parse_position = i + 1
+
     num_queries = len(queries)
     num_unanswered_queries = float(len([q for q in queries
                                         if not q.eval_candidates]))

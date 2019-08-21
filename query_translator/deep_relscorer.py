@@ -37,7 +37,8 @@ class DeepCNNAqquRelScorer():
                  use_type_names, use_attention,
                  num_filters,
                  num_hidden_nodes,
-                 dropout_keep_prob):
+                 dropout_keep_prob,
+                 **kwargs):
         self.logdir = logdir
         self.n_rels = 3
         self.n_parts_per_rel = 3
@@ -56,7 +57,7 @@ class DeepCNNAqquRelScorer():
         self.sentence_len = self.max_query_len
         # 3 1-word domains, 3 2-word sub domains
         # and 3 3-word relation names plus 2 paddings
-        # between domain, sub-domain, relation 20 which is 
+        # between domain, sub-domain, relation 20 which is
         # as long as max_query_len
         self.relation_len = 3 + 6 + 9 + 2
         self.sess = None

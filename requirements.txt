@@ -1,13 +1,12 @@
-Flask==0.12.2
+Flask==1.0
 Flask-Compress==1.4.0
 gensim==3.2.0
-Jinja2==2.10
 joblib==0.11
 numpy==1.14.1
-requests==2.18.1
+requests==2.20.0
 scikit-learn==0.19.1
 scipy==1.0.0
-urllib3==1.22
+urllib3==1.24.2
 pyrocksdb==0.4
 
 cython==0.27.3
