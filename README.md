@@ -6,9 +6,8 @@ Question Answering on Freebase, Hannah Bast and Elmar Haussmann, CIKM 2015"
 The original version can be found as as the very first commit of this
 repository and under the v1.0 tag.
 
-Follow the instructions in QUICKSTART.md to set up the system. This also
-includes descriptions on how to obtain pre-requisite data, e.g., a complete
-index of Freebase.
+Follow the instructions below to set up the system. This also includes
+descriptions on how to obtain pre-requisite data.
 
 Setup is easy if all pre-requisites are met.
 
@@ -17,6 +16,14 @@ Setup is easy if all pre-requisites are met.
 * Docker > 18.09 on 64 bit Linux
 * RAM: 40 GB for training the large WebQuestions/WebQSP models
 * Disk: about 50 GB for all required data
+
+## Setup a Virtuoso Instance with Freebase
+
+To setup a Virtuoso instance with the Freebase data needed for Aqqu we
+recommend to follow the instructions at our  [Virtuoso with Docker
+Compose](https://github.com/ad-freiburg/virtuoso-compose) repository. This will
+automatically download the correct version of Freebase and setup Virtuoso with
+the exact same settings used by us.
 
 ## Get the Dataset
 
