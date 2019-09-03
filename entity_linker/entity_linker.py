@@ -9,6 +9,7 @@ import logging
 import re
 import copy
 import time
+import flask
 from entity_linker.util import normalize_entity_name,\
     remove_prefixes_from_name, remove_suffixes_from_name
 import config_helper
@@ -110,7 +111,7 @@ class IdentifiedEntity:
     """An entity identified in some text."""
 
     def __init__(self, tokens,
-                 name, entity,
+                 name, raw_name, entity,
                  types,
                  category,
                  score=0, surface_score=0,
@@ -120,6 +121,8 @@ class IdentifiedEntity:
                  ):
         # A readable name to be displayed to the user.
         self.name = name
+        # A token that was identifies as entity, raw name
+        self.raw_name = raw_name
         # The tokens that matched this entity.
         self.tokens = tokens
         # A score for the match of those tokens.
@@ -166,6 +169,7 @@ class IdentifiedEntity:
         res = IdentifiedEntity(
                 self.tokens,
                 self.name,
+                self.raw_name,
                 copy.deepcopy(self.entity, memo),
                 copy.deepcopy(self.types, memo),
                 copy.deepcopy(self.category, memo),
@@ -307,12 +311,45 @@ class EntityLinker:
                     # TODO(schnelle) the year is currently used in training but
                     # should be more specific tokens[i:i+1] gives us a span so
                     # it's consistent with other entities
-                    ie = IdentifiedEntity(tokens[i:i+1], e.name, e,
+                    ie = IdentifiedEntity(tokens[i:i+1], e.name, e.name, e,
                                           types=['Date'],
                                           category='Date',
                                           perfect_match=True)
                     identified_dates.append(ie)
         return identified_dates
+
+    def identify_from_context(self, tokens, raw_previous_entities):
+        '''
+        Identify entities using previous identified entities.
+        :tokens: A list of string tokens.
+        :return: A list of IdentifiedEntity from previous request.
+        '''
+        gender = None
+        gender_list = ["he", "she", "it", "her", "his", "him", "they",
+                       "their", "its", "there", "thems"]
+        for position, t in enumerate(tokens):
+            for g in gender_list:
+                if t.text == g:
+                    gender = tokens[position : position + 1]
+                    break
+
+        # raw_previous_entities = flask.request.args.getlist("p")
+        previous_entities = []
+
+        for raw_entity in raw_previous_entities:
+            raw_entity_list = raw_entity.split(",")
+            ent = KBEntity("PREV:" + raw_entity_list[1], raw_entity_list[0], 1.0, [])
+            types = self.entity_index.get_types_for_mid(ent.id, 3)
+            category = self.entity_index.get_category_for_mid(ent.id)
+            ide = IdentifiedEntity(gender,
+                                   ent.name, ent.name, ent,
+                                   types=types,
+                                   category=category,
+                                   score=ent.score,
+                                   surface_score=1.0, 
+                                   perfect_match=1.0)
+            previous_entities.append(ide)
+        return previous_entities
 
     def identify_in_tokens(self, tokens, min_surface_score=0.1, lax_mode=False):
         '''
@@ -349,7 +386,7 @@ class EntityLinker:
                                                                 self.max_types)
                     category = self.entity_index.get_category_for_mid(ent.id)
                     ide = IdentifiedEntity(tokens[start:end],
-                                           ent.name, ent,
+                                           ent.name, entity_tokens, ent,
                                            types=types,
                                            category=category,
                                            score=ent.score,
@@ -359,7 +396,7 @@ class EntityLinker:
                     identified_entities.append(ide)
         return identified_entities
 
-    def identify_entities_in_tokens(self, tokens, min_surface_score=0.1):
+    def identify_entities_in_tokens(self, tokens, raw_previous_entities, min_surface_score=0.1):
         '''
         Identify instances in the tokens.
         :param tokens: A list of string tokens.
@@ -370,6 +407,9 @@ class EntityLinker:
         identified_entities = []
         start_time = time.time()
         identified_entities.extend(self.identify_in_tokens(tokens, min_surface_score))
+        # Add identified entities from the previous request.
+        identified_entities.extend(self.identify_from_context(tokens, raw_previous_entities))
+
         if len(identified_entities) == 0:
             # Without any identified entities we would be unable to find anything for
             # the query so retry this time ignoring POS tags

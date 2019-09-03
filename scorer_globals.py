@@ -169,6 +169,12 @@ scorer_list = [Conf(ranker.AqquModel, 'F917_Ranker',
                Conf(ranker.AqquModel, 'WQSP_Ranker',
                     train_datasets=["wqsptrain"],
                     rel_regularization_C=1e-5),
+               Conf(ranker.AqquModel, 'WQSP_Ranker_conversational',
+                    train_datasets=["wqsptrain_conversational"],
+                    rel_regularization_C=1e-5),
+               Conf(ranker.AqquModel, 'WQSP_Ranker_conversational_extended',
+                    train_datasets=["wqsptrain_conversational_extended"],
+                    rel_regularization_C=1e-5),
                Conf(ranker.AqquModel, 'WQSP_Ranker_parses',
                     use_parses=True,
                     train_datasets=["wqsptrain"],
@@ -299,5 +305,11 @@ DATASETS = OrderedDict(
      ('webquestionstrain_graphparser',
       'evaluation-data/'
       'webquestions.train_graphparser.json'),
+     ('wqsptrain_conversational',
+      'evaluation-data/'
+      'WebQSP_conversational_gender.train.json'),
+     ('wqsptrain_conversational_extended',
+      'evaluation-data/'
+      'WebQSP_conversational_gender_extended.train.json')
      ]
 )
