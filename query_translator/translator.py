@@ -196,7 +196,7 @@ class QueryTranslator(object):
                 " Avg per query: %.2f ms." % (n_total_answers, len(ranked_candidates[:n_top]),
                                                   result_fetch_time, avg_result_fetch_time))
         logger.info("Done translating and executing: %s." % query)
-        # A dictionary with genders, dentified for each entity. 
+        # A dictionary with genders, identified for each entity.
         gender_dict = self.get_genders(ranked_candidates[:n_top], parsed_query)
         return parsed_query, ranked_candidates[:n_top], gender_dict
 
@@ -217,18 +217,15 @@ class QueryTranslator(object):
         gender_dict = {}
         # for result in query_results:
         if len(query_results) > 0:
-            try:
-                mid = query_results[0]["mid"]
-            except KeyError:
-                mid = ''
-            try:
-                name = query_results[0]["name"]
-            except KeyError:
-                name = ''
-            if mid != '':
-                if mid not in gender_dict:
-                    gender = self.gender.get_gender(name)
-                    gender_dict[mid] = gender
+            mid = ''
+            if 'mid' in query_results[0]:
+                mid = query_results[0]['mid']
+            name = ''
+            if 'name' in query_results[0]:
+                name = query_results[0]['name']
+            if mid and mid not in gender_dict:
+                gender = self.gender.get_gender(name)
+                gender_dict[mid] = gender
         for ie in parsed_query.identified_entities:
             mid = ie.sparql_name()
             if ie.name[:5] == "PREV:":
@@ -247,8 +244,9 @@ class Gender:
 
     def __init__(self):
         self.gender_data = self.get_gender_data()
-        print("Creating gender class.")
-        print("Size of gender dictionary is ", sys.getsizeof(self.gender_data))
+        logger.debug("Creating gender class.")
+        logger.debug("Size of gender dictionary is %d",
+                     sys.getsizeof(self.gender_data))
 
     def get_gender(self, name):
 
@@ -256,14 +254,12 @@ class Gender:
         use gender-guesser."""
 
         gender = None
-        try:
+        if name in self.gender_data:
             gender = self.gender_data[name]
-            print("Getting gender from gender.csv.")
-        except KeyError:
-            print("Guessing gender.")
+        else:
             gender = self.use_gender_guesser(name)
         gender = self.process_gender(gender)
-        print("The gender is: ", gender)
+        logger.debug("The gender is: ", gender)
         return gender
 
     def get_gender_data(self):
@@ -271,8 +267,11 @@ class Gender:
         """ Read a csv file with person names and genders and
         create a dictionary {name : gender} """
 
+        config_options = config_helper.config
+        gender_map_file = config_options.get('GenderGuesser',
+                                             'gender-map')
         gender_data = {}
-        with open('gender.csv', mode='r', encoding="utf-8") as infile:
+        with open(gender_map_file, mode='r', encoding="utf-8") as infile:
             reader = csv.reader(infile)
             for rows in reader:
                 rows[1] = re.sub(' +', ' ', rows[1])
@@ -285,7 +284,7 @@ class Gender:
 
     def use_gender_guesser(self, name):
 
-        """ Use gender guesser if th name is not in a gender.csv."""
+        """ Use gender guesser if the name is not in the gender.csv."""
 
         print("Using gender guesser.")
         first_name = name.split(" ")[0]
