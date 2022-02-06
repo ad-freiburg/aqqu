@@ -1,7 +1,7 @@
 # Aqqu Question Answering System
 
-This is an ancestor of the code accompanying the publication "More Accurate
-Question Answering on Freebase, Hannah Bast and Elmar Haussmann, CIKM 2015"
+This is an ancestor of the code accompanying the publication: [More Accurate
+Question Answering on Freebase, Hannah Bast and Elmar Haussmann, CIKM 2015](https://ad-publications.cs.uni-freiburg.de/freebase-qa.pdf)
 
 The original version can be found as as the very first commit of this
 repository and under the v1.0 tag.
