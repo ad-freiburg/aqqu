@@ -16,7 +16,7 @@ preshed==1.0.0
 thinc==6.10.2
 murmurhash==0.28
 plac==0.9.6
-ujson==1.35
+ujson==5.4.0
 dill==0.2.7.1
 regex==2017.4.5
 ftfy==5.0.0
