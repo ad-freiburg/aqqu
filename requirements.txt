@@ -3,7 +3,7 @@ Flask-Compress==1.4.0
 gensim==3.2.0
 joblib==0.11
 numpy==1.14.1
-requests==2.20.0
+requests==2.31.0
 scikit-learn==0.19.1
 scipy==1.0.0
 urllib3==1.24.2
