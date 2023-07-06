@@ -5,7 +5,7 @@ joblib==0.11
 numpy==1.14.1
 requests==2.20.0
 scikit-learn==0.19.1
-scipy==1.0.0
+scipy==1.10.0
 urllib3==1.24.2
 pyrocksdb==0.4
 
